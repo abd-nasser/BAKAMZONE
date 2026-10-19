@@ -1,0 +1,44 @@
+# mypy
+.mypy_cache/
+
+.DS_Store
+*.sqlite3
+*.db.sqlite3
+db.sqlite-journal
+db.sqlite3
+media/
+*.pyc
+*.db
+*.pid
+./staticfiles
+
+# Ignore Django Migrations in Development if you are working on team
+
+# Only for Development only
+
+node_modules
+node_modules
+staticfiles/
+
+# Frontend
+frontend/node_modules/
+
+# Django
+src/staticfiles/
+src/media/
+src/pycache/
+*.pyc
+*.pyo
+*.pyd
+db.sqlite3
+
+# Environment
+ssm_env/
+.env
+frontend/
+.env.prod
+snippet
+readme.md
+brouillon.md
+reset_data.md
+livrez-vous-plan-strategique.md
