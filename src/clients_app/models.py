@@ -2,7 +2,7 @@ from django.db import models
 
 
 class Client(models.Model):
-    user = models.OneToOneField('accounts_app.User', on_delete=models.CASCADE, related_name='client_profil')
+    user = models.OneToOneField('auth_app.User', on_delete=models.CASCADE, related_name='client_profil')
     photo_profil = models.ImageField(upload_to='client_photos/', blank=True, null=True)
     ville = models.CharField(max_length=100, blank=True, null=True)
     quartier = models.CharField(max_length=100, blank=True, null=True)

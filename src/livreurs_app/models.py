@@ -24,7 +24,7 @@ class Livreur(models.Model):
     actif = models.BooleanField(default=True)  # désactivation logique, jamais de suppression réelle si historique
     disponible = models.BooleanField(default=False)
 
-    Blocs = models.ForeignKey(Blocs, on_delete=models.SET_NULL, null=True, blank=True, related_name='livreurs_bloc')
+    blocs = models.ForeignKey(Blocs, on_delete=models.SET_NULL, null=True, blank=True, related_name='livreurs_bloc')
     zone_actuelle = models.ForeignKey(Blocs, on_delete=models.SET_NULL, null=True, blank=True, related_name='livreurs_presents')
     latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)

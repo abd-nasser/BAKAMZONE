@@ -1,0 +1,146 @@
+{% load static tailwind_tags %}
+<!DOCTYPE html>
+<html lang="fr" data-theme="light" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    
+    <!-- PWA & Mobile Meta Tags -->
+    <meta name="theme-color" content="#059669">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="description" content="BAKAMZONE — Livraison intégrée de proximité avec flotte propre de motos électriques.">
+    
+    <title>{% block title %}BAKAMZONE — Livraison de proximité{% endblock %}</title>
+
+    <!-- Polices Google Font (Plus Jakarta Sans) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- CSS Tailwind Compilé -->
+    {% tailwind_css %}
+
+    <!-- Scripts Vendor (Head) -->
+    <script src="{% static 'vendor/js/htmx.min.js' %}"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+
+    <!-- Animation & Smooth Scroll (Lenis & GSAP) -->
+    <script src="{% static 'vendor/js/gsap.min.js' %}"></script>
+    <script src="{% static 'vendor/js/ScrollTrigger.min.js' %}"></script>
+    <script src="{% static 'vendor/js/lenis.min.js' %}"></script>
+
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        /* Custom HTMX loading indicator */
+        .htmx-indicator {
+            display: none;
+        }
+        .htmx-request .htmx-indicator,
+        .htmx-request.htmx-indicator {
+            display: inline-flex;
+        }
+    </style>
+
+    <!-- Initialisation précoce du Thème (anti-flicker) -->
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('bakamzone-theme') || 
+                (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        })();
+    </script>
+
+    {% block extra_css %}{% endblock %}
+</head>
+
+<body class="min-h-full bg-base-100 text-neutral flex flex-col antialiased selection:bg-[#059669] selection:text-white"
+      hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+
+    <!-- Conteneur global de notifications Toast Django -->
+    <div id="toast-container" class="toast toast-top toast-end z-50 pointer-events-none p-4">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert shadow-lg pointer-events-auto rounded-2xl border 
+                    {% if message.tags == 'error' %}alert-error text-white
+                    {% elif message.tags == 'success' %}alert-success text-white bg-[#059669] border-[#047857]
+                    {% elif message.tags == 'warning' %}alert-warning
+                    {% else %}alert-info text-white{% endif %} transition-all duration-300"
+                     x-data="{ show: true }" 
+                     x-show="show" 
+                     x-init="setTimeout(() => show = false, 5000)">
+                    <span>{{ message }}</span>
+                    <button @click="show = false" class="btn btn-ghost btn-xs btn-circle">✕</button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    <!-- En-tête / Navigation -->
+    {% block navbar %}
+    {% endblock %}
+
+    <!-- Contenu Principal -->
+    <main class="flex-grow">
+        {% block content %}
+        {% endblock %}
+    </main>
+
+    <!-- Pied de page -->
+    {% block footer %}
+    {% endblock %}
+
+    <!-- Initialisations JavaScript Globales -->
+    <script>
+        // 1. Initialisation Lenis Smooth Scroll
+        let lenis;
+        try {
+            if (typeof Lenis !== 'undefined') {
+                lenis = new Lenis({
+                    duration: 1.1,
+                    easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+                    smoothWheel: true,
+                });
+
+                function raf(time) {
+                    lenis.raf(time);
+                    requestAnimationFrame(raf);
+                }
+                requestAnimationFrame(raf);
+
+                // Synchronisation GSAP ScrollTrigger avec Lenis
+                if (typeof gsap !== 'undefined' && typeof ScrollTrigger !== 'undefined') {
+                    gsap.registerPlugin(ScrollTrigger);
+                    lenis.on('scroll', ScrollTrigger.update);
+                    gsap.ticker.add((time) => {
+                        lenis.raf(time * 1000);
+                    });
+                    gsap.ticker.lagSmoothing(0);
+                }
+            }
+        } catch (e) {
+            console.warn("Smooth scroll initialization skipped:", e);
+        }
+
+        // 2. Fonction de bascule de thème Clair / Sombre
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('bakamzone-theme', newTheme);
+        }
+
+        // 3. Gestion HTMX CSRF et re-scan Alpine.js après swap
+        document.body.addEventListener('htmx:afterSwap', function(evt) {
+            if (window.Alpine) {
+                window.Alpine.initTree(evt.detail.target);
+            }
+        });
+    </script>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
