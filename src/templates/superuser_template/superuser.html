@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}BAKAMZONE — Cockpit Super Administrateur{% endblock %}
+
+{% block navbar %}
+<header class="sticky top-0 z-40 backdrop-blur-md bg-base-100/90 border-b border-base-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between h-16 sm:h-20">
+            <a href="{% url 'home_app:home' %}" class="flex items-center gap-2">
+                <span class="text-2xl font-black tracking-tight">
+                    <span class="text-[#059669]">BAKAM</span><span class="text-[#F97316]">ZONE</span>
+                </span>
+                <span class="badge badge-error text-white font-bold text-xs uppercase ml-2">Cockpit Superuser</span>
+            </a>
+            <div class="flex items-center gap-3">
+                <a href="{% url 'home_app:home' %}" class="btn btn-ghost btn-sm rounded-xl">← Retour Accueil</a>
+                <a href="{% url 'auth_app:deconnexion' %}" class="btn btn-outline btn-error btn-sm rounded-xl">Déconnexion</a>
+            </div>
+        </div>
+    </div>
+</header>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="mb-8">
+        <h1 class="text-3xl font-black tracking-tight">Cockpit Central Superuser</h1>
+        <p class="text-sm text-base-content/70 mt-1">Supervision globale, création de blocs, équipes d'administration et flotte de livreurs.</p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Colonne 1 & 2 : Gestion des blocs -->
+        <div class="lg:col-span-2 space-y-6">
+            <div class="card bg-base-100 p-6 rounded-3xl border border-base-200 shadow-xl">
+                <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
+                    <span>🏢</span> Liste des Blocs enregistrés ({{ total_blocs }})
+                </h2>
+                
+                <div id="blocs-list-container">
+                    {% if blocs %}
+                        <div class="space-y-3">
+                            {% for b in blocs %}
+                                <div class="p-4 rounded-2xl bg-base-200/50 border border-base-300 flex items-center justify-between">
+                                    <div>
+                                        <p class="font-bold text-base">{{ b.nom }} <span class="badge badge-sm badge-ghost">{{ b.code }}</span></p>
+                                        <p class="text-xs text-base-content/60">📍 {{ b.get_quartier_display }}, {{ b.get_ville_display }} • Capacité: {{ b.capacite_stockage }} articles / {{ b.capacite_motos }} motos</p>
+                                    </div>
+                                    <span class="badge badge-sm {% if b.actif %}badge-success text-white{% else %}badge-error text-white{% endif %}">
+                                        {% if b.actif %}Actif{% else %}Inactif{% endif %}
+                                    </span>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-sm text-base-content/60">Aucun bloc configuré pour le moment.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Colonne 3 : Actions rapides -->
+        <div class="space-y-6">
+            <div class="card bg-base-100 p-6 rounded-3xl border border-base-200 shadow-xl">
+                <h3 class="text-lg font-bold mb-2">⚡ Actions rapides</h3>
+                <p class="text-xs text-base-content/70 mb-4">Initialisation rapide des composants du réseau.</p>
+                <div class="space-y-2">
+                    <button class="btn btn-outline btn-primary w-full rounded-xl justify-start gap-2">
+                        <span>➕</span> Créer un nouveau Bloc
+                    </button>
+                    <button class="btn btn-outline w-full rounded-xl justify-start gap-2">
+                        <span>👥</span> Créer une Équipe Admin Bloc
+                    </button>
+                    <button class="btn btn-outline w-full rounded-xl justify-start gap-2">
+                        <span>🛵</span> Affecter des Livreurs au Bloc
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

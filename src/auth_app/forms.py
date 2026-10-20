@@ -128,3 +128,33 @@ class InscriptionClientForm(forms.ModelForm):
             user.save()
             client.save()
         return client
+
+
+# ==========================================
+# 2. FORMULAIRE DE CONNEXION UNIVERSEL
+# ==========================================
+
+class ConnexionForm(forms.Form):
+    """
+    Formulaire de connexion pour tous les rôles (Superuser, Admin de Bloc, Livreur, Entreprise, Client).
+    Permet la connexion par Numéro de téléphone OU par Nom d'utilisateur.
+    """
+    identifiant = forms.CharField(
+        label="Téléphone ou Nom d'utilisateur",
+        widget=forms.TextInput(attrs={
+            'placeholder': "Numéro (ex: 70000000) ou username",
+            'class': 'input input-bordered w-full rounded-xl focus:border-[#059669] focus:outline-none transition-colors',
+            'required': True,
+            'autocomplete': 'username',
+        }),
+    )
+    password = forms.CharField(
+        label="Mot de passe",
+        widget=forms.PasswordInput(attrs={
+            'placeholder': "Votre mot de passe",
+            ':type': "showPassword ? 'text' : 'password'",
+            'class': 'input input-bordered w-full pr-10 rounded-xl focus:border-[#059669] focus:outline-none transition-colors',
+            'required': True,
+            'autocomplete': 'current-password',
+        }),
+    )

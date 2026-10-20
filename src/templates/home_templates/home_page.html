@@ -1,0 +1,311 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}BAKAMZONE — La Révolution de la Livraison Intégrée{% endblock %}
+
+{% block navbar %}
+<!-- Navbar Responsive DaisyUI -->
+<header class="sticky top-0 z-40 backdrop-blur-md bg-base-100/90 border-b border-base-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between h-16 sm:h-20">
+            
+            <!-- Logo BAKAMZONE -->
+            <a href="{% url 'home_app:home' %}" class="flex items-center gap-2 group">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-[#059669] to-[#047857] flex items-center justify-center text-white shadow-md group-hover:scale-105 transition-transform">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                </div>
+                <span class="text-2xl font-black tracking-tight">
+                    <span class="text-[#059669]">BAKAM</span><span class="text-[#F97316]">ZONE</span>
+                </span>
+            </a>
+
+            <!-- Actions Utilisateur & Navigation -->
+            <div class="flex items-center gap-3">
+                
+                <!-- Bascule Thème Clair / Sombre -->
+                <button onclick="toggleTheme()" 
+                        class="btn btn-ghost btn-circle btn-sm text-base-content/80 hover:bg-base-200" 
+                        title="Changer de thème">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                    </svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 hidden dark:block text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                </button>
+
+                {% if request.user.is_authenticated %}
+                    <!-- Utilisateur Connecté -->
+                    <div class="dropdown dropdown-end">
+                        <label tabindex="0" class="btn btn-ghost rounded-2xl gap-2 pl-2 pr-3 py-1 flex items-center border border-base-300">
+                            <div class="avatar placeholder">
+                                <div class="bg-[#059669] text-white rounded-xl w-8 h-8 font-bold text-xs">
+                                    {{ request.user.first_name|default:request.user.telephone|slice:":2"|upper }}
+                                </div>
+                            </div>
+                            <div class="text-left hidden sm:block">
+                                <p class="text-xs font-bold leading-tight">{{ request.user.get_full_name|default:request.user.telephone }}</p>
+                                <span class="badge badge-xs text-[10px] 
+                                    {% if request.user.is_superuser %}badge-error text-white
+                                    {% elif request.user.role == 'administrateur' %}badge-warning
+                                    {% elif request.user.role == 'livreur' %}badge-info text-white
+                                    {% elif request.user.role == 'entreprise' %}badge-secondary text-white
+                                    {% else %}badge-ghost{% endif %}">
+                                    {% if request.user.is_superuser %}Superuser
+                                    {% elif request.user.role == 'administrateur' %}Admin Bloc
+                                    {% elif request.user.role == 'livreur' %}Livreur
+                                    {% elif request.user.role == 'entreprise' %}Entreprise
+                                    {% else %}Client{% endif %}
+                                </span>
+                            </div>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-base-content/50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </label>
+                        <ul tabindex="0" class="dropdown-content menu p-2 shadow-2xl bg-base-100 rounded-2xl w-60 border border-base-200 mt-2 z-50">
+                            <li class="menu-title px-3 py-1 text-[11px] uppercase tracking-wider text-base-content/50">
+                                Mon Compte ({{ request.user.telephone }})
+                            </li>
+                            {% if request.user.is_superuser %}
+                                <li>
+                                    <a href="{% url 'superuser_app:dashboard' %}" class="font-bold text-[#059669] py-2.5">
+                                        ⚡ Cockpit Superuser
+                                    </a>
+                                </li>
+                            {% endif %}
+                            <li>
+                                <a href="{% url 'home_app:home' %}" class="py-2.5">🏠 Accueil BAKAMZONE</a>
+                            </li>
+                            <div class="divider my-1"></div>
+                            <li>
+                                <a href="{% url 'auth_app:deconnexion' %}" class="text-error font-medium py-2.5">
+                                    🚪 Se déconnecter
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                {% else %}
+                    <!-- Utilisateur Non Connecté : Bouton Connexion qui ouvre le Modal -->
+                    <button onclick="login_modal.showModal()"
+                            class="btn btn-sm sm:btn-md bg-[#059669] hover:bg-[#047857] text-white border-none rounded-xl font-bold shadow-md hover:shadow-lg transition-all px-4 sm:px-6">
+                        Connexion
+                    </button>
+                {% endif %}
+
+            </div>
+
+        </div>
+    </div>
+</header>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+
+    {% if request.user.is_authenticated %}
+        <!-- ========================================== -->
+        <!-- ESPACE INTELLIGENT SELON LE RÔLE           -->
+        <!-- ========================================== -->
+        
+        <!-- 1. CAS DU SUPERUSER -->
+        {% if request.user.is_superuser %}
+            <div class="card bg-gradient-to-br from-emerald-900 to-slate-900 text-white rounded-3xl p-6 sm:p-10 shadow-2xl mb-10 border border-emerald-700/50 relative overflow-hidden">
+                <div class="absolute -right-10 -bottom-10 w-64 h-64 bg-[#059669]/20 rounded-full blur-3xl pointer-events-none"></div>
+                <div class="relative z-10 max-w-2xl">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-semibold mb-4 border border-emerald-500/30">
+                        ⚡ Mode Super Administrateur
+                    </div>
+                    <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight">
+                        Cockpit Central BAKAMZONE
+                    </h1>
+                    <p class="mt-3 text-emerald-100/80 text-sm sm:text-base leading-relaxed">
+                        Bienvenue, <strong>{{ request.user.get_full_name|default:request.user.telephone }}</strong>. Vous pouvez créer les nouveaux blocs de quartier, affecter les équipes administratives et gérer la flotte de livreurs.
+                    </p>
+                    <div class="mt-6 flex flex-wrap gap-4">
+                        <a href="{% url 'superuser_app:dashboard' %}" 
+                           class="btn bg-[#059669] hover:bg-[#047857] text-white border-none rounded-2xl px-6 font-bold shadow-lg">
+                            Accéder à l'espace Superuser →
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+        <!-- 2. CAS DE L'ADMINISTRATEUR DE BLOC -->
+        {% elif request.user.role == 'administrateur' %}
+            <div class="card bg-base-100 rounded-3xl p-6 sm:p-8 shadow-xl border border-base-200 mb-10">
+                <div class="flex items-center gap-4">
+                    <div class="w-14 h-14 rounded-2xl bg-amber-100 dark:bg-amber-950/40 text-amber-600 flex items-center justify-center font-bold text-2xl">
+                        🏢
+                    </div>
+                    <div>
+                        <div class="badge badge-warning text-xs font-semibold">Administrateur de Bloc</div>
+                        <h1 class="text-2xl font-bold mt-1">Espace Responsable de Bloc</h1>
+                        <p class="text-sm text-base-content/70">Gestion des stocks physiques, préparation des commandes et affectation des livreurs locaux.</p>
+                    </div>
+                </div>
+            </div>
+
+        <!-- 3. CAS DU LIVREUR -->
+        {% elif request.user.role == 'livreur' %}
+            <div class="card bg-base-100 rounded-3xl p-6 sm:p-8 shadow-xl border border-base-200 mb-10">
+                <div class="flex items-center gap-4">
+                    <div class="w-14 h-14 rounded-2xl bg-sky-100 dark:bg-sky-950/40 text-sky-600 flex items-center justify-center font-bold text-2xl">
+                        🛵
+                    </div>
+                    <div>
+                        <div class="badge badge-info text-white text-xs font-semibold">Livreur de la Flotte</div>
+                        <h1 class="text-2xl font-bold mt-1">Espace Livreur</h1>
+                        <p class="text-sm text-base-content/70">Courses attribuées, validation des étapes (récupéré / livré) et suivi de position.</p>
+                    </div>
+                </div>
+            </div>
+
+        <!-- 4. CAS DE L'ENTREPRISE PARTENAIRE -->
+        {% elif request.user.role == 'entreprise' %}
+            <div class="card bg-base-100 rounded-3xl p-6 sm:p-8 shadow-xl border border-base-200 mb-10">
+                <div class="flex items-center gap-4">
+                    <div class="w-14 h-14 rounded-2xl bg-purple-100 dark:bg-purple-950/40 text-purple-600 flex items-center justify-center font-bold text-2xl">
+                        📦
+                    </div>
+                    <div>
+                        <div class="badge badge-secondary text-white text-xs font-semibold">Entreprise Partenaire</div>
+                        <h1 class="text-2xl font-bold mt-1">Portail Partenaire</h1>
+                        <p class="text-sm text-base-content/70">Gestion des articles déposés dans les blocs et suivi des commandes en direct.</p>
+                    </div>
+                </div>
+            </div>
+
+        <!-- 5. CAS DU CLIENT ORDINAIRE -->
+        {% else %}
+            <div class="card bg-base-100 rounded-3xl p-6 sm:p-8 shadow-xl border border-base-200 mb-10">
+                <h1 class="text-2xl font-bold">Ravi de vous revoir, {{ request.user.first_name|default:request.user.telephone }} ! 👋</h1>
+                <p class="text-sm text-base-content/70 mt-1">Commandez vos articles préférés livrés en quelques minutes depuis le bloc de votre quartier.</p>
+            </div>
+        {% endif %}
+
+    {% else %}
+        <!-- ========================================== -->
+        <!-- VITRINE VISITEUR (NON CONNECTÉ)           -->
+        <!-- ========================================== -->
+        <section class="py-12 sm:py-20 text-center relative overflow-hidden">
+            <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-[#059669] text-xs font-bold uppercase tracking-wider mb-6 border border-emerald-200 dark:border-emerald-800">
+                ⚡ Flotte 100% Électrique • Hubs de proximité
+            </div>
+            
+            <h1 class="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight leading-none max-w-4xl mx-auto">
+                Vos commandes livrées depuis le <span class="text-[#059669]">bloc</span> de votre <span class="text-[#F97316]">quartier</span>.
+            </h1>
+            
+            <p class="mt-6 text-base sm:text-lg text-base-content/70 max-w-2xl mx-auto leading-relaxed">
+                BAKAMZONE réinvente la logistique urbaine à Ouagadougou. Un stock décentralisé par quartier, une flotte intégrée de motos électriques et une livraison ultra rapide sans incertitude.
+            </p>
+
+            <!-- Actions Rapides -->
+            <div class="mt-8 sm:mt-10 flex flex-wrap justify-center items-center gap-4">
+                <button onclick="login_modal.showModal()"
+                        class="btn bg-[#059669] hover:bg-[#047857] text-white border-none rounded-2xl h-14 px-8 font-bold text-base shadow-xl hover:shadow-2xl hover:scale-105 transition-all">
+                    Accéder à mon espace
+                </button>
+                <a href="#decouvrir-blocs" 
+                   class="btn btn-outline border-base-300 hover:border-[#F97316] hover:bg-[#F97316] hover:text-white rounded-2xl h-14 px-8 font-bold text-base transition-all">
+                    Découvrir les blocs ({{ total_blocs }})
+                </a>
+            </div>
+
+            <!-- Badges de réassurance -->
+            <div class="mt-14 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto text-left">
+                <div class="p-4 rounded-2xl bg-base-200/50 border border-base-300">
+                    <p class="text-2xl font-black text-[#059669]">100%</p>
+                    <p class="text-xs text-base-content/70 font-semibold mt-1">Flotte intégrée sans intermédiaires</p>
+                </div>
+                <div class="p-4 rounded-2xl bg-base-200/50 border border-base-300">
+                    <p class="text-2xl font-black text-[#F97316]">< 25 min</p>
+                    <p class="text-xs text-base-content/70 font-semibold mt-1">Délai moyen grâce aux blocs locaux</p>
+                </div>
+                <div class="p-4 rounded-2xl bg-base-200/50 border border-base-300">
+                    <p class="text-2xl font-black text-[#059669]">0 Émission</p>
+                    <p class="text-xs text-base-content/70 font-semibold mt-1">Motos électriques de nouvelle génération</p>
+                </div>
+                <div class="p-4 rounded-2xl bg-base-200/50 border border-base-300">
+                    <p class="text-2xl font-black text-[#F97316]">PWA</p>
+                    <p class="text-xs text-base-content/70 font-semibold mt-1">Application mobile fluide sans store</p>
+                </div>
+            </div>
+        </section>
+    {% endif %}
+
+    <!-- ========================================== -->
+    <!-- SECTION DES BLOCS DU RÉSEAU                -->
+    <!-- ========================================== -->
+    <section id="decouvrir-blocs" class="mt-8 pt-8 border-t border-base-200">
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h2 class="text-2xl font-black tracking-tight">Réseau des Blocs BAKAMZONE</h2>
+                <p class="text-sm text-base-content/70">Hubs logistiques et équipes opérationnelles de proximité</p>
+            </div>
+            <span class="badge badge-lg bg-[#059669]/10 text-[#059669] font-bold border-none">
+                {{ total_blocs }} Bloc{{ total_blocs|pluralize }} actif{{ total_blocs|pluralize }}
+            </span>
+        </div>
+
+        {% if blocs_actifs %}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {% for bloc in blocs_actifs %}
+                    <div class="card bg-base-100 rounded-3xl p-6 border border-base-200 shadow-md hover:shadow-xl hover:border-[#059669]/40 transition-all">
+                        <div class="flex items-start justify-between">
+                            <div>
+                                <span class="badge badge-sm bg-emerald-50 text-[#059669] font-bold border-none">
+                                    {{ bloc.code|default:"BLK" }}
+                                </span>
+                                <h3 class="text-xl font-bold mt-2">{{ bloc.nom }}</h3>
+                                <p class="text-xs text-base-content/60 font-medium">
+                                    📍 {{ bloc.get_quartier_display }}, {{ bloc.get_ville_display }}
+                                </p>
+                            </div>
+                            <div class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse" title="Opérationnel"></div>
+                        </div>
+
+                        {% if bloc.adresse %}
+                            <p class="text-xs text-base-content/70 mt-3 line-clamp-1">
+                                🏠 {{ bloc.adresse }}
+                            </p>
+                        {% endif %}
+
+                        <div class="divider my-3"></div>
+
+                        <div class="grid grid-cols-2 gap-2 text-xs">
+                            <div class="bg-base-200/50 p-2.5 rounded-xl">
+                                <span class="text-base-content/60 block text-[10px] uppercase font-bold">Capacité Stock</span>
+                                <span class="font-bold text-neutral">{{ bloc.capacite_stockage }} articles</span>
+                            </div>
+                            <div class="bg-base-200/50 p-2.5 rounded-xl">
+                                <span class="text-base-content/60 block text-[10px] uppercase font-bold">Flotte Motos</span>
+                                <span class="font-bold text-neutral">{{ bloc.capacite_motos }} motos</span>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="card bg-base-200/40 rounded-3xl p-10 text-center border border-dashed border-base-300">
+                <p class="text-base font-semibold text-base-content/70">Aucun bloc n'est encore configuré.</p>
+                <p class="text-xs text-base-content/50 mt-1">Le Superuser peut initialiser le premier bloc de quartier depuis le cockpit.</p>
+                {% if request.user.is_superuser %}
+                    <div class="mt-4">
+                        <a href="{% url 'superuser_app:dashboard' %}" class="btn btn-sm bg-[#059669] text-white rounded-xl">
+                            Créer le premier bloc →
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        {% endif %}
+    </section>
+
+</div>
+
+<!-- Inclusion du Modal de Connexion -->
+{% include 'modal/login_modal.html' %}
+
+{% endblock %}

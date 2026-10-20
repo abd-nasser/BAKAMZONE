@@ -23,7 +23,7 @@ class UserManager(BaseUserManager):
             raise ValueError('Le superuser doit avoir is_superuser=True.')
         
         #2. On appelle create_user avec telephone
-        return self.create_user(telephone, password ,extra_fields)
+        return self.create_user(telephone, password , **extra_fields)
     
 
 class User(AbstractBaseUser, PermissionsMixin):

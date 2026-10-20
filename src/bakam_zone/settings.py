@@ -26,7 +26,7 @@ SECRET_KEY = 'django-insecure-f$j_9e^&ipwsq^est3jk^kpaz&8*zitym)=qo%vuena63aau^1
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'theme',
     #apps_django
     'auth_app',
+    'home_app',
     'superuser_app',
     'entreprise_app',
     'blocs_app',
@@ -128,7 +129,7 @@ AUTH_USER_MODEL = "auth_app.User"
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'fr-fr'
 
 TIME_ZONE = 'UTC'
 
@@ -141,19 +142,19 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
-
-STATIC_URL = 'static/'
 MEDIA_URL = "media/"
 STATIC_ROOT = os.path.join(BASE_DIR / "staticfiles")
 MEDIA_ROOT = os.path.join(BASE_DIR / "media/")
-STATICFILES_DIRS = [os.path.join(BASE_DIR / "bakam_zone/static/"),
-                    os.path.join(BASE_DIR / "static/")
-                    ]
-#Tailwind configurations
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR / "bakam_zone/static/"),
+    os.path.join(BASE_DIR / "static/")
+]
+
+# Tailwind configurations
 TAILWIND_APP_NAME = "theme"
 INTERNAL_IPS = [
     "127.0.0.1"
-                ]
+]
 
 CRISPY_ALLOWED_TEMPLATE_PACKS = "tailwind"
 CRISPY_TEMPLATE_PACK = "tailwind"
@@ -161,4 +162,3 @@ CRISPY_TEMPLATE_PACK = "tailwind"
 import shutil
 
 NPM_BIN_PATH = shutil.which("npm") or "/usr/bin/npm"
-

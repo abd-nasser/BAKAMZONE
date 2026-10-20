@@ -1,0 +1,15 @@
+<div class="alert alert-success bg-[#059669] border-[#047857] text-white rounded-xl shadow-md py-3 px-4 flex items-center gap-3 text-sm">
+    <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-5 w-5" fill="none" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+    <div>
+        <p class="font-bold">Connexion réussie !</p>
+        <p class="text-xs opacity-90">Bienvenue {{ user.get_full_name|default:user.username }}. Redirection en cours...</p>
+    </div>
+</div>
+
+<script>
+    setTimeout(function() {
+        window.location.href = "{{ redirect_url|default:'/' }}";
+    }, 700);
+</script>
