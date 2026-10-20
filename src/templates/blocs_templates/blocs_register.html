@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+
+{% block title %}Créer un bloc — BAKAMZONE{% endblock %}
+
+{% block content %}
+<section class="max-w-4xl mx-auto px-4 sm:px-6 py-10">
+    <div class="mb-6">
+        <a href="{% url 'superuser_app:dashboard' %}" class="btn btn-ghost btn-sm rounded-xl mb-3">
+            ← Retour au cockpit
+        </a>
+        <h1 class="text-3xl font-black tracking-tight">Créer un nouveau bloc</h1>
+        <p class="text-sm text-base-content/70 mt-1">Renseignez les informations du bloc BAKAMZONE.</p>
+    </div>
+
+    <form
+        hx-post="{% url 'blocs_app:creer' %}"
+        hx-target="#toast-container"
+        hx-swap="beforeend"
+        hx-indicator="#bloc-spinner"
+        class="card bg-base-100 p-6 sm:p-8 rounded-3xl border border-base-200 shadow-xl"
+    >
+        {% csrf_token %}
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            {% for field in form %}
+                <div class="{% if field.name == 'adresse' %}sm:col-span-2{% endif %}">
+                    <label for="{{ field.id_for_label }}" class="label font-semibold text-sm">
+                        <span class="label-text">{{ field.label }}</span>
+                    </label>
+                    {{ field }}
+                    {% for error in field.errors %}
+                        <p class="text-error text-xs mt-1">{{ error }}</p>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+        </div>
+
+        <div class="mt-8 flex items-center justify-end gap-3">
+            <a href="{% url 'superuser_app:dashboard' %}" class="btn btn-ghost rounded-xl">Annuler</a>
+            <button type="submit" class="btn bg-[#059669] hover:bg-[#047857] text-white border-none rounded-xl">
+                <span id="bloc-spinner" class="htmx-indicator loading loading-spinner loading-sm"></span>
+                Créer le bloc
+            </button>
+        </div>
+    </form>
+</section>
+{% endblock %}

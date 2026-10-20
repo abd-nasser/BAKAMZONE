@@ -1,0 +1,16 @@
+<div
+    class="alert alert-success bg-[#059669] border-[#047857] text-white rounded-xl shadow-lg py-3 px-4 mb-2 pointer-events-auto"
+    x-data="{ show: true }"
+    x-show="show"
+    x-init="setTimeout(() => show = false, 15000)"
+>
+    <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-5 w-5" fill="none" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+    <div>
+        <p class="font-bold">Administrateur créé pour le bloc {{ admin_bloc.bloc.nom }}.</p>
+        <p class="text-xs">Identifiant : {{ username }} · Mot de passe temporaire : {{ password }}</p>
+        <p class="text-xs opacity-90">Notez ces identifiants : le mot de passe ne sera plus affiché.</p>
+    </div>
+    <button type="button" @click="show = false" class="btn btn-ghost btn-xs btn-circle">✕</button>
+</div>

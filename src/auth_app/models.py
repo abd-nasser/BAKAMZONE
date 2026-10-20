@@ -30,7 +30,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     ROLE_CHOICES = [
         ('client', 'Client'),
         ('livreur', 'Livreur'),
-        ('administrateur', 'administrateur'),
+        ('bloc_admin', 'Administrateur de bloc'),
+        ('entreprise_admin', 'Administrateur d’entreprise'),
         ('entreprise', 'Entreprise')
     ]
     

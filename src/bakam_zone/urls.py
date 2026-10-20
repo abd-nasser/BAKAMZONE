@@ -8,6 +8,8 @@ urlpatterns = [
     path('', include('home_app.urls', namespace='home_app')),
     path('auth/', include('auth_app.urls', namespace='auth_app')),
     path('superuser/', include('superuser_app.urls', namespace='superuser_app')),
+    path('blocs/', include('blocs_app.urls', namespace='blocs_app')),
+    path('admins/', include('admins_app.urls', namespace='admins_app')),
 ]
 
 if settings.DEBUG:
