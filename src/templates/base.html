@@ -1,146 +1,170 @@
-{% load static tailwind_tags %}
+{% load static %}
+{% load tailwind_tags  %}
 <!DOCTYPE html>
-<html lang="fr" data-theme="light" class="h-full">
+<html lang="fr" 
+      x-data="{ 
+          darkMode: localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches) 
+      }"
+      :data-theme="darkMode ? 'dark' : 'light'"
+      class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    
-    <!-- PWA & Mobile Meta Tags -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}BAKAMZONE — Livraison intégrée de proximité{% endblock %}</title>
+
     <meta name="theme-color" content="#059669">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="description" content="BAKAMZONE — Livraison intégrée de proximité avec flotte propre de motos électriques.">
-    
-    <title>{% block title %}BAKAMZONE — Livraison de proximité{% endblock %}</title>
+    <meta name="description" content="BAKAMZONE organise la livraison de proximité au Burkina Faso grâce à ses blocs locaux et à sa flotte intégrée.">
 
-    <!-- Polices Google Font (Plus Jakarta Sans) -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-
-    <!-- CSS Tailwind Compilé -->
-    {% tailwind_css %}
-
-    <!-- Scripts Vendor (Head) -->
-    <script src="{% static 'vendor/js/htmx.min.js' %}"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
-
-    <!-- Animation & Smooth Scroll (Lenis & GSAP) -->
+    <link rel="stylesheet" href="{% static 'css/dist/styles.css' %}">
+    <script defer src="{% static 'vendor/js/htmx.min.js' %}"></script>
     <script src="{% static 'vendor/js/gsap.min.js' %}" defer></script>
     <script src="{% static 'vendor/js/ScrollTrigger.min.js' %}" defer></script>
     <script src="{% static 'vendor/js/lenis.min.js' %}" defer></script>
-
-    <style>
-        body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-        }
-        /* Custom HTMX loading indicator */
-        .htmx-indicator {
-            display: none;
-        }
-        .htmx-request .htmx-indicator,
-        .htmx-request.htmx-indicator {
-            display: inline-flex;
-        }
-    </style>
-
-    <!-- Initialisation précoce du Thème (anti-flicker) -->
-    <script>
-        (function() {
-            const savedTheme = localStorage.getItem('bakamzone-theme') || 
-                (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-            document.documentElement.setAttribute('data-theme', savedTheme);
-        })();
-    </script>
-
-    {% block extra_css %}{% endblock %}
+    <script  src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    {% tailwind_css %}
+    {% block extra_head %}{% endblock %}
 </head>
-
-<body class="min-h-full bg-base-100 text-neutral flex flex-col antialiased selection:bg-[#059669] selection:text-white"
+<body class="min-h-screen bg-base-100 text-base-content flex flex-col font-sans antialiased selection:bg-secondary selection:text-white"
       hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
 
-    <!-- Conteneur global de notifications Toast Django -->
-    <div id="toast-container" class="toast toast-top toast-end z-50 pointer-events-none p-4">
-        {% if messages %}
+    {% if messages %}
+        <div class="fixed top-4 right-4 z-50 space-y-2 max-w-sm w-full px-4">
             {% for message in messages %}
-                <div class="alert shadow-lg pointer-events-auto rounded-2xl border 
-                    {% if message.tags == 'error' %}alert-error text-white
-                    {% elif message.tags == 'success' %}alert-success text-white bg-[#059669] border-[#047857]
-                    {% elif message.tags == 'warning' %}alert-warning
-                    {% else %}alert-info text-white{% endif %} transition-all duration-300"
-                     x-data="{ show: true }" 
+                <div x-data="{ show: true }" 
                      x-show="show" 
-                     x-init="setTimeout(() => show = false, 5000)">
+                     x-init="setTimeout(() => show = false, 5000)"
+                     x-transition
+                     class="alert {% if message.tags == 'error' %}alert-error{% else %}alert-success{% endif %} shadow-xl text-sm rounded-2xl flex justify-between items-center">
                     <span>{{ message }}</span>
-                    <button @click="show = false" class="btn btn-ghost btn-xs btn-circle">✕</button>
+                    <button @click="show = false" class="btn btn-xs btn-circle btn-ghost">✕</button>
                 </div>
             {% endfor %}
-        {% endif %}
-    </div>
+        </div>
+    {% endif %}
 
-    <!-- En-tête / Navigation -->
     {% block navbar %}
+    <header class="sticky top-0 z-40 border-b border-base-200 bg-base-100/90 backdrop-blur-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16 sm:h-20">
+                <a href="{% url 'home_app:home' %}" class="flex items-center gap-2">
+                    <span class="w-10 h-10 rounded-xl bg-gradient-to-br from-[#059669] to-[#047857] flex items-center justify-center text-white font-black shadow-md">BZ</span>
+                    <span class="text-2xl font-black tracking-tight">
+                        <span class="text-[#059669]">BAKAM</span><span class="text-[#F97316]">ZONE</span>
+                    </span>
+                </a>
+
+                <nav class="flex items-center gap-2 sm:gap-3" aria-label="Navigation principale">
+                    <a href="{% url 'home_app:home' %}" class="btn btn-ghost btn-sm rounded-xl">Accueil</a>
+                    {% if request.user.is_authenticated %}
+                        <span class="hidden sm:inline text-sm font-semibold text-base-content/70">
+                            {{ request.user.get_full_name|default:request.user.telephone }}
+                        </span>
+                        {% if request.user.role == 'entreprise' %}
+                            <a href="{% url 'entreprise_app:choix-palier' %}" class="btn btn-outline btn-success btn-sm rounded-xl">Mon abonnement</a>
+                        {% endif %}
+                        <a href="{% url 'auth_app:deconnexion' %}" class="btn btn-outline btn-error btn-sm rounded-xl">Déconnexion</a>
+                    {% else %}
+                        <a href="{% url 'clients_app:inscription-client' %}" class="btn btn-outline btn-sm rounded-xl border-[#059669] text-[#059669] hover:bg-[#059669] hover:text-white">
+                            Créer un compte client
+                        </a>
+                        <a href="{% url 'entreprise_app:inscription' %}" class="btn btn-ghost btn-sm rounded-xl">
+                            Inscrire une entreprise
+                        </a>
+                        {% if request.resolver_match.url_name == 'inscription-client' %}
+                            <button type="button" onclick="document.getElementById('login_modal').showModal()" class="btn bg-[#059669] hover:bg-[#047857] text-white border-none btn-sm rounded-xl">
+                                Connexion
+                            </button>
+                        {% endif %}
+                    {% endif %}
+                </nav>
+            </div>
+        </div>
+    </header>
     {% endblock %}
 
-    <!-- Contenu Principal -->
     <main class="flex-grow">
-        {% block content %}
-        {% endblock %}
+        {% block content %}{% endblock %}
     </main>
 
-    <!-- Pied de page -->
-    {% block footer %}
-    {% endblock %}
+    <footer class="bg-base-200 border-t border-base-300 py-12 text-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+                
+                <div class="space-y-3">
+                    <div class="flex items-center space-x-2">
+                        <div class="w-8 h-8 rounded-lg bg-[#059669] flex items-center justify-center text-white font-black text-base shadow-md">
+                            BZ
+                        </div>
+                        <span class="font-bold text-lg tracking-tight">BAKAM<span class="text-[#F97316]">ZONE</span></span>
+                    </div>
+                    <p class="text-xs text-base-content/70 leading-relaxed">
+                        Service de livraison intégré au Burkina Faso, organisé autour de blocs de quartier et de sa propre flotte de livreurs.
+                    </p>
+                </div>
 
-    <!-- Initialisations JavaScript Globales -->
-    <script>
-        // 1. Initialisation Lenis Smooth Scroll
-        let lenis;
-        try {
-            if (typeof Lenis !== 'undefined') {
-                lenis = new Lenis({
-                    duration: 1.1,
-                    easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-                    smoothWheel: true,
-                });
+                <div>
+                    <p class="font-bold text-base-content mb-3 text-xs uppercase tracking-wider">Solutions</p>
+                    <ul class="space-y-2 text-xs text-base-content/70">
+                        <li><a href="{% url 'clients_app:inscription-client' %}" class="hover:text-[#059669] transition-colors">Créer un compte client</a></li>
+                        <li><a href="{% url 'entreprise_app:inscription' %}" class="hover:text-[#059669] transition-colors">Inscrire une entreprise</a></li>
+                        <li><a href="{% url 'home_app:home' %}#decouvrir-blocs" class="hover:text-[#059669] transition-colors">Découvrir nos blocs</a></li>
+                        <li>Flotte interne de livreurs</li>
+                    </ul>
+                </div>
 
-                function raf(time) {
-                    lenis.raf(time);
-                    requestAnimationFrame(raf);
-                }
-                requestAnimationFrame(raf);
+                <div>
+                    <p class="font-bold text-base-content mb-3 text-xs uppercase tracking-wider">Zone Actuelle</p>
+                    <div class="flex items-center gap-2 text-xs text-base-content/70">
+                        <span class="w-2 h-2 rounded-full bg-[#F97316]"></span>
+                        Blocs de proximité (Ouagadougou)
+                    </div>
+                    <p class="text-xs text-base-content/50 mt-2">
+                        Des équipes locales au service des quartiers couverts.
+                    </p>
+                </div>
 
-                // Synchronisation GSAP ScrollTrigger avec Lenis
-                if (typeof gsap !== 'undefined' && typeof ScrollTrigger !== 'undefined') {
-                    gsap.registerPlugin(ScrollTrigger);
-                    lenis.on('scroll', ScrollTrigger.update);
-                    gsap.ticker.add((time) => {
-                        lenis.raf(time * 1000);
-                    });
-                    gsap.ticker.lagSmoothing(0);
-                }
-            }
-        } catch (e) {
-            console.warn("Smooth scroll initialization skipped:", e);
-        }
+                <div>
+                    <p class="font-bold text-base-content mb-3 text-xs uppercase tracking-wider">Thème Visuel</p>
+                    <button @click="darkMode = !darkMode; localStorage.setItem('theme', darkMode ? 'dark' : 'light')" 
+                            class="btn btn-outline btn-xs rounded-xl flex items-center gap-2">
+                        <template x-if="!darkMode">
+                            <span class="flex items-center gap-1">🌙 Mode Sombre</span>
+                        </template>
+                        <template x-if="darkMode">
+                            <span class="flex items-center gap-1">☀ Mode Clair</span>
+                        </template>
+                    </button>
+                </div>
 
-        // 2. Fonction de bascule de thème Clair / Sombre
-        function toggleTheme() {
-            const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
-            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-            document.documentElement.setAttribute('data-theme', newTheme);
-            localStorage.setItem('bakamzone-theme', newTheme);
-        }
+            </div>
 
-        // 3. Gestion HTMX CSRF et re-scan Alpine.js après swap
-        document.body.addEventListener('htmx:afterSwap', function(evt) {
-            if (window.Alpine) {
-                window.Alpine.initTree(evt.detail.target);
-            }
-        });
-    </script>
+            <div class="pt-8 border-t border-base-300 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-base-content/50">
+                <p>© {% now "Y" %} BAKAMZONE. Tous droits réservés.</p>
+                <p class="text-center sm:text-right">Conçu pour la fluidité terrain 🇧🇫</p>
+            </div>
+        </div>
+    </footer>
 
-    {% block extra_js %}{% endblock %}
+    {% block extra_scripts %}{% endblock %}
 </body>
 </html>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        gsap.registerPlugin(ScrollTrigger);
+
+        const lenis = new Lenis();
+        function raf(time) {
+            lenis.raf(time);
+            requestAnimationFrame(raf);
+        }
+        requestAnimationFrame(raf);
+
+        // Lenis + ScrollTrigger : synchroniser le scroll smooth avec GSAP
+        lenis.on('scroll', ScrollTrigger.update);
+        gsap.ticker.add((time) => {
+            lenis.raf(time * 1000);
+        });
+        gsap.ticker.lagSmoothing(0);
+    });
+</script>

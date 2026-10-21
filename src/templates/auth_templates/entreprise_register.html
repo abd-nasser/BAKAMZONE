@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}Inscrire une entreprise | BAKAMZONE{% endblock %}
+
+{% block content %}
+<section class="min-h-[80vh] px-4 py-10 sm:py-16">
+    <div class="mx-auto max-w-7xl">
+        <!-- Bouton retour -->
+        <a href="{% url 'home_app:home' %}" class="mb-6 inline-flex items-center gap-2 text-sm font-semibold text-base-content/70 hover:text-[#059669]">
+            <span aria-hidden="true">←</span> Retour à l'accueil
+        </a>
+
+        <!-- Grille principale en 2 colonnes (Desktop) / 1 colonne (Mobile) -->
+        <div class="grid gap-8 lg:grid-cols-12 lg:items-start">
+            
+            <!-- COLONNE GAUCHE : Formulaire d'inscription (7 colonnes sur 12) -->
+            <div class="rounded-3xl border border-base-300 bg-base-100 p-6 shadow-xl sm:p-10 lg:col-span-7">
+                <div class="mb-8">
+                    <span class="badge badge-success badge-outline mb-3 font-semibold">Espace entreprise</span>
+                    <h1 class="text-3xl font-black tracking-tight">Inscrire votre entreprise</h1>
+                    <p class="mt-2 text-sm text-base-content/70">
+                        Créez le compte de votre entreprise et celui de son responsable. Le choix du palier se fera juste après.
+                    </p>
+                </div>
+
+                {% if form.non_field_errors %}
+                    <div class="alert alert-error mb-5 rounded-2xl">
+                        <div>{% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}</div>
+                    </div>
+                {% endif %}
+
+                <form method="post" enctype="multipart/form-data" class="space-y-6">
+                    {% csrf_token %}
+
+                    <!-- Informations de l'entreprise -->
+                    <fieldset class="space-y-4">
+                        <legend class="mb-2 text-lg font-bold text-[#059669]">1. Informations de l'entreprise</legend>
+                        {% for field in form %}
+                            {% if field.name in "nom_entreprise logo rc_number address" %}
+                                <div class="form-control">
+                                    <label class="label" for="{{ field.id_for_label }}">
+                                        <span class="label-text font-semibold">{{ field.label }}</span>
+                                    </label>
+                                    {{ field }}
+                                    {% if field.help_text %}<span class="label-text-alt mt-1 text-base-content/60">{{ field.help_text }}</span>{% endif %}
+                                    {% for error in field.errors %}<span class="mt-1 text-xs text-error">{{ error }}</span>{% endfor %}
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    </fieldset>
+
+                    <!-- Responsable de l'entreprise -->
+                    <fieldset class="space-y-4 border-t border-base-300 pt-6">
+                        <legend class="mb-2 text-lg font-bold text-[#059669]">2. Responsable de l'entreprise</legend>
+                        <div class="grid gap-4 sm:grid-cols-2">
+                            {% for field in form %}
+                                {% if field.name in "first_name last_name" %}
+                                    <div class="form-control">
+                                        <label class="label" for="{{ field.id_for_label }}"><span class="label-text font-semibold">{{ field.label }}</span></label>
+                                        {{ field }}
+                                        {% for error in field.errors %}<span class="mt-1 text-xs text-error">{{ error }}</span>{% endfor %}
+                                    </div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                        {% for field in form %}
+                            {% if field.name in "telephone email password password_confirm" %}
+                                <div class="form-control">
+                                    <label class="label" for="{{ field.id_for_label }}"><span class="label-text font-semibold">{{ field.label }}</span></label>
+                                    {{ field }}
+                                    {% for error in field.errors %}<span class="mt-1 text-xs text-error">{{ error }}</span>{% endfor %}
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                        <p class="text-xs text-base-content/60">
+                            Le numéro de téléphone servira d'identifiant principal pour vous connecter à votre espace pro.
+                        </p>
+                    </fieldset>
+
+                    <button type="submit" class="btn w-full rounded-xl border-none bg-[#059669] text-white hover:bg-[#047857]">
+                        Créer le compte entreprise
+                    </button>
+                </form>
+            </div>
+
+            <!-- COLONNE DROITE : Avantages partenaires / Vente & Logistique (5 colonnes sur 12) -->
+            <div class="space-y-6 lg:col-span-5 lg:sticky lg:top-8">
+                
+                <!-- Carte principale des avantages -->
+                <div class="rounded-3xl border border-emerald-500/20 bg-gradient-to-br from-base-100 to-emerald-50/30 p-6 shadow-xl sm:p-8 dark:from-base-100 dark:to-emerald-950/10">
+                    <span class="badge badge-warning mb-3 font-semibold text-orange-600 dark:text-orange-400">Pourquoi nous rejoindre ?</span>
+                    <h2 class="text-2xl font-black tracking-tight">Propulsez vos ventes avec BAKAMZONE</h2>
+                    <p class="mt-2 text-sm text-base-content/70">
+                        Oubliez les galères de logistique et les ventes perdues sur WhatsApp. Confiez-nous votre stock et touchez toute la ville.
+                    </p>
+
+                    <div class="mt-6 space-y-4">
+                        <!-- Avantage 1 -->
+                        <div class="flex items-start gap-4">
+                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-100 text-[#059669] dark:bg-emerald-900/40 dark:text-emerald-400">
+                                📦
+                            </div>
+                            <div>
+                                <h3 class="font-bold">Stockage de proximité en « Blocs »</h3>
+                                <p class="text-xs text-base-content/60 mt-0.5">Stockez vos produits au cœur des quartiers selon votre palier d'abonnement. Vos articles sont prêts à partir instantanément.</p>
+                            </div>
+                        </div>
+
+                        <!-- Avantage 2 -->
+                        <div class="flex items-start gap-4">
+                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-400">
+                                🚀
+                            </div>
+                            <div>
+                                <h3 class="font-bold">Livraison express intégrée</h3>
+                                <p class="text-xs text-base-content/60 mt-0.5">Dès qu'un client commande, notre flotte propre de motos électriques livre directement depuis le bloc le plus proche.</p>
+                            </div>
+                        </div>
+
+                        <!-- Avantage 3 -->
+                        <div class="flex items-start gap-4">
+                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-100 text-[#059669] dark:bg-emerald-900/40 dark:text-emerald-400">
+                                📊
+                            </div>
+                            <div>
+                                <h3 class="font-bold">Dashboard & Analytics en direct</h3>
+                                <p class="text-xs text-base-content/60 mt-0.5">Suivez en temps réel l'évolution de vos stocks, vos commandes en cours et identifiez les points forts de votre commerce.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Carte secondaire / Appel à l'aide ou réassurance -->
+                <div class="rounded-3xl border border-base-300 bg-base-100 p-6 shadow-lg sm:p-6">
+                    <h3 class="font-bold text-sm">Une question sur les paliers ou l'abonnement ?</h3>
+                    <p class="text-xs text-base-content/60 mt-1">Notre équipe commerciale locale est disponible pour vous accompagner dans l'intégration de votre catalogue.</p>
+                    <div class="mt-4 flex items-center gap-2 text-sm font-semibold text-[#059669]">
+                        <span>📞 Support Partenaire local</span>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+</section>
+{% endblock %}

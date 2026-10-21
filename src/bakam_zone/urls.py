@@ -10,6 +10,10 @@ urlpatterns = [
     path('superuser/', include('superuser_app.urls', namespace='superuser_app')),
     path('blocs/', include('blocs_app.urls', namespace='blocs_app')),
     path('admins/', include('admins_app.urls', namespace='admins_app')),
+    path('livreurs/', include('livreurs_app.urls', namespace='livreurs_app')),
+    path('zones/', include('zones_app.urls', namespace='zones_app')),
+    path('clients/', include('clients_app.urls', namespace='clients_app')),
+    path('entreprises/', include('entreprise_app.urls', namespace='entreprise_app')),
 ]
 
 if settings.DEBUG:

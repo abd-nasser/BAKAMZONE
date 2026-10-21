@@ -1,0 +1,324 @@
+{% extends 'base.html' %}
+
+{% block title %}Inscription Client | Vos avantages exclusifs{% endblock %}
+
+{% block content %}
+  <!-- Header Retour / Branding -->
+       
+<div class="min-h-[85vh] flex items-center justify-center p-4 sm:p-6 lg:p-8" 
+     x-data="{ 
+         showPassword: false, 
+         showConfirmPassword: false,
+         photoProfil: null
+     }">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+     <div class="mb-8 flex items-center justify-between">
+            <a href="{% url 'home_app:home' %}" class="inline-flex items-center gap-2 text-sm font-semibold text-base-content/70 hover:text-[#059669] transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Retour à l'accueil
+            </a>
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#059669]/10 border border-[#059669]/20 text-[#059669] text-xs font-bold">
+                <span class="w-2 h-2 rounded-full bg-[#059669] animate-ping"></span>
+                Inscriptions Ouvertes — Zone Ouagadougou
+            </div>
+        </div>
+
+        
+
+    <!-- CARTE PRINCIPALE SPLIT (2 COLONNES) -->
+    <div class="w-full max-w-5xl bg-base-100 border border-base-300 rounded-3xl shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-12 relative">
+      
+        <!-- Effets lumineux d'arrière-plan (Glassmorphism) -->
+        <div class="absolute -top-20 -left-20 w-56 h-56 bg-[#059669]/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute -bottom-20 -right-20 w-56 h-56 bg-[#F97316]/10 rounded-full blur-3xl pointer-events-none"></div>
+
+        <!-- ================================================================= -->
+        <!-- COLONNE GAUCHE : FORMULAIRE D'INSCRIPTION (7/12 colonnes sur desktop) -->
+        <!-- ================================================================= -->
+        <div class="lg:col-span-7 p-6 sm:p-10 flex flex-col justify-between relative z-10 border-b lg:border-b-0 lg:border-r border-base-200">
+            <div>
+                <!-- En-tête de gauche -->
+                <div class="space-y-2 mb-8">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#059669]/10 text-[#059669] text-xs font-extrabold uppercase tracking-wider">
+                        <span>🚀 En quelques secondes</span>
+                    </div>
+                    <h1 class="text-2xl sm:text-3xl font-black text-base-content tracking-tight">
+                        Créer un compte client
+                    </h1>
+                    <p class="text-xs sm:text-sm text-base-content/60 font-medium">
+                        Renseignez vos informations ci-dessous pour démarrer
+                    </p>
+                </div>
+
+                <div id="form-container" class="relative z-10">
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-error rounded-2xl mb-5 text-sm">
+                            {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+                        </div>
+                    {% endif %}
+
+                    <form method="post" enctype="multipart/form-data" class="space-y-4">
+                        {% csrf_token %}
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div class="form-control">
+                                <label for="{{ form.first_name.id_for_label }}" class="label">
+                                    <span class="label-text font-semibold">{{ form.first_name.label }} *</span>
+                                </label>
+                                <input type="text" name="{{ form.first_name.html_name }}" id="{{ form.first_name.id_for_label }}"
+                                       value="{{ form.first_name.value|default:'' }}" maxlength="30" required autocomplete="given-name"
+                                       placeholder="Ex : Aminata"
+                                       class="input input-bordered w-full rounded-xl focus:border-[#059669] {% if form.first_name.errors %}input-error{% endif %}">
+                                {% for error in form.first_name.errors %}<span class="text-error text-xs mt-1">{{ error }}</span>{% endfor %}
+                            </div>
+                            <div class="form-control">
+                                <label for="{{ form.last_name.id_for_label }}" class="label">
+                                    <span class="label-text font-semibold">{{ form.last_name.label }} *</span>
+                                </label>
+                                <input type="text" name="{{ form.last_name.html_name }}" id="{{ form.last_name.id_for_label }}"
+                                       value="{{ form.last_name.value|default:'' }}" maxlength="30" required autocomplete="family-name"
+                                       placeholder="Ex : Ouédraogo"
+                                       class="input input-bordered w-full rounded-xl focus:border-[#059669] {% if form.last_name.errors %}input-error{% endif %}">
+                                {% for error in form.last_name.errors %}<span class="text-error text-xs mt-1">{{ error }}</span>{% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="form-control">
+                            <label for="{{ form.username.id_for_label }}" class="label">
+                                <span class="label-text font-semibold">{{ form.username.label }} *</span>
+                            </label>
+                            <input type="text" name="{{ form.username.html_name }}" id="{{ form.username.id_for_label }}"
+                                   value="{{ form.username.value|default:'' }}" maxlength="30" required autocomplete="username"
+                                   placeholder="Ex : aminata_o"
+                                   class="input input-bordered w-full rounded-xl focus:border-[#059669] {% if form.username.errors %}input-error{% endif %}">
+                            {% for error in form.username.errors %}<span class="text-error text-xs mt-1">{{ error }}</span>{% endfor %}
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div class="form-control">
+                                <label for="{{ form.telephone.id_for_label }}" class="label">
+                                    <span class="label-text font-semibold">{{ form.telephone.label }} *</span>
+                                </label>
+                                <input type="tel" name="{{ form.telephone.html_name }}" id="{{ form.telephone.id_for_label }}"
+                                       value="{{ form.telephone.value|default:'' }}" maxlength="20" required autocomplete="tel"
+                                       placeholder="Ex : 70000000"
+                                       class="input input-bordered w-full rounded-xl focus:border-[#059669] {% if form.telephone.errors %}input-error{% endif %}">
+                                {% for error in form.telephone.errors %}<span class="text-error text-xs mt-1">{{ error }}</span>{% endfor %}
+                            </div>
+                            <div class="form-control">
+                                <label for="{{ form.email.id_for_label }}" class="label">
+                                    <span class="label-text font-semibold">{{ form.email.label }} <span class="text-xs font-normal text-base-content/50">(Optionnel)</span></span>
+                                </label>
+                                <input type="email" name="{{ form.email.html_name }}" id="{{ form.email.id_for_label }}"
+                                       value="{{ form.email.value|default:'' }}" autocomplete="email"
+                                       placeholder="nom@exemple.bf"
+                                       class="input input-bordered w-full rounded-xl focus:border-[#059669] {% if form.email.errors %}input-error{% endif %}">
+                                {% for error in form.email.errors %}<span class="text-error text-xs mt-1">{{ error }}</span>{% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div class="form-control">
+                                <label for="{{ form.password.id_for_label }}" class="label">
+                                    <span class="label-text font-semibold">{{ form.password.label }} *</span>
+                                </label>
+                                <div class="relative">
+                                    <input :type="showPassword ? 'text' : 'password'" name="{{ form.password.html_name }}" id="{{ form.password.id_for_label }}"
+                                           required autocomplete="new-password" placeholder="Choisissez un mot de passe"
+                                           class="input input-bordered w-full pr-12 rounded-xl focus:border-[#059669] {% if form.password.errors %}input-error{% endif %}">
+                                    <button type="button" @click="showPassword = !showPassword"
+                                            :aria-label="showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'"
+                                            :aria-pressed="showPassword"
+                                            class="absolute inset-y-0 right-0 flex items-center px-3 text-base-content/60 hover:text-base-content"
+                                            title="Afficher ou masquer le mot de passe">
+                                        <svg x-show="!showPassword" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
+                                        <svg x-show="showPassword" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3l18 18M10.584 10.587a2 2 0 002.829 2.829" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.88 5.09A10.94 10.94 0 0112 4.88c4.478 0 8.268 2.943 9.542 7a11.05 11.05 0 01-4.043 5.414M6.228 6.228A11.05 11.05 0 002.458 12c1.274 4.057 5.065 7 9.542 7 1.51 0 2.94-.35 4.207-.973" />
+                                        </svg>
+                                    </button>
+                                </div>
+                                {% for error in form.password.errors %}<span class="text-error text-xs mt-1">{{ error }}</span>{% endfor %}
+                            </div>
+                            <div class="form-control">
+                                <label for="{{ form.confirm_password.id_for_label }}" class="label">
+                                    <span class="label-text font-semibold">{{ form.confirm_password.label }} *</span>
+                                </label>
+                                <div class="relative">
+                                    <input :type="showConfirmPassword ? 'text' : 'password'" name="{{ form.confirm_password.html_name }}" id="{{ form.confirm_password.id_for_label }}"
+                                           required autocomplete="new-password" placeholder="Confirmez le mot de passe"
+                                           class="input input-bordered w-full pr-12 rounded-xl focus:border-[#059669] {% if form.confirm_password.errors %}input-error{% endif %}">
+                                    <button type="button" @click="showConfirmPassword = !showConfirmPassword"
+                                            :aria-label="showConfirmPassword ? 'Masquer la confirmation' : 'Afficher la confirmation'"
+                                            :aria-pressed="showConfirmPassword"
+                                            class="absolute inset-y-0 right-0 flex items-center px-3 text-base-content/60 hover:text-base-content"
+                                            title="Afficher ou masquer la confirmation">
+                                        <svg x-show="!showConfirmPassword" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
+                                        <svg x-show="showConfirmPassword" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3l18 18M10.584 10.587a2 2 0 002.829 2.829" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.88 5.09A10.94 10.94 0 0112 4.88c4.478 0 8.268 2.943 9.542 7a11.05 11.05 0 01-4.043 5.414M6.228 6.228A11.05 11.05 0 002.458 12c1.274 4.057 5.065 7 9.542 7 1.51 0 2.94-.35 4.207-.973" />
+                                        </svg>
+                                    </button>
+                                </div>
+                                {% for error in form.confirm_password.errors %}<span class="text-error text-xs mt-1">{{ error }}</span>{% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="form-control">
+                            <label for="{{ form.photo_profil.id_for_label }}" class="label">
+                                <span class="label-text font-semibold">{{ form.photo_profil.label }} <span class="text-xs font-normal text-base-content/50">(Optionnelle)</span></span>
+                            </label>
+                            <div class="flex items-center gap-4">
+                                <div class="w-16 h-16 rounded-2xl bg-base-200 border-2 border-dashed border-base-300 flex items-center justify-center overflow-hidden shrink-0">
+                                    <template x-if="photoProfil">
+                                        <img :src="photoProfil" alt="Aperçu de la photo de profil" class="w-full h-full object-cover">
+                                    </template>
+                                    <template x-if="!photoProfil">
+                                        <span class="text-2xl">📸</span>
+                                    </template>
+                                </div>
+                                <input type="file" name="{{ form.photo_profil.html_name }}" id="{{ form.photo_profil.id_for_label }}"
+                                       accept="image/*" @change="photoProfil = $event.target.files[0] ? URL.createObjectURL($event.target.files[0]) : null"
+                                       class="file-input file-input-bordered file-input-sm w-full rounded-xl file-input-primary {% if form.photo_profil.errors %}file-input-error{% endif %}">
+                            </div>
+                            {% for error in form.photo_profil.errors %}<span class="text-error text-xs mt-1">{{ error }}</span>{% endfor %}
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div class="form-control">
+                                <label for="{{ form.ville.id_for_label }}" class="label">
+                                    <span class="label-text font-semibold">{{ form.ville.label }} <span class="text-xs font-normal text-base-content/50">(Optionnelle)</span></span>
+                                </label>
+                                <input type="text" name="{{ form.ville.html_name }}" id="{{ form.ville.id_for_label }}"
+                                       value="{{ form.ville.value|default:'' }}" placeholder="Ex : Ouagadougou"
+                                       class="input input-bordered w-full rounded-xl focus:border-[#059669] {% if form.ville.errors %}input-error{% endif %}">
+                                {% for error in form.ville.errors %}<span class="text-error text-xs mt-1">{{ error }}</span>{% endfor %}
+                            </div>
+                            <div class="form-control">
+                                <label for="{{ form.quartier.id_for_label }}" class="label">
+                                    <span class="label-text font-semibold">{{ form.quartier.label }} <span class="text-xs font-normal text-base-content/50">(Optionnel)</span></span>
+                                </label>
+                                <input type="text" name="{{ form.quartier.html_name }}" id="{{ form.quartier.id_for_label }}"
+                                       value="{{ form.quartier.value|default:'' }}" placeholder="Ex : Tampouy"
+                                       class="input input-bordered w-full rounded-xl focus:border-[#059669] {% if form.quartier.errors %}input-error{% endif %}">
+                                {% for error in form.quartier.errors %}<span class="text-error text-xs mt-1">{{ error }}</span>{% endfor %}
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn bg-[#059669] hover:bg-[#047857] text-white border-none rounded-xl w-full mt-3 font-bold">
+                            Créer mon compte client
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Pied de page / Lien Connexion -->
+            <div class="mt-8 pt-6 border-t border-base-200 text-center text-xs sm:text-sm text-base-content/70">
+                Vous avez déjà un compte ? 
+                <a href="{% url 'home_app:home' %}" class="font-bold text-[#059669] hover:underline hover:text-[#047857] transition-colors ml-1" onclick="login_modal.showModal(); return false;">
+                    Se connecter
+                </a>
+            </div>
+        </div>
+
+        <!-- ================================================================= -->
+        <!-- COLONNE DROITE : LES AVANTAGES COMPTE CLIENT (5/12 colonnes) -->
+        <!-- ================================================================= -->
+        <div class="lg:col-span-5 bg-gradient-to-br from-base-200/60 via-base-200/30 to-base-100 p-6 sm:p-10 flex flex-col justify-between relative overflow-hidden z-10">
+            
+            <div class="space-y-8">
+                <!-- Titre de la section avantages -->
+                <div class="space-y-2">
+                    <h2 class="text-xl sm:text-2xl font-black text-base-content">
+                        Pourquoi nous rejoindre ?
+                    </h2>
+                    <p class="text-xs sm:text-sm text-base-content/60 font-medium">
+                        Profitez d'une expérience de livraison repensée pour vous simplifier la vie.
+                    </p>
+                </div>
+
+                <!-- LISTE DES AVANTAGES -->
+                <div class="space-y-5">
+                    
+                    <!-- Avantage 1 -->
+                    <div class="flex items-start gap-4 p-3.5 rounded-2xl bg-base-100/80 border border-base-300 shadow-sm backdrop-blur-sm transition-transform hover:-translate-y-0.5">
+                        <div class="w-10 h-10 rounded-xl bg-[#059669]/10 text-[#059669] flex items-center justify-center shrink-0 text-xl font-bold">
+                            ⚡
+                        </div>
+                        <div class="space-y-0.5">
+                            <h3 class="text-sm font-bold text-base-content">Commandes Ultra-Rapides</h3>
+                            <p class="text-xs text-base-content/60 leading-relaxed">
+                                Passez vos demandes de course en 3 clics et trouvez un livreur disponible immédiatement.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Avantage 2 -->
+                    <div class="flex items-start gap-4 p-3.5 rounded-2xl bg-base-100/80 border border-base-300 shadow-sm backdrop-blur-sm transition-transform hover:-translate-y-0.5">
+                        <div class="w-10 h-10 rounded-xl bg-[#F97316]/10 text-[#F97316] flex items-center justify-center shrink-0 text-xl font-bold">
+                            📍
+                        </div>
+                        <div class="space-y-0.5">
+                            <h3 class="text-sm font-bold text-base-content">Suivi en Temps Réel</h3>
+                            <p class="text-xs text-base-content/60 leading-relaxed">
+                                Suivez l'itinéraire et la progression de votre colis étape par étape sur la carte.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Avantage 3 -->
+                    <div class="flex items-start gap-4 p-3.5 rounded-2xl bg-base-100/80 border border-base-300 shadow-sm backdrop-blur-sm transition-transform hover:-translate-y-0.5">
+                        <div class="w-10 h-10 rounded-xl bg-[#059669]/10 text-[#059669] flex items-center justify-center shrink-0 text-xl font-bold">
+                            🛡️️
+                        </div>
+                        <div class="space-y-0.5">
+                            <h3 class="text-sm font-bold text-base-content">Livreurs Vérifiés</h3>
+                            <p class="text-xs text-base-content/60 leading-relaxed">
+                                Notre flotte interne est organisée et vérifiée pour assurer la sécurité de vos colis.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Avantage 4 -->
+                    <div class="flex items-start gap-4 p-3.5 rounded-2xl bg-base-100/80 border border-base-300 shadow-sm backdrop-blur-sm transition-transform hover:-translate-y-0.5">
+                        <div class="w-10 h-10 rounded-xl bg-[#F97316]/10 text-[#F97316] flex items-center justify-center shrink-0 text-xl font-bold">
+                            💬
+                        </div>
+                        <div class="space-y-0.5">
+                            <h3 class="text-sm font-bold text-base-content">Contact Direct</h3>
+                            <p class="text-xs text-base-content/60 leading-relaxed">
+                                Appelez ou discutez directement avec votre livreur en charge pour préciser vos instructions.
+                            </p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- BADGE SOCIAL PROOF EN BAS -->
+            <div class="mt-8 pt-6 border-t border-base-300/60 flex items-center gap-3">
+                <div class="avatar-group -space-x-3 shrink-0">
+                    <div class="w-8 h-8 rounded-full border-2 border-base-100 bg-[#059669] text-white flex items-center justify-center text-xs font-extrabold">A</div>
+                    <div class="w-8 h-8 rounded-full border-2 border-base-100 bg-[#F97316] text-white flex items-center justify-center text-xs font-extrabold">K</div>
+                    <div class="w-8 h-8 rounded-full border-2 border-base-100 bg-base-300 text-base-content flex items-center justify-center text-xs font-extrabold">+</div>
+                </div>
+                <p class="text-xs font-semibold text-base-content/70">
+                    Rejoignez des centaines de clients satisfaits.
+                </p>
+            </div>
+
+        </div>
+
+    </div>
+    </div>
+</div>
+
+{% include 'modal/login_modal.html' %}
+{% endblock %}

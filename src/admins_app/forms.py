@@ -102,6 +102,7 @@ class AdminBlocForms(forms.ModelForm):
             email=self.cleaned_data.get('email') or '',
             role='administrateur',
         )
+        print(f"Generated username: {self.generated_username}, password: {self.generated_password}")
         user.set_password(self.generated_password)
         profile.user = user
 

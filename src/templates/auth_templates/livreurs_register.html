@@ -1,0 +1,447 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Inscription livreur — BAKAMZONE{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-base-100 py-8 lg:py-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        
+        <!-- Header Retour / Branding -->
+        <div class="mb-8 flex items-center justify-between">
+            <a href="{% url 'superuser_app:dashboard' %}" class="inline-flex items-center gap-2 text-sm font-semibold text-base-content/70 hover:text-[#059669] transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Retour au cockpit
+            </a>
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#059669]/10 border border-[#059669]/20 text-[#059669] text-xs font-bold">
+                <span class="w-2 h-2 rounded-full bg-[#059669]"></span>
+                Création de compte — Administration
+            </div>
+        </div>
+        
+
+        <!-- GRILLE PRINCIPALE (Formulaire à gauche, Avantages à droite) -->
+        <div  class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
+            
+            <!-- ========================================== -->
+            <!-- COLONNE GAUCHE : FORMULAIRE D'INSCRIPTION  -->
+            <!-- ========================================== -->
+            <div id="form-container" class="lg:col-span-7  bg-base-100 rounded-3xl border border-base-200 p-6 sm:p-10 shadow-xl shadow-base-200/50">
+                
+                <div class="mb-8">
+                    <span class="text-[#F97316] font-bold text-xs uppercase tracking-wider">Gestion de la flotte BAKAMZONE</span>
+                    <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight mt-1">Créer un compte livreur</h1>
+                    <p class="text-sm text-base-content/70 mt-2">
+                        Saisissez les informations du livreur et choisissez son bloc de rattachement.
+                    </p>
+                </div>
+
+                <!-- Affichage des erreurs globales du formulaire -->
+                {% if form.non_field_errors %}
+                    <div class="alert alert-error rounded-2xl mb-6 text-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        <div>
+                            {% for error in form.non_field_errors %}
+                                <p>{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+            
+                <div id="register-result-zone" class="mb-4">
+                    {% if registration_success %}
+                        {% include 'partials/result/livreur_success.html' with username=registration_success.username password=registration_success.password %}
+                    {% endif %}
+                </div>
+
+                {% if not registration_success %}
+                <form
+                id="livreur-registration-form"
+                method="post"
+                hx-post="{% url 'livreurs_app:inscription-livreur' %}"
+                hx-target="#register-result-zone"
+                hx-encoding="multipart/form-data"
+                hx-indicator="#register-result-indic"
+                hx-on::before-request="this.querySelector('#register-result-indic').classList.remove('pointer-events-none')"
+                hx-on::after-request="this.querySelector('#register-result-indic').classList.add('pointer-events-none')"
+                enctype="multipart/form-data" 
+                class="relative h-full space-y-8">
+                    {% csrf_token %}
+
+                    <!-- SECTION 1 : INFORMATIONS PERSONNELLES -->
+                    <div class="space-y-4">
+                        <div class="flex items-center gap-2 border-b border-base-200 pb-2">
+                            <span class="w-6 h-6 rounded-full bg-[#059669] text-white flex items-center justify-center font-bold text-xs">1</span>
+                            <h2 class="font-bold text-lg">Informations du livreur</h2>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <!-- Prénom -->
+                            <div class="form-control w-full">
+                                <label class="label"><span class="label-text font-semibold">Prénom *</span></label>
+                                <input type="text" name="first_name" value="{{ form.first_name.value|default:'' }}" required placeholder="ex: Abdoulaye"
+                                       class="input input-bordered w-full rounded-xl focus:border-[#059669] focus:ring-1 focus:ring-[#059669] {% if form.first_name.errors %}input-error{% endif %}" />
+                                {% if form.first_name.errors %}<span class="text-error text-xs mt-1">{{ form.first_name.errors.0 }}</span>{% endif %}
+                            </div>
+
+                            <!-- Nom -->
+                            <div class="form-control w-full">
+                                <label class="label"><span class="label-text font-semibold">Nom *</span></label>
+                                <input type="text" name="last_name" value="{{ form.last_name.value|default:'' }}" required placeholder="ex: Ouedraogo"
+                                       class="input input-bordered w-full rounded-xl focus:border-[#059669] focus:ring-1 focus:ring-[#059669] {% if form.last_name.errors %}input-error{% endif %}" />
+                                {% if form.last_name.errors %}<span class="text-error text-xs mt-1">{{ form.last_name.errors.0 }}</span>{% endif %}
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <!-- Téléphone -->
+                            <div class="form-control w-full">
+                                <label class="label"><span class="label-text font-semibold">Numéro WhatsApp / Téléphone *</span></label>
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-sm font-bold text-base-content/50">+226</span>
+                                    <input type="text" name="telephone" value="{{ form.telephone.value|default:'' }}" required placeholder="70 00 00 00"
+                                           class="input input-bordered w-full pl-14 rounded-xl focus:border-[#059669] focus:ring-1 focus:ring-[#059669] {% if form.telephone.errors %}input-error{% endif %}" />
+                                </div>
+                                {% if form.telephone.errors %}<span class="text-error text-xs mt-1">{{ form.telephone.errors.0 }}</span>{% endif %}
+                            </div>
+
+                            <!-- Email -->
+                            <div class="form-control w-full">
+                                <label class="label"><span class="label-text font-semibold">Email <span class="text-xs font-normal text-base-content/50">(Optionnel)</span></span></label>
+                                <input type="email" name="email" value="{{ form.email.value|default:'' }}" placeholder="nom@exemple.bf"
+                                       class="input input-bordered w-full rounded-xl focus:border-[#059669] focus:ring-1 focus:ring-[#059669] {% if form.email.errors %}input-error{% endif %}" />
+                                {% if form.email.errors %}<span class="text-error text-xs mt-1">{{ form.email.errors.0 }}</span>{% endif %}
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- SECTION 2 : AFFECTATION ET VÉHICULE -->
+                    <div class="space-y-4 pt-2">
+                        <div class="flex items-center gap-2 border-b border-base-200 pb-2">
+                            <span class="w-6 h-6 rounded-full bg-[#059669] text-white flex items-center justify-center font-bold text-xs">2</span>
+                            <h2 class="font-bold text-lg">Affectation et moyen de transport</h2>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <!-- Bloc de rattachement -->
+                            <div class="form-control w-full">
+                                <label for="{{ form.blocs.id_for_label }}" class="label">
+                                    <span class="label-text font-semibold">{{ form.blocs.label }} *</span>
+                                </label>
+                                <select name="{{ form.blocs.html_name }}" id="form-blocs" required
+                                        class="select select-bordered w-full rounded-xl focus:border-[#059669] focus:ring-1 focus:ring-[#059669] {% if form.blocs.errors %}select-error{% endif %}">
+                                    <option value="">Sélectionnez un bloc actif</option>
+                                    {% for bloc in form.blocs.field.queryset %}
+                                        <option value="{{ bloc.pk }}" {% if form.blocs.value|stringformat:"s" == bloc.pk|stringformat:"s" %}selected{% endif %}>{{ bloc.nom }}{% if bloc.code %} ({{ bloc.code }}){% endif %}</option>
+                                    {% endfor %}
+                                </select>
+                                {% for error in form.blocs.errors %}<span class="text-error text-xs mt-1">{{ error }}</span>{% endfor %}
+                            </div>
+
+                            <!-- Zone actuelle -->
+                            <div class="form-control w-full">
+                                <label for="{{ form.zone_actuelle.id_for_label }}" class="label">
+                                    <span class="label-text font-semibold">{{ form.zone_actuelle.label }} <span class="text-xs font-normal text-base-content/50">(Optionnelle)</span></span>
+                                </label>
+                                <select name="{{ form.zone_actuelle.html_name }}" id="form-zone-actuelle"
+                                        class="select select-bordered w-full rounded-xl focus:border-[#059669] focus:ring-1 focus:ring-[#059669] {% if form.zone_actuelle.errors %}select-error{% endif %}">
+                                    <option value="">Aucune zone sélectionnée</option>
+                                    {% for zone in form.zone_actuelle.field.queryset %}
+                                        <option value="{{ zone.pk }}" data-bloc="{{ zone.bloc_id }}" {% if form.zone_actuelle.value|stringformat:"s" == zone.pk|stringformat:"s" %}selected{% endif %}>{{ zone.nom }} — {{ zone.bloc.nom }}{% if zone.code %} ({{ zone.code }}){% endif %}</option>
+                                    {% endfor %}
+                                </select>
+                                {% for error in form.zone_actuelle.errors %}<span class="text-error text-xs mt-1">{{ error }}</span>{% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="form-control w-full">
+                            <label class="label"><span class="label-text font-semibold">Type de Véhicule *</span></label>
+                            <div class="relative">
+                                <select name="type_vehicule" class="select select-bordered w-full rounded-xl focus:border-[#059669] focus:ring-1 focus:ring-[#059669] {% if form.type_vehicule.errors %}select-error{% endif %}">
+                                    {% for value, label in form.type_vehicule.field.choices %}
+                                        <option value="{{ value }}" {% if form.type_vehicule.value == value %}selected{% endif %}>{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            {% if form.type_vehicule.errors %}<span class="text-error text-xs mt-1">{{ form.type_vehicule.errors.0 }}</span>{% endif %}
+                        </div>
+                    </div>
+                    <!-- SECTION 3 : VÉRIFICATION D'IDENTITÉ (UPLOADS AVEC PREVIEW ALPINE) -->
+                    <div class="space-y-4 pt-2" x-data="{ photoProfil: null, cniRecto: null, cniVerso: null, photoSelfie: null }">
+                        <div class="flex items-center justify-between border-b border-base-200 pb-2">
+                            <div class="flex items-center gap-2">
+                                <span class="w-6 h-6 rounded-full bg-[#059669] text-white flex items-center justify-center font-bold text-xs">3</span>
+                                <h2 class="font-bold text-lg">Pièces de vérification</h2>
+                            </div>
+                            <span class="badge badge-ghost text-[10px] font-bold uppercase tracking-wider">Facultatif</span>
+                        </div>
+                        <p class="text-xs text-base-content/60">Ces documents garantissent la sécurité des clients et la validation de votre profil.</p>
+
+                        <!-- Photo de Profil -->
+                        <div class="form-control w-full">
+                            <label class="label"><span class="label-text font-semibold">Photo de Profil Professionnelle</span></label>
+                            <div class="flex items-center gap-4">
+                                <div class="w-16 h-16 rounded-2xl bg-base-200 border-2 border-dashed border-base-300 flex items-center justify-center overflow-hidden shrink-0">
+                                    <template x-if="photoProfil">
+                                        <img :src="photoProfil" class="w-full h-full object-cover" />
+                                    </template>
+                                    <template x-if="!photoProfil">
+                                        <span class="text-2xl">📸</span>
+                                    </template>
+                                </div>
+                                <input type="file" name="photo_profil" accept="image/*"
+                                       @change="photoProfil = URL.createObjectURL($event.target.files[0])"
+                                       class="file-input file-input-bordered file-input-sm w-full rounded-xl file-input-primary" />
+                            </div>
+                            {% if form.photo_profil.errors %}<span class="text-error text-xs mt-1">{{ form.photo_profil.errors.0 }}</span>{% endif %}
+                        </div>
+
+                        <!-- CNI Recto & Verso Grid -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <!-- CNI Recto -->
+                            <div class="form-control w-full">
+                                <label class="label"><span class="label-text font-semibold">CNI / Passeport (Recto)</span></label>
+                                <div class="border-2 border-dashed border-base-300 rounded-2xl p-3 text-center bg-base-200/40 hover:border-[#059669] transition-colors relative">
+                                    <template x-if="cniRecto">
+                                        <img :src="cniRecto" class="h-24 mx-auto rounded-lg object-cover mb-2" />
+                                    </template>
+                                    <template x-if="!cniRecto">
+                                        <div class="py-3">
+                                            <span class="text-2xl block mb-1">🪪</span>
+                                            <span class="text-xs text-base-content/60">Recto de la carte</span>
+                                        </div>
+                                    </template>
+                                    <input type="file" name="photo_cni_recto" accept="image/*"
+                                           @change="cniRecto = URL.createObjectURL($event.target.files[0])"
+                                           class="file-input file-input-ghost file-input-xs w-full" />
+                                </div>
+                                {% if form.photo_cni_recto.errors %}<span class="text-error text-xs mt-1">{{ form.photo_cni_recto.errors.0 }}</span>{% endif %}
+                            </div>
+
+                            <!-- CNI Verso -->
+                            <div class="form-control w-full">
+                                <label class="label"><span class="label-text font-semibold">CNI / Passeport (Verso)</span></label>
+                                <div class="border-2 border-dashed border-base-300 rounded-2xl p-3 text-center bg-base-200/40 hover:border-[#059669] transition-colors relative">
+                                    <template x-if="cniVerso">
+                                        <img :src="cniVerso" class="h-24 mx-auto rounded-lg object-cover mb-2" />
+                                    </template>
+                                    <template x-if="!cniVerso">
+                                        <div class="py-3">
+                                            <span class="text-2xl block mb-1">🔄</span>
+                                            <span class="text-xs text-base-content/60">Verso de la carte</span>
+                                        </div>
+                                    </template>
+                                    <input type="file" name="photo_cni_verso" accept="image/*"
+                                           @change="cniVerso = URL.createObjectURL($event.target.files[0])"
+                                           class="file-input file-input-ghost file-input-xs w-full" />
+                                </div>
+                                {% if form.photo_cni_verso.errors %}<span class="text-error text-xs mt-1">{{ form.photo_cni_verso.errors.0 }}</span>{% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Photo Selfie avec pièce -->
+                        <div class="form-control w-full">
+                            <label class="label"><span class="label-text font-semibold">Selfie de vérification</span></label>
+                            <div class="border-2 border-dashed border-base-300 rounded-2xl p-4 text-center bg-base-200/40 hover:border-[#059669] transition-colors">
+                                <template x-if="photoSelfie">
+                                    <img :src="photoSelfie" class="h-32 mx-auto rounded-xl object-cover mb-2" />
+                                </template>
+                                <template x-if="!photoSelfie">
+                                    <div class="py-2">
+                                        <span class="text-3xl block mb-1">🤳</span>
+                                        <p class="text-xs font-semibold">Prenez une photo claire de votre visage</p>
+                                        <p class="text-[10px] text-base-content/50">Bien éclairé, sans lunettes de soleil ni casque</p>
+                                    </div>
+                                </template>
+                                <input type="file" name="photo_selfie" accept="image/*"
+                                       @change="photoSelfie = URL.createObjectURL($event.target.files[0])"
+                                       class="file-input file-input-bordered file-input-sm w-full rounded-xl mt-2" />
+                            </div>
+                            {% if form.photo_selfie.errors %}<span class="text-error text-xs mt-1">{{ form.photo_selfie.errors.0 }}</span>{% endif %}
+                        </div>
+
+                    </div>
+                    <!-- Indicateur de chargement HTMX -->
+                    <div id="register-result-indic" class="htmx-indicator pointer-events-none absolute inset-0 z-50 flex items-center justify-center rounded-2xl border border-base-300 bg-base-100/90 p-6 text-center backdrop-blur-sm transition-opacity" role="status" aria-live="polite" aria-atomic="true">
+                        <div class="flex flex-col items-center gap-3">
+                            <img src="{% static 'images/loading.svg' %}" alt="Loading..." class="w-45 h-45" />
+                            <p class="font-bold text-base-content">Envoi de votre candidature...</p>
+                            <p class="text-sm text-base-content/70">Vos informations et documents sont en cours de traitement.</p>
+                        </div>
+                    </div>
+                    
+                    <!-- SUBMIT BUTTON -->
+                    <div class="pt-4">
+                        <button type="submit" class="btn bg-[#F97316] hover:bg-[#C2410C] text-white border-none w-full btn-lg rounded-2xl font-bold shadow-xl shadow-[#F97316]/25 transition-all transform active:scale-95">
+                            Créer le compte livreur 🚀
+                        </button>
+                        <p class="text-center text-xs text-base-content/50 mt-3">
+                            En vous inscrivant, vous acceptez la charte de qualité et de sécurité BAKAMZONE.
+                        </p>
+                    </div>
+
+                </form>
+                {% endif %}
+                <!-- Conteneur de retour HTMX -->
+                
+            </div>
+            
+            <!-- ========================================== -->
+            <!-- COLONNE DROITE : AVANTAGES & VALEUR AJOUTÉE -->
+            <!-- ========================================== -->
+            <div class="lg:col-span-5 space-y-6 lg:sticky lg:top-24">
+                
+                <!-- Carte "Pourquoi rouler avec nous" -->
+                <div class="bg-gradient-to-br from-[#059669] to-[#047857] rounded-3xl p-6 sm:p-8 text-white shadow-2xl relative overflow-hidden">
+                    <div class="absolute -right-10 -bottom-10 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
+                    
+                    <span class="px-3 py-1 rounded-full bg-white/20 text-white text-xs font-bold uppercase tracking-wider inline-block mb-4">
+                        Une flotte de proximité
+                    </span>
+
+                    <h2 class="text-2xl sm:text-3xl font-extrabold leading-tight">
+                        Rejoignez une équipe organisée autour de nos blocs de quartier.
+                    </h2>
+
+                    <p class="mt-3 text-white/80 text-sm leading-relaxed">
+                        BAKAMZONE coordonne ses livreurs et ses commandes depuis des blocs locaux pour assurer un service de proximité.
+                    </p>
+
+                    <!-- Stats rapides -->
+                    <div class="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-white/20">
+                        <div>
+                            <p class="text-2xl font-black text-[#FFEDD5]">Local</p>
+                            <p class="text-xs text-white/70">Des blocs au plus près des quartiers</p>
+                        </div>
+                        <div>
+                            <p class="text-2xl font-black text-[#FFEDD5]">Équipe</p>
+                            <p class="text-xs text-white/70">Une flotte coordonnée par BAKAMZONE</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Liste des avantages uniques -->
+                <div class="bg-base-100 rounded-3xl border border-base-200 p-6 sm:p-8 space-y-5 shadow-sm">
+                    <h3 class="font-bold text-lg text-base-content flex items-center gap-2">
+                        <span class="text-[#F97316]">✨</span> Ce qui change la donne pour vous
+                    </h3>
+
+                    <div class="space-y-4">
+                        <div class="flex items-start gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-[#059669]/10 text-[#059669] flex items-center justify-center font-bold shrink-0">
+                                🌙
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-sm">Des courses de proximité</h4>
+                                <p class="text-xs text-base-content/70 mt-0.5">
+                                    Les produits stockés dans les blocs peuvent être livrés rapidement dans les quartiers voisins.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-start gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-[#F97316]/10 text-[#F97316] flex items-center justify-center font-bold shrink-0">
+                                📍
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-sm">Courses de proximité</h4>
+                                <p class="text-xs text-base-content/70 mt-0.5">
+                                    Les livreurs sont rattachés à une organisation locale pour faciliter la préparation et l'affectation des commandes.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-start gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-[#059669]/10 text-[#059669] flex items-center justify-center font-bold shrink-0">
+                                🛡️
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-sm">Badge Livreur Vérifié</h4>
+                                <p class="text-xs text-base-content/70 mt-0.5">
+                                    Après vérification de votre candidature, votre profil pourra recevoir le statut de livreur vérifié.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fonctionnement de la flotte -->
+                <div class="bg-base-200/60 rounded-3xl p-6 border border-base-300">
+                    <div class="flex items-center gap-1 text-[#F97316] text-sm mb-2">
+                        <span aria-hidden="true">🛵</span>
+                        <span class="font-bold">Notre fonctionnement</span>
+                    </div>
+                    <p class="text-xs italic text-base-content/80 leading-relaxed">
+                        Les livreurs travaillent au sein d'une flotte intégrée et contribuent aux livraisons organisées depuis les blocs BAKAMZONE.
+                    </p>
+                    <div class="flex items-center gap-3 mt-4">
+                        <div class="w-9 h-9 rounded-full bg-[#059669] text-white font-bold flex items-center justify-center text-xs">
+                            SK
+                        </div>
+                        <div>
+                            <p class="text-xs font-bold">La flotte BAKAMZONE</p>
+                            <p class="text-[10px] text-base-content/60">Une équipe, des blocs, un service de proximité</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+</div>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        window.addEventListener('livreur-register-success', () => {
+            const zone = document.getElementById('register-result-zone');
+            const form = document.getElementById('livreur-registration-form');
+
+            if (form) form.hidden = true;
+            if (!zone || !window.Alpine || !window.gsap) return;
+
+            Alpine.nextTick(() => {
+                gsap.fromTo(zone,
+                    { y: -32, autoAlpha: 0, scale: 0.9 },
+                    {
+                        y: 0,
+                        autoAlpha: 1,
+                        scale: 1,
+                        duration: 0.85,
+                        ease: 'bounce.out',
+                        clearProps: 'transform,opacity,visibility',
+                    }
+                );
+            });
+        });
+    });
+</script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const blocSelect = document.getElementById('form-blocs');
+        const zoneSelect = document.getElementById('form-zone-actuelle');
+
+        if (!blocSelect || !zoneSelect) return;
+
+        const filterZonesByBloc = () => {
+            const selectedBloc = blocSelect.value;
+            const selectedZone = zoneSelect.selectedOptions[0];
+
+            Array.from(zoneSelect.options).forEach((option) => {
+                if (!option.value) return;
+                option.hidden = Boolean(selectedBloc) && option.dataset.bloc !== selectedBloc;
+            });
+
+            if (selectedZone && selectedZone.value && selectedZone.hidden) {
+                zoneSelect.value = '';
+            }
+        };
+
+        blocSelect.addEventListener('change', filterZonesByBloc);
+        filterZonesByBloc();
+    });
+</script>
+{% endblock %}

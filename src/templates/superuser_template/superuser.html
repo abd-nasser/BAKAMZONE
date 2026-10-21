@@ -65,15 +65,18 @@
                 <h3 class="text-lg font-bold mb-2">⚡ Actions rapides</h3>
                 <p class="text-xs text-base-content/70 mb-4">Initialisation rapide des composants du réseau.</p>
                 <div class="space-y-2">
-                    <a href="{% url 'blocs_app:creer' %}" class="btn btn-outline btn-primary w-full rounded-xl justify-start gap-2">
+                    <a href="{% url 'blocs_app:creer-bloc' %}" class="btn btn-outline btn-primary w-full rounded-xl justify-start gap-2">
                         <span>➕</span> Créer un nouveau Bloc
                     </a>
-                    <a href="{% url 'admins_app:creer' %}" class="btn btn-outline w-full rounded-xl justify-start gap-2">
+                    <a href="{% url 'zones_app:creer-zone' %}" class="btn btn-outline w-full rounded-xl justify-start gap-2">
+                        <span>📍</span> Créer une zone
+                    </a>
+                    <a href="{% url 'admins_app:creer-admin-bloc' %}" class="btn btn-outline w-full rounded-xl justify-start gap-2">
                         <span>👥</span> Créer une Équipe Admin Bloc
                     </a>
-                    <button class="btn btn-outline w-full rounded-xl justify-start gap-2">
-                        <span>🛵</span> Affecter des Livreurs au Bloc
-                    </button>
+                    <a href="{% url 'livreurs_app:inscription-livreur' %}" class="btn btn-outline w-full rounded-xl justify-start gap-2">
+                        <span>🛵</span> Créer un compte livreur
+                    </a>
                 </div>
             </div>
         </div>

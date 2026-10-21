@@ -3,6 +3,7 @@ from django.urls import reverse
 from auth_app.models import User
 from entreprise_app.models import Entreprise
 from blocs_app.models import Blocs
+from zones_app.models import Zone
 
 
 class Livreur(models.Model):
@@ -25,7 +26,7 @@ class Livreur(models.Model):
     disponible = models.BooleanField(default=False)
 
     blocs = models.ForeignKey(Blocs, on_delete=models.SET_NULL, null=True, blank=True, related_name='livreurs_bloc')
-    zone_actuelle = models.ForeignKey(Blocs, on_delete=models.SET_NULL, null=True, blank=True, related_name='livreurs_presents')
+    zone_actuelle = models.ForeignKey(Zone, on_delete=models.SET_NULL, null=True, blank=True, related_name='livreurs_presents')
     latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
 

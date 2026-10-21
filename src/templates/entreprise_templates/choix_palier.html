@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}Choisir un abonnement | BAKAMZONE{% endblock %}
+
+{% block content %}
+<section class="px-4 py-10 sm:py-16">
+    <div class="mx-auto max-w-6xl">
+        <a href="{% url 'home_app:home' %}" class="mb-6 inline-flex items-center gap-2 text-sm font-semibold text-base-content/70 hover:text-[#059669]">
+            <span aria-hidden="true">←</span> Retour à l'accueil
+        </a>
+
+        <header class="mb-8 text-center">
+            <span class="badge badge-success badge-outline mb-3">Abonnement entreprise</span>
+            <h1 class="text-3xl font-black tracking-tight sm:text-4xl">Choisissez votre palier</h1>
+            <p class="mx-auto mt-3 max-w-2xl text-sm text-base-content/70">
+                Sélectionnez le niveau de service adapté à votre activité. Vous pourrez modifier ce choix ultérieurement.
+            </p>
+        </header>
+
+        {% if form.non_field_errors %}
+            <div class="alert alert-error mb-6 rounded-2xl">
+                <div>{% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}</div>
+            </div>
+        {% endif %}
+
+        <form method="post">
+            {% csrf_token %}
+            <div class="grid gap-5 md:grid-cols-3">
+                {% for palier in paliers %}
+                    <label class="card cursor-pointer border bg-base-100 shadow-lg transition hover:-translate-y-1 hover:border-[#059669] {% if form.palier.value == palier.value %}border-[#059669] ring-2 ring-[#059669]/30{% else %}border-base-300{% endif %}">
+                        <div class="card-body">
+                            <div class="flex items-center justify-between gap-3">
+                                <h2 class="card-title text-2xl">{{ palier.label }}</h2>
+                                <input
+                                    type="radio"
+                                    name="{{ form.palier.html_name }}"
+                                    value="{{ palier.value }}"
+                                    class="radio radio-success"
+                                    {% if form.palier.value == palier.value %}checked{% endif %}
+                                    required
+                                >
+                            </div>
+                            <p class="min-h-12 text-sm text-base-content/70">{{ palier.description }}</p>
+                            <div class="my-3 space-y-2 border-t border-base-300 pt-4 text-sm">
+                                <p><strong>{{ palier.quota_articles }}</strong> articles maximum</p>
+                                <p><strong>{{ palier.quota_admins }}</strong> administrateur(s) d'entreprise</p>
+                            </div>
+                        </div>
+                    </label>
+                {% endfor %}
+            </div>
+
+            {% for error in form.palier.errors %}<p class="mt-4 text-center text-sm text-error">{{ error }}</p>{% endfor %}
+
+            <div class="mx-auto mt-8 max-w-3xl rounded-2xl border border-warning/40 bg-warning/10 p-4 text-sm">
+                Le choix du palier enregistre votre niveau de service, mais n'active pas un abonnement payant. L'activation devra être confirmée séparément.
+            </div>
+
+            <button type="submit" class="btn mx-auto mt-6 flex rounded-xl border-none bg-[#059669] px-8 text-white hover:bg-[#047857]">
+                Enregistrer mon palier
+            </button>
+        </form>
+    </div>
+</section>
+{% endblock %}

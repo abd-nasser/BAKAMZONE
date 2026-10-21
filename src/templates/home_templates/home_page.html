@@ -22,10 +22,10 @@
             </a>
 
             <!-- Actions Utilisateur & Navigation -->
-            <div class="flex items-center gap-3">
+            <nav class="flex items-center gap-3" aria-label="Navigation principale">
                 
                 <!-- Bascule Thème Clair / Sombre -->
-                <button onclick="toggleTheme()" 
+                <button @click="darkMode = !darkMode; localStorage.setItem('theme', darkMode ? 'dark' : 'light')"
                         class="btn btn-ghost btn-circle btn-sm text-base-content/80 hover:bg-base-200" 
                         title="Changer de thème">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -49,13 +49,14 @@
                                 <p class="text-xs font-bold leading-tight">{{ request.user.get_full_name|default:request.user.telephone }}</p>
                                 <span class="badge badge-xs text-[10px] 
                                     {% if request.user.is_superuser %}badge-error text-white
-                                    {% elif request.user.role == 'administrateur' %}badge-warning
+                                    {% elif request.user.role == 'bloc_admin' %}badge-warning
                                     {% elif request.user.role == 'livreur' %}badge-info text-white
-                                    {% elif request.user.role == 'entreprise' %}badge-secondary text-white
+                                    {% elif request.user.role == 'entreprise' or request.user.role == 'entreprise_admin' %}badge-secondary text-white
                                     {% else %}badge-ghost{% endif %}">
                                     {% if request.user.is_superuser %}Superuser
-                                    {% elif request.user.role == 'administrateur' %}Admin Bloc
+                                    {% elif request.user.role == 'bloc_admin' %}Admin Bloc
                                     {% elif request.user.role == 'livreur' %}Livreur
+                                    {% elif request.user.role == 'entreprise_admin' %}Admin Entreprise
                                     {% elif request.user.role == 'entreprise' %}Entreprise
                                     {% else %}Client{% endif %}
                                 </span>
@@ -78,6 +79,11 @@
                             <li>
                                 <a href="{% url 'home_app:home' %}" class="py-2.5">🏠 Accueil BAKAMZONE</a>
                             </li>
+                            {% if request.user.role == 'entreprise' %}
+                                <li>
+                                    <a href="{% url 'entreprise_app:choix-palier' %}" class="py-2.5">📦 Mon abonnement</a>
+                                </li>
+                            {% endif %}
                             <div class="divider my-1"></div>
                             <li>
                                 <a href="{% url 'auth_app:deconnexion' %}" class="text-error font-medium py-2.5">
@@ -88,13 +94,21 @@
                     </div>
                 {% else %}
                     <!-- Utilisateur Non Connecté : Bouton Connexion qui ouvre le Modal -->
+                    <a href="{% url 'clients_app:inscription-client' %}"
+                       class="btn btn-outline btn-sm sm:btn-md rounded-xl border-[#059669] text-[#059669] hover:bg-[#059669] hover:text-white font-bold">
+                        Créer un compte client
+                    </a>
+                    <a href="{% url 'entreprise_app:inscription' %}"
+                       class="btn btn-ghost btn-sm sm:btn-md rounded-xl font-bold">
+                        Inscrire une entreprise
+                    </a>
                     <button onclick="login_modal.showModal()"
                             class="btn btn-sm sm:btn-md bg-[#059669] hover:bg-[#047857] text-white border-none rounded-xl font-bold shadow-md hover:shadow-lg transition-all px-4 sm:px-6">
                         Connexion
                     </button>
                 {% endif %}
 
-            </div>
+            </nav>
 
         </div>
     </div>
@@ -208,6 +222,10 @@
                         class="btn bg-[#059669] hover:bg-[#047857] text-white border-none rounded-2xl h-14 px-8 font-bold text-base shadow-xl hover:shadow-2xl hover:scale-105 transition-all">
                     Accéder à mon espace
                 </button>
+                <a href="{% url 'clients_app:inscription-client' %}"
+                   class="btn btn-outline border-[#059669] text-[#059669] hover:bg-[#059669] hover:text-white rounded-2xl h-14 px-8 font-bold text-base transition-all">
+                    Créer un compte client
+                </a>
                 <a href="#decouvrir-blocs" 
                    class="btn btn-outline border-base-300 hover:border-[#F97316] hover:bg-[#F97316] hover:text-white rounded-2xl h-14 px-8 font-bold text-base transition-all">
                     Découvrir les blocs ({{ total_blocs }})

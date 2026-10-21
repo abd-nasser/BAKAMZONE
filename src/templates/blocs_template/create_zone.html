@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+
+{% block title %}Créer une zone — BAKAMZONE{% endblock %}
+
+{% block content %}
+<section class="max-w-4xl mx-auto px-4 sm:px-6 py-10">
+    <div class="mb-6">
+        <a href="{% url 'superuser_app:dashboard' %}" class="btn btn-ghost btn-sm rounded-xl mb-3">
+            ← Retour au cockpit
+        </a>
+        <h1 class="text-3xl font-black tracking-tight">Créer une nouvelle zone</h1>
+        <p class="text-sm text-base-content/70 mt-1">Définissez une zone de livraison et rattachez-la à un bloc actif.</p>
+    </div>
+
+    <form
+        method="post"
+        hx-post="{% url 'zones_app:creer-zone' %}"
+        hx-target="#toast-container"
+        hx-swap="beforeend"
+        hx-indicator="#zone-spinner"
+        class="card bg-base-100 p-6 sm:p-8 rounded-3xl border border-base-200 shadow-xl"
+    >
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+            <div class="alert alert-error rounded-xl mb-5">
+                {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+            </div>
+        {% endif %}
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            {% for field in form %}
+                <div class="{% if field.name == 'nom' or field.name == 'bloc' %}sm:col-span-2{% endif %}">
+                    <label for="{{ field.id_for_label }}" class="label font-semibold text-sm">
+                        <span class="label-text">{{ field.label }}</span>
+                    </label>
+                    {{ field }}
+                    {% for error in field.errors %}
+                        <p class="text-error text-xs mt-1">{{ error }}</p>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+        </div>
+
+        <div class="mt-8 flex items-center justify-end gap-3">
+            <a href="{% url 'superuser_app:dashboard' %}" class="btn btn-ghost rounded-xl">Annuler</a>
+            <button type="submit" class="btn bg-[#059669] hover:bg-[#047857] text-white border-none rounded-xl">
+                <span id="zone-spinner" class="htmx-indicator loading loading-spinner loading-sm"></span>
+                Créer la zone
+            </button>
+        </div>
+    </form>
+</section>
+{% endblock %}

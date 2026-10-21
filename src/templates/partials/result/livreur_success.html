@@ -1,0 +1,19 @@
+<div
+    class="alert alert-success bg-[#059669] border-[#047857] text-white rounded-xl shadow-lg py-4 px-4 mb-4 pointer-events-auto"
+    role="status"
+    aria-live="polite"
+>
+    <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+    <div>
+        <p class="font-bold">Le compte livreur de {{ livreur.user.get_full_name }} a bien été créé.</p>
+        <p class="text-xs">Créé par {{ admin_user.get_full_name|default:admin_user.telephone }}.</p>
+        <p class="text-sm">Bloc de rattachement : {{ livreur.blocs.nom }}</p>
+        {% if livreur.zone_actuelle %}<p class="text-sm">Zone actuelle : {{ livreur.zone_actuelle.nom }}</p>{% endif %}
+        <p class="text-sm mt-1">Transmettez-lui ces identifiants pour sa première connexion :</p>
+        <p class="text-sm">Nom d'utilisateur : <strong>{{ username }}</strong></p>
+        <p class="text-sm">Mot de passe temporaire : <strong>{{ password }}</strong></p>
+        <p class="text-xs mt-1 opacity-90">Ce mot de passe ne sera plus affiché après avoir quitté cette page.</p>
+    </div>
+</div>
