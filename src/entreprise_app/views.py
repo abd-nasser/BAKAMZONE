@@ -1,10 +1,15 @@
 from django.contrib import messages
-from django.shortcuts import redirect
+from django.contrib.auth import get_user_model
+from django.db import IntegrityError
+from django.http import HttpResponseRedirect
+from django.shortcuts import redirect, render
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, UpdateView
 
 from .forms import ChoixPalierEntrepriseForm, InscriptionEntrepriseForm
 from .models import Entreprise
+
+User = get_user_model()
 
 
 class InscriptionEntrepriseView(CreateView):
@@ -13,12 +18,51 @@ class InscriptionEntrepriseView(CreateView):
     success_url = reverse_lazy("home_app:home")
 
     def form_valid(self, form):
+        try:
+            self.object = form.save()
+        except IntegrityError:
+            if not User.objects.filter(
+                telephone=form.cleaned_data["telephone"]
+            ).exists():
+                raise
+            form.add_error(
+                "telephone",
+                "Ce numéro de téléphone vient d'être utilisé. Veuillez en choisir un autre.",
+            )
+            return self.form_invalid(form)
+
+        if self.request.headers.get("HX-Request") == "true":
+            response = render(
+                self.request,
+                "partials/result/entreprise_success.html",
+            )
+            response["HX-Trigger"] = "entreprise-register-success"
+            return response
+
         messages.success(
             self.request,
             "Le compte de votre entreprise est créé. Connectez-vous pour choisir "
             "votre palier d'abonnement.",
         )
-        return super().form_valid(form)
+        return HttpResponseRedirect(self.get_success_url())
+
+    def form_invalid(self, form):
+        if self.request.headers.get("HX-Request") == "true":
+            errors = [
+                (
+                    form.fields[field].label if field in form.fields else "Formulaire",
+                    error,
+                )
+                for field, field_errors in form.errors.items()
+                for error in field_errors
+            ]
+            return render(
+                self.request,
+                "partials/result/entreprise_error.html",
+                {"errors": errors},
+            )
+
+        return super().form_invalid(form)
 
 
 class ChoixPalierEntrepriseView(UpdateView):

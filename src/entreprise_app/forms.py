@@ -83,7 +83,7 @@ class InscriptionEntrepriseForm(forms.ModelForm):
         }
 
     def clean_telephone(self):
-        telephone = self.cleaned_data["telephone"]
+        telephone = self.cleaned_data["telephone"].strip()
         if User.objects.filter(telephone=telephone).exists():
             raise forms.ValidationError("Ce numéro de téléphone est déjà utilisé.")
         return telephone

@@ -1,3 +1,6 @@
+from unittest.mock import patch
+
+from django.db import IntegrityError
 from django.test import TestCase
 from django.urls import reverse
 
@@ -39,6 +42,9 @@ class InscriptionEntrepriseViewTests(TestCase):
         ):
             self.assertContains(response, f'name="{field_name}"')
         self.assertNotContains(response, 'name="palier"')
+        self.assertContains(response, "showPasswordConfirm")
+        self.assertContains(response, "logoPreview")
+        self.assertContains(response, 'hx-indicator="#entreprise-register-spinner"')
 
     def test_registration_creates_enterprise_account_without_assigning_tier(self):
         response = self.client.post(
@@ -64,6 +70,89 @@ class InscriptionEntrepriseViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Les mots de passe ne correspondent pas.")
         self.assertFalse(User.objects.filter(telephone=self.form_data["telephone"]).exists())
+
+    def test_existing_telephone_is_reported_on_telephone_field(self):
+        User.objects.create_user(
+            telephone=self.form_data["telephone"],
+            password="ExistingPassword123!",
+            first_name="Existing",
+            last_name="User",
+        )
+
+        response = self.client.post(
+            reverse("entreprise_app:inscription"),
+            self.form_data,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("telephone", response.context["form"].errors)
+        self.assertContains(response, "Ce numéro de téléphone est déjà utilisé.")
+        self.assertEqual(User.objects.filter(telephone=self.form_data["telephone"]).count(), 1)
+
+    def test_integrity_error_for_duplicate_telephone_returns_form_error(self):
+        def create_competing_user(*args, **kwargs):
+            User.objects.create_user(
+                telephone=self.form_data["telephone"],
+                password="ExistingPassword123!",
+                first_name="Existing",
+                last_name="User",
+            )
+            raise IntegrityError("duplicate telephone")
+
+        with patch(
+            "entreprise_app.forms.InscriptionEntrepriseForm.save",
+            side_effect=create_competing_user,
+        ):
+            response = self.client.post(
+                reverse("entreprise_app:inscription"),
+                self.form_data,
+                HTTP_HX_REQUEST="true",
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(
+            response,
+            "partials/result/entreprise_error.html",
+        )
+        self.assertContains(response, "Veuillez en choisir un autre.")
+
+    def test_htmx_registration_returns_success_partial(self):
+        response = self.client.post(
+            reverse("entreprise_app:inscription"),
+            self.form_data,
+            HTTP_HX_REQUEST="true",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.headers["HX-Trigger"],
+            "entreprise-register-success",
+        )
+        self.assertTemplateUsed(
+            response,
+            "partials/result/entreprise_success.html",
+        )
+
+    def test_htmx_duplicate_telephone_returns_error_partial(self):
+        User.objects.create_user(
+            telephone=self.form_data["telephone"],
+            password="ExistingPassword123!",
+            first_name="Existing",
+            last_name="User",
+        )
+
+        response = self.client.post(
+            reverse("entreprise_app:inscription"),
+            self.form_data,
+            HTTP_HX_REQUEST="true",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(
+            response,
+            "partials/result/entreprise_error.html",
+        )
+        self.assertContains(response, "Ce numéro de téléphone est déjà utilisé.")
 
 
 class ChoixPalierEntrepriseViewTests(TestCase):

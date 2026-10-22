@@ -23,13 +23,25 @@
                     </p>
                 </div>
 
+                <div id="register-result-zone" class="mb-5" aria-live="polite"></div>
+
                 {% if form.non_field_errors %}
                     <div class="alert alert-error mb-5 rounded-2xl">
                         <div>{% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}</div>
                     </div>
                 {% endif %}
 
-                <form method="post" enctype="multipart/form-data" class="space-y-6">
+                <form
+                    method="post"
+                    hx-post="{% url 'entreprise_app:inscription' %}"
+                    hx-target="#register-result-zone"
+                    hx-swap="innerHTML"
+                    hx-encoding="multipart/form-data"
+                    hx-indicator="#entreprise-register-spinner"
+                    enctype="multipart/form-data"
+                    x-data="{ showPassword: false, showPasswordConfirm: false, logoPreview: null }"
+                    class="space-y-6"
+                >
                     {% csrf_token %}
 
                     <!-- Informations de l'entreprise -->
@@ -41,7 +53,31 @@
                                     <label class="label" for="{{ field.id_for_label }}">
                                         <span class="label-text font-semibold">{{ field.label }}</span>
                                     </label>
-                                    {{ field }}
+                                    {% if field.name == "logo" %}
+                                        <div class="flex items-center gap-4 rounded-2xl border-2 border-dashed border-base-300 bg-base-200/40 p-4 transition-colors hover:border-[#059669]">
+                                            <div class="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-base-300 bg-base-100">
+                                                <template x-if="logoPreview">
+                                                    <img :src="logoPreview" alt="Aperçu du logo de l'entreprise" class="h-full w-full object-cover">
+                                                </template>
+                                                <template x-if="!logoPreview">
+                                                    <span class="text-3xl" aria-hidden="true">🏢</span>
+                                                </template>
+                                            </div>
+                                            <div class="min-w-0 flex-1">
+                                                <input
+                                                    type="file"
+                                                    name="{{ field.html_name }}"
+                                                    id="{{ field.id_for_label }}"
+                                                    accept="image/*"
+                                                    @change="logoPreview = $event.target.files[0] ? URL.createObjectURL($event.target.files[0]) : null"
+                                                    class="file-input file-input-bordered file-input-sm w-full rounded-xl file-input-primary {% if field.errors %}file-input-error{% endif %}"
+                                                >
+                                                <p class="mt-2 text-xs text-base-content/60">Choisissez une image pour identifier votre entreprise.</p>
+                                            </div>
+                                        </div>
+                                    {% else %}
+                                        {{ field }}
+                                    {% endif %}
                                     {% if field.help_text %}<span class="label-text-alt mt-1 text-base-content/60">{{ field.help_text }}</span>{% endif %}
                                     {% for error in field.errors %}<span class="mt-1 text-xs text-error">{{ error }}</span>{% endfor %}
                                 </div>
@@ -67,7 +103,38 @@
                             {% if field.name in "telephone email password password_confirm" %}
                                 <div class="form-control">
                                     <label class="label" for="{{ field.id_for_label }}"><span class="label-text font-semibold">{{ field.label }}</span></label>
-                                    {{ field }}
+                                    {% if field.name == "password" or field.name == "password_confirm" %}
+                                        <div class="relative">
+                                            <input
+                                                type="password"
+                                                :type="{% if field.name == 'password' %}showPassword{% else %}showPasswordConfirm{% endif %} ? 'text' : 'password'"
+                                                name="{{ field.html_name }}"
+                                                id="{{ field.id_for_label }}"
+                                                required
+                                                autocomplete="new-password"
+                                                class="input input-bordered w-full rounded-xl pr-12 {% if field.errors %}input-error{% endif %}"
+                                            >
+                                            <button
+                                                type="button"
+                                                @click="{% if field.name == 'password' %}showPassword{% else %}showPasswordConfirm{% endif %} = !{% if field.name == 'password' %}showPassword{% else %}showPasswordConfirm{% endif %}"
+                                                :aria-label="{% if field.name == 'password' %}showPassword{% else %}showPasswordConfirm{% endif %} ? 'Masquer le mot de passe' : 'Afficher le mot de passe'"
+                                                :aria-pressed="{% if field.name == 'password' %}showPassword{% else %}showPasswordConfirm{% endif %}"
+                                                class="absolute inset-y-0 right-0 flex items-center px-3 text-base-content/60 hover:text-base-content"
+                                                title="Afficher ou masquer le mot de passe"
+                                            >
+                                                <svg x-show="!{% if field.name == 'password' %}showPassword{% else %}showPasswordConfirm{% endif %}" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                </svg>
+                                                <svg x-show="{% if field.name == 'password' %}showPassword{% else %}showPasswordConfirm{% endif %}" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3l18 18M10.584 10.587a2 2 0 002.829 2.829" />
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.88 5.09A10.94 10.94 0 0112 4.88c4.478 0 8.268 2.943 9.542 7a11.05 11.05 0 01-4.043 5.414M6.228 6.228A11.05 11.05 0 012.458 12c1.274 4.057 5.065 7 9.542 7 1.51 0 2.94-.35 4.207-.973" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    {% else %}
+                                        {{ field }}
+                                    {% endif %}
                                     {% for error in field.errors %}<span class="mt-1 text-xs text-error">{{ error }}</span>{% endfor %}
                                 </div>
                             {% endif %}
@@ -77,7 +144,11 @@
                         </p>
                     </fieldset>
 
-                    <button type="submit" class="btn w-full rounded-xl border-none bg-[#059669] text-white hover:bg-[#047857]">
+                    <button
+                        type="submit"
+                        class="btn w-full rounded-xl border-none bg-[#059669] text-white hover:bg-[#047857]"
+                    >
+                        <span id="entreprise-register-spinner" class="htmx-indicator loading loading-spinner loading-sm" role="status" aria-label="Envoi en cours"></span>
                         Créer le compte entreprise
                     </button>
                 </form>
