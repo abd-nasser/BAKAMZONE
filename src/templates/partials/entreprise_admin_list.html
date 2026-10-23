@@ -1,0 +1,13 @@
+<div id="enterprise-admin-list" {% if oob %}hx-swap-oob="outerHTML"{% endif %}>
+    {% for membership in admin_members %}
+        <div class="flex flex-wrap items-center justify-between gap-3 py-3">
+            <div>
+                <p class="font-semibold">{{ membership.membre_admin.get_full_name }}</p>
+                <p class="text-sm text-base-content/60">{{ membership.membre_admin.telephone }}{% if membership.membre_admin.email %} · {{ membership.membre_admin.email }}{% endif %}</p>
+            </div>
+            <span class="badge badge-ghost">Ajouté le {{ membership.date_ajout|date:"d/m/Y" }}</span>
+        </div>
+    {% empty %}
+        <p class="py-4 text-sm text-base-content/60">Aucun administrateur employé pour le moment.</p>
+    {% endfor %}
+</div>

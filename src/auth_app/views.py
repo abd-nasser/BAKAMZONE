@@ -4,6 +4,7 @@ from django.contrib.auth import login, logout, get_user_model
 from django.db.models import Q
 from django.urls import reverse
 from auth_app.forms import ConnexionForm
+from admins_app.dashboard_routes import get_admin_bloc_dashboard_url
 
 User = get_user_model()
 
@@ -54,8 +55,11 @@ class ConnexionHTMXView(View):
         redirect_url = reverse('home_app:home')
         if user.is_superuser:
             redirect_url = reverse('superuser_app:dashboard')
-        elif user.role == 'administrateur':
-            redirect_url = reverse('home_app:home')  # ou dashboard admin quand prêt
+        elif user.role == 'bloc_admin':
+            redirect_url = (
+                get_admin_bloc_dashboard_url(user)
+                or reverse('home_app:home')
+            )
         elif user.role == 'livreur':
             redirect_url = reverse('home_app:home')  # ou dashboard livreur
         elif user.role == 'entreprise':

@@ -1,10 +1,13 @@
+from uuid import uuid4
+
 from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.utils.text import slugify
 
-from .models import Entreprise
+from .models import Entreprise, MembreAdminsEntreprise
 
 User = get_user_model()
 
@@ -147,3 +150,82 @@ class ChoixPalierEntrepriseForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if self.instance.palier == "pas_defini":
             self.initial["palier"] = None
+
+
+class MembreAdminsEntrepriseForm(forms.Form):
+    """Crée un compte administrateur et l'associe à l'entreprise du responsable."""
+
+    first_name = forms.CharField(
+        max_length=30,
+        label="Prénom",
+        widget=forms.TextInput(attrs={
+            "class": "input input-bordered w-full rounded-xl",
+            "autocomplete": "given-name",
+        }),
+    )
+    last_name = forms.CharField(
+        max_length=30,
+        label="Nom",
+        widget=forms.TextInput(attrs={
+            "class": "input input-bordered w-full rounded-xl",
+            "autocomplete": "family-name",
+        }),
+    )
+    telephone = forms.CharField(
+        max_length=20,
+        label="Téléphone",
+        widget=forms.TextInput(attrs={
+            "class": "input input-bordered w-full rounded-xl",
+            "autocomplete": "tel",
+        }),
+    )
+    email = forms.EmailField(
+        required=False,
+        label="Adresse e-mail (facultatif)",
+        widget=forms.EmailInput(attrs={
+            "class": "input input-bordered w-full rounded-xl",
+            "autocomplete": "email",
+        }),
+    )
+
+    def __init__(self, *args, entreprise, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.entreprise = entreprise
+        self.generated_username = None
+        self.generated_password = None
+
+    def clean_telephone(self):
+        telephone = self.cleaned_data["telephone"].strip()
+        if User.objects.filter(telephone=telephone).exists():
+            raise forms.ValidationError("Ce numéro de téléphone est déjà utilisé.")
+        return telephone
+
+    def _generate_username(self):
+        base_username = slugify(
+            f"{self.cleaned_data['first_name']}.{self.cleaned_data['last_name']}"
+        ).replace("-", "_") or "admin"
+        while True:
+            username = f"{base_username[:21]}_{uuid4().hex[:8]}"
+            if not User.objects.filter(username__iexact=username).exists():
+                return username
+
+    @transaction.atomic
+    def save(self):
+        self.generated_username = self._generate_username()
+        self.generated_password = uuid4().hex
+        membre_admin = User(
+            username=self.generated_username,
+            first_name=self.cleaned_data["first_name"],
+            last_name=self.cleaned_data["last_name"],
+            telephone=self.cleaned_data["telephone"],
+            email=self.cleaned_data.get("email") or "",
+            role="entreprise_admin",
+        )
+        membre_admin.set_password(self.generated_password)
+        membre_admin.save()
+
+        return MembreAdminsEntreprise.objects.create(
+            entreprise=self.entreprise,
+            membre_admin=membre_admin,
+            ajoute_par=self.entreprise.user_principal,
+        )

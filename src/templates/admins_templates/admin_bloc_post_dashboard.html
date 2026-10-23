@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} | BAKAMZONE{% endblock %}
+
+{% block content %}
+<main class="mx-auto max-w-7xl px-4 py-10">
+    <section class="card border border-base-300 bg-base-100 shadow-sm">
+        <div class="card-body">
+            <span class="badge badge-warning w-fit">{{ admin_bloc.get_poste_display }}</span>
+            <h1 class="card-title text-3xl">{{ title }}</h1>
+            <p class="text-sm text-base-content/70">{{ bloc.nom }} — {{ description }}</p>
+            <div class="mt-4">
+                <a href="{% url 'home_app:home' %}" class="btn btn-ghost rounded-xl">Retour à l'accueil</a>
+            </div>
+        </div>
+    </section>
+</main>
+{% endblock %}

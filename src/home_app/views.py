@@ -1,5 +1,7 @@
 from django.views.generic import TemplateView
 from auth_app.forms import ConnexionForm
+from admins_app.dashboard_routes import get_admin_bloc_dashboard_url
+from admins_app.models import AdminBloc
 from blocs_app.models import Blocs
 
 
@@ -31,6 +33,12 @@ class HomePageView(TemplateView):
         if user.is_authenticated:
             context['user_role'] = getattr(user, 'role', 'client')
             context['is_superadmin'] = user.is_superuser
+            if user.role == 'bloc_admin':
+                context['admin_bloc_profil'] = AdminBloc.objects.filter(
+                    user=user,
+                    actif=True,
+                ).select_related('bloc').first()
+                context['admin_bloc_dashboard_url'] = get_admin_bloc_dashboard_url(user)
 
             # Profils spécifiques selon le rôle
             if hasattr(user, 'livreur_profil'):

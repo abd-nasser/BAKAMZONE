@@ -81,7 +81,17 @@
                             </li>
                             {% if request.user.role == 'entreprise' %}
                                 <li>
+                                    <a href="{% url 'entreprise_app:entreprise-detail' %}" class="py-2.5">📊 Tableau de bord entreprise</a>
+                                </li>
+                                <li>
                                     <a href="{% url 'entreprise_app:choix-palier' %}" class="py-2.5">📦 Mon abonnement</a>
+                                </li>
+
+                            {% endif %}
+
+                            {% if request.user.role == 'bloc_admin' and admin_bloc_dashboard_url %}
+                                <li>
+                                    <a href="{{ admin_bloc_dashboard_url }}" class="py-2.5">📊 Mon tableau de bord — {{ admin_bloc_profil.get_poste_display }}</a>
                                 </li>
                             {% endif %}
                             <div class="divider my-1"></div>
@@ -147,18 +157,35 @@
             </div>
 
         <!-- 2. CAS DE L'ADMINISTRATEUR DE BLOC -->
-        {% elif request.user.role == 'administrateur' %}
+        {% elif request.user.role == 'bloc_admin' %}
             <div class="card bg-base-100 rounded-3xl p-6 sm:p-8 shadow-xl border border-base-200 mb-10">
                 <div class="flex items-center gap-4">
                     <div class="w-14 h-14 rounded-2xl bg-amber-100 dark:bg-amber-950/40 text-amber-600 flex items-center justify-center font-bold text-2xl">
                         🏢
                     </div>
                     <div>
-                        <div class="badge badge-warning text-xs font-semibold">Administrateur de Bloc</div>
-                        <h1 class="text-2xl font-bold mt-1">Espace Responsable de Bloc</h1>
-                        <p class="text-sm text-base-content/70">Gestion des stocks physiques, préparation des commandes et affectation des livreurs locaux.</p>
+                        <div class="badge badge-warning text-xs font-semibold">
+                            {{ admin_bloc_profil.get_poste_display|default:"Administrateur de Bloc" }}
+                        </div>
+                        <h1 class="text-2xl font-bold mt-1">
+                            {% if admin_bloc_profil %}{{ admin_bloc_profil.bloc.nom }}{% else %}Espace Administrateur de Bloc{% endif %}
+                        </h1>
+                        <p class="text-sm text-base-content/70">
+                            {% if admin_bloc_profil %}
+                                Poste : {{ admin_bloc_profil.get_poste_display }}.
+                            {% else %}
+                                Aucun profil de bloc actif n'est associé à ce compte.
+                            {% endif %}
+                        </p>
                     </div>
                 </div>
+                {% if admin_bloc_dashboard_url %}
+                    <div class="mt-5">
+                        <a href="{{ admin_bloc_dashboard_url }}" class="btn btn-warning rounded-xl">
+                            Accéder à mon tableau de bord →
+                        </a>
+                    </div>
+                {% endif %}
             </div>
 
         <!-- 3. CAS DU LIVREUR -->

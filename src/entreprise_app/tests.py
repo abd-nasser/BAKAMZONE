@@ -5,8 +5,11 @@ from django.test import TestCase
 from django.urls import reverse
 
 from auth_app.models import User
-from entreprise_app.forms import InscriptionEntrepriseForm
-from entreprise_app.models import Entreprise
+from entreprise_app.forms import (
+    InscriptionEntrepriseForm,
+    MembreAdminsEntrepriseForm,
+)
+from entreprise_app.models import Entreprise, MembreAdminsEntreprise
 
 
 class InscriptionEntrepriseViewTests(TestCase):
@@ -221,3 +224,188 @@ class ChoixPalierEntrepriseViewTests(TestCase):
         self.assertContains(response, "Sélectionnez un choix valide")
         self.entreprise.refresh_from_db()
         self.assertEqual(self.entreprise.palier, "pas_defini")
+
+
+class MembreAdminsEntrepriseFormTests(TestCase):
+    def setUp(self):
+        self.responsable = User.objects.create(
+            telephone="70000555",
+            first_name="Responsable",
+            last_name="Entreprise",
+            role="entreprise",
+        )
+        self.entreprise = Entreprise.objects.create(
+            nom_entreprise="Entreprise Faso",
+            address="Ouagadougou",
+            user_principal=self.responsable,
+        )
+        self.form_data = {
+            "first_name": "Admin",
+            "last_name": "Employé",
+            "telephone": "70000556",
+            "email": "admin@entreprise.test",
+        }
+
+    def test_form_creates_employee_account_and_associates_it_to_enterprise(self):
+        form = MembreAdminsEntrepriseForm(
+            data=self.form_data,
+            entreprise=self.entreprise,
+        )
+
+        self.assertTrue(form.is_valid(), form.errors)
+        membership = form.save()
+
+        self.assertIsInstance(membership, MembreAdminsEntreprise)
+        self.assertEqual(membership.entreprise, self.entreprise)
+        self.assertEqual(membership.ajoute_par, self.responsable)
+        self.assertEqual(membership.membre_admin.telephone, self.form_data["telephone"])
+        self.assertEqual(membership.membre_admin.role, "entreprise_admin")
+        self.assertTrue(
+            membership.membre_admin.check_password(form.generated_password)
+        )
+        self.assertEqual(membership.membre_admin.username, form.generated_username)
+
+    def test_form_rejects_a_telephone_already_used_by_another_account(self):
+        User.objects.create_user(
+            telephone=self.form_data["telephone"],
+            password="ExistingPassword123!",
+            first_name="Existing",
+            last_name="User",
+        )
+        form = MembreAdminsEntrepriseForm(
+            data=self.form_data,
+            entreprise=self.entreprise,
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("telephone", form.errors)
+
+
+class InscriptionEntrepriseAdminViewTests(TestCase):
+    def setUp(self):
+        self.responsable = User.objects.create_user(
+            telephone="70000611",
+            password="StrongPassword123!",
+            first_name="Responsable",
+            last_name="Entreprise",
+            role="entreprise",
+        )
+        self.entreprise = Entreprise.objects.create(
+            user_principal=self.responsable,
+            nom_entreprise="Entreprise Faso",
+            address="Ouagadougou",
+            palier="pro",
+        )
+        self.form_data = {
+            "first_name": "Admin",
+            "last_name": "Employé",
+            "telephone": "70000612",
+            "email": "admin@entreprise.test",
+        }
+        self.url = reverse("entreprise_app:inscription-admin")
+
+    def test_anonymous_user_must_log_in(self):
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 302)
+
+    def test_non_enterprise_user_cannot_open_admin_registration(self):
+        client_user = User.objects.create_user(
+            telephone="70000613",
+            password="StrongPassword123!",
+            first_name="Client",
+            last_name="Test",
+            role="client",
+        )
+        self.client.force_login(client_user)
+
+        response = self.client.get(self.url)
+
+        self.assertRedirects(response, reverse("home_app:home"))
+
+    def test_admin_registration_route_redirects_to_enterprise_dashboard(self):
+        self.client.force_login(self.responsable)
+
+        response = self.client.get(self.url)
+
+        self.assertRedirects(
+            response,
+            reverse("entreprise_app:detail"),
+        )
+
+    def test_enterprise_owner_can_open_dashboard(self):
+        self.client.force_login(self.responsable)
+
+        response = self.client.get(reverse("entreprise_app:detail"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "entreprise_templates/entreprise_detail.html")
+        self.assertContains(response, self.entreprise.nom_entreprise)
+        self.assertContains(response, 'hx-post="/entreprises/administrateurs/inscription/"')
+        self.assertContains(response, 'href="#"')
+        self.assertEqual(response.context["article_count"], 0)
+        self.assertEqual(response.context["admin_count"], 0)
+
+    def test_other_user_cannot_open_enterprise_dashboard(self):
+        client_user = User.objects.create_user(
+            telephone="70000615",
+            password="StrongPassword123!",
+            first_name="Client",
+            last_name="Test",
+            role="client",
+        )
+        self.client.force_login(client_user)
+
+        response = self.client.get(reverse("entreprise_app:detail"))
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_owner_can_create_admin_and_receives_generated_credentials(self):
+        self.client.force_login(self.responsable)
+
+        response = self.client.post(
+            self.url,
+            self.form_data,
+            HTTP_HX_REQUEST="true",
+        )
+
+        membership = MembreAdminsEntreprise.objects.get(
+            membre_admin__telephone=self.form_data["telephone"]
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.headers["HX-Trigger"],
+            "entreprise-admin-register-success",
+        )
+        self.assertContains(response, membership.membre_admin.username)
+        self.assertEqual(membership.entreprise, self.entreprise)
+        self.assertEqual(membership.ajoute_par, self.responsable)
+        self.assertEqual(membership.membre_admin.role, "entreprise_admin")
+        self.assertContains(response, 'id="enterprise-admin-list" hx-swap-oob="outerHTML"')
+
+    def test_admin_quota_is_enforced(self):
+        self.entreprise.palier = "standard"
+        self.entreprise.save(update_fields=["palier"])
+        existing_admin = User.objects.create_user(
+            telephone="70000614",
+            password="StrongPassword123!",
+            first_name="Premier",
+            last_name="Admin",
+            role="entreprise_admin",
+        )
+        MembreAdminsEntreprise.objects.create(
+            entreprise=self.entreprise,
+            membre_admin=existing_admin,
+            ajoute_par=self.responsable,
+        )
+        self.client.force_login(self.responsable)
+
+        response = self.client.post(
+            self.url,
+            self.form_data,
+            HTTP_HX_REQUEST="true",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "quota de 1 administrateur")
+        self.assertFalse(User.objects.filter(telephone=self.form_data["telephone"]).exists())

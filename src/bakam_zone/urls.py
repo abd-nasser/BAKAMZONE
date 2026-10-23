@@ -14,6 +14,7 @@ urlpatterns = [
     path('zones/', include('zones_app.urls', namespace='zones_app')),
     path('clients/', include('clients_app.urls', namespace='clients_app')),
     path('entreprises/', include('entreprise_app.urls', namespace='entreprise_app')),
+    path('articles/', include('articles_app.urls', namespace='articles_app')),
 ]
 
 if settings.DEBUG:

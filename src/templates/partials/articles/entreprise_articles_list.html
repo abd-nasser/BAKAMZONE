@@ -1,0 +1,66 @@
+<section
+    id="entreprise-articles-list"
+    class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
+    aria-live="polite"
+    hx-get="{{ request.get_full_path }}"
+    hx-trigger="articleUpdated from:body, articleDeleted from:body"
+    hx-target="this"
+    hx-swap="outerHTML"
+>
+    {% for article in articles %}
+        <article class="card border border-base-300 bg-base-100 shadow-sm">
+            {% if article.image %}
+                <figure class="aspect-video bg-base-200">
+                    <img src="{{ article.image.url }}" alt="{{ article.nom }}" class="h-full w-full object-cover">
+                </figure>
+            {% endif %}
+            <div class="card-body">
+                <div class="flex items-start justify-between gap-3">
+                    <h2 class="card-title">{{ article.nom }}</h2>
+                    <span class="badge {% if article.disponible %}badge-success{% else %}badge-ghost{% endif %}">
+                        {% if article.disponible %}Disponible{% else %}Indisponible{% endif %}
+                    </span>
+                </div>
+                {% if article.description %}
+                    <p class="text-sm text-base-content/70">{{ article.description }}</p>
+                {% endif %}
+                <p class="font-bold">
+                    {% if article.est_en_promotion %}
+                        <span class="text-base-content/50 line-through">{{ article.prix }}</span>
+                        <span class="text-[#059669]">{{ article.prix_actuel }}</span>
+                    {% else %}
+                        <span>{{ article.prix }}</span>
+                    {% endif %}
+                </p>
+                <p class="text-xs text-base-content/60">
+                    {% if article.en_bloc %}En bloc{% else %}Hors bloc{% endif %}
+                </p>
+                <div class="card-actions mt-2 justify-end">
+                    <a
+                        href="{% url 'articles_app:modifier_article' article.pk %}"
+                        class="btn btn-outline btn-sm rounded-xl"
+                    >
+                        Modifier
+                    </a>
+                    <form
+                        method="post"
+                        action="{% url 'articles_app:supprimer_article' article.pk %}"
+                        hx-post="{% url 'articles_app:supprimer_article' article.pk %}"
+                        hx-target="#entreprise-articles-list"
+                        hx-swap="none"
+                        hx-confirm="Supprimer l'article « {{ article.nom }} » ?"
+                    >
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-error btn-sm rounded-xl">
+                            Supprimer
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </article>
+    {% empty %}
+        <p class="col-span-full rounded-2xl border border-dashed border-base-300 p-8 text-center text-base-content/60">
+            Aucun article ne correspond à ces filtres.
+        </p>
+    {% endfor %}
+</section>

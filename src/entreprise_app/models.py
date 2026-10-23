@@ -46,7 +46,7 @@ class Entreprise(models.Model):
     
     @property
     def nb_articles_actuels(self):
-        return self.atiicles.filter(disponible=True).count()
+        return self.articles.filter(disponible=True).count()
     
     @property 
     def nb_admins_actuels(self):

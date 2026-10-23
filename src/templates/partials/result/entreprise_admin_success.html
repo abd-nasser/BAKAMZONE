@@ -1,0 +1,13 @@
+<div class="alert alert-success rounded-2xl" role="status" aria-live="polite">
+    <div>
+        <p class="font-bold">Le compte administrateur de {{ membre_admin.membre_admin.get_full_name }} a été créé.</p>
+        <p>Identifiant : <strong>{{ username }}</strong></p>
+        <p>Mot de passe temporaire : <strong>{{ password }}</strong></p>
+        <p class="text-xs">Transmettez ces identifiants à l'employé. Le mot de passe ne sera plus affiché après avoir quitté cette page.</p>
+    </div>
+</div>
+{% if dashboard_refresh %}
+    <p id="enterprise-admin-count" hx-swap-oob="outerHTML" class="text-3xl font-black text-[#059669]">{{ admin_count }}<span class="text-base font-semibold text-base-content/50"> / {{ entreprise.quota_admins }}</span></p>
+    <span id="enterprise-admin-badge" hx-swap-oob="outerHTML" class="badge {% if can_add_admin %}badge-success{% else %}badge-warning{% endif %}">{{ admin_count }} / {{ entreprise.quota_admins }}</span>
+    {% include "partials/entreprise_admin_list.html" with oob=True %}
+{% endif %}

@@ -1,0 +1,26 @@
+<section
+    id="gestionnaire-stock-entreprises"
+    class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
+    aria-live="polite"
+>
+    {% for entreprise in entreprises %}
+        <article class="card border border-base-300 bg-base-100 shadow-sm">
+            <div class="card-body">
+                <h3 class="card-title">{{ entreprise.nom_entreprise }}</h3>
+                <p class="text-sm text-base-content/70">{{ entreprise.address }}</p>
+                <div class="mt-2 flex items-center justify-between gap-3">
+                    <span class="text-sm text-base-content/60">
+                        {{ entreprise.article_count }} article(s)
+                    </span>
+                    <span class="badge {% if entreprise.subscription_active %}badge-success{% else %}badge-ghost{% endif %}">
+                        {% if entreprise.subscription_active %}Abonnement actif{% else %}Abonnement inactif{% endif %}
+                    </span>
+                </div>
+            </div>
+        </article>
+    {% empty %}
+        <p class="col-span-full rounded-2xl border border-dashed border-base-300 p-8 text-center text-base-content/60">
+            Aucune entreprise ne correspond à cette recherche.
+        </p>
+    {% endfor %}
+</section>

@@ -100,7 +100,7 @@ class AdminBlocForms(forms.ModelForm):
             last_name=self.cleaned_data['last_name'],
             telephone=self.cleaned_data['telephone'],
             email=self.cleaned_data.get('email') or '',
-            role='administrateur',
+            role='bloc_admin',
         )
         print(f"Generated username: {self.generated_username}, password: {self.generated_password}")
         user.set_password(self.generated_password)

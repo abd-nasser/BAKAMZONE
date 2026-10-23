@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}Mes articles | BAKAMZONE{% endblock %}
+
+{% block content %}
+<main class="mx-auto max-w-7xl space-y-6 px-4 py-10">
+    <header class="flex flex-wrap items-center justify-between gap-4">
+        <div>
+            <p class="text-sm font-semibold text-base-content/60">{{ entreprise.nom_entreprise }}</p>
+            <h1 class="text-3xl font-black">Mes articles</h1>
+            <p class="mt-1 text-sm text-base-content/60">
+                {{ nb_articles }} / {{ quota_articles }} articles disponibles
+            </p>
+        </div>
+        <div class="flex gap-3">
+            <a href="{% url 'entreprise_app:entreprise-detail' %}" class="btn btn-ghost rounded-xl">Tableau de bord</a>
+            {% if can_add_article %}
+                <a href="{% url 'articles_app:ajoute_article' %}" class="btn btn-success rounded-xl">Ajouter un article</a>
+            {% endif %}
+        </div>
+    </header>
+
+    <form
+        method="get"
+        action="{% url 'articles_app:entreprise_articles' %}"
+        hx-get="{% url 'articles_app:entreprise_articles' %}"
+        hx-trigger="input changed delay:300ms, change"
+        hx-target="#entreprise-articles-list"
+        hx-swap="outerHTML"
+        hx-push-url="true"
+        class="grid gap-4 rounded-2xl border border-base-300 bg-base-100 p-4 sm:grid-cols-3"
+    >
+        <div class="form-control">
+            <label class="label" for="article-search">
+                <span class="label-text font-semibold">Rechercher</span>
+            </label>
+            <input
+                id="article-search"
+                type="search"
+                name="q"
+                value="{{ search_query }}"
+                placeholder="Nom ou description"
+                class="input input-bordered w-full rounded-xl"
+            >
+        </div>
+        <div class="form-control">
+            <label class="label" for="article-availability">
+                <span class="label-text font-semibold">Disponibilité</span>
+            </label>
+            <select id="article-availability" name="disponible" class="select select-bordered w-full rounded-xl">
+                <option value="" {% if not disponible_filter %}selected{% endif %}>Tous</option>
+                <option value="oui" {% if disponible_filter == "oui" %}selected{% endif %}>Disponibles</option>
+                <option value="non" {% if disponible_filter == "non" %}selected{% endif %}>Indisponibles</option>
+            </select>
+        </div>
+        <div class="form-control">
+            <label class="label" for="article-block-status">
+                <span class="label-text font-semibold">Présence dans un bloc</span>
+            </label>
+            <select id="article-block-status" name="en_bloc" class="select select-bordered w-full rounded-xl">
+                <option value="" {% if not en_bloc_filter %}selected{% endif %}>Tous</option>
+                <option value="oui" {% if en_bloc_filter == "oui" %}selected{% endif %}>En bloc</option>
+                <option value="non" {% if en_bloc_filter == "non" %}selected{% endif %}>Hors bloc</option>
+            </select>
+        </div>
+    </form>
+
+    {% include "partials/articles/entreprise_articles_list.html" %}
+</main>
+{% endblock %}

@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}Gestion des stocks | BAKAMZONE{% endblock %}
+
+{% block content %}
+<main class="mx-auto max-w-7xl space-y-6 px-4 py-10">
+    <header class="rounded-3xl bg-gradient-to-br from-[#047857] to-[#059669] p-6 text-white shadow-xl sm:p-9">
+        <p class="text-sm font-semibold uppercase tracking-wider text-white/75">Tableau de bord — Gestionnaire de stock</p>
+        <h1 class="mt-2 text-3xl font-black">{{ bloc.nom }}</h1>
+        <p class="mt-2 text-sm text-white/80">
+            Consultez les entreprises et recherchez celles dont vous gérez les articles dans ce bloc.
+        </p>
+    </header>
+
+    <section class="space-y-5">
+        <div>
+            <h2 class="text-2xl font-bold">Entreprises</h2>
+            <p class="text-sm text-base-content/60">
+                {{ entreprises|length }} entreprise(s) correspond(ent) à votre recherche.
+            </p>
+        </div>
+
+        <form
+            method="get"
+            action="{% url 'admins_app:tableau-de-bord-stock' %}"
+            hx-get="{% url 'admins_app:tableau-de-bord-stock' %}"
+            hx-trigger="input changed delay:300ms"
+            hx-target="#gestionnaire-stock-entreprises"
+            hx-swap="outerHTML"
+            hx-push-url="true"
+        >
+            <label class="form-control">
+                <span class="label">
+                    <span class="label-text font-semibold">Rechercher une entreprise</span>
+                </span>
+                <input
+                    type="search"
+                    name="q"
+                    value="{{ search_query }}"
+                    placeholder="Nom ou adresse de l'entreprise"
+                    class="input input-bordered w-full rounded-xl"
+                >
+            </label>
+        </form>
+
+        {% include "partials/admins/gestionnaire_stock_entreprises.html" %}
+    </section>
+</main>
+{% endblock %}

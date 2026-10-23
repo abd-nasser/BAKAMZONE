@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}Supprimer {{ article.nom }} | BAKAMZONE{% endblock %}
+
+{% block content %}
+<main class="mx-auto max-w-2xl px-4 py-10">
+    <section class="card border border-base-300 bg-base-100 shadow-sm">
+        <div class="card-body">
+            <h1 class="card-title text-2xl">Supprimer l'article</h1>
+            <p>Confirmez-vous la suppression de « {{ article.nom }} » ? Cette action est définitive.</p>
+            <form
+                method="post"
+                action="{% url 'articles_app:supprimer_article' article.pk %}"
+                hx-post="{% url 'articles_app:supprimer_article' article.pk %}"
+                hx-target="#article-delete-result"
+                hx-swap="innerHTML"
+            >
+                {% csrf_token %}
+                <div id="article-delete-result" aria-live="polite"></div>
+                <div class="mt-4 flex gap-3">
+                    <button type="submit" class="btn btn-error rounded-xl">Confirmer la suppression</button>
+                    <a href="{% url 'articles_app:entreprise_articles' %}" class="btn btn-ghost rounded-xl">Annuler</a>
+                </div>
+            </form>
+        </div>
+    </section>
+</main>
+{% endblock %}

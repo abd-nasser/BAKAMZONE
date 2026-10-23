@@ -6,7 +6,7 @@ from blocs_app.models import Blocs
 class AdminBloc(models.Model):
     """
     Profil Administrateur de Bloc (membre de l'équipe de gestion locale d'un Bloc BAKAMZONE).
-    Chaque administrateur est un utilisateur avec role='administrateur', affecté à un Bloc précis.
+    Chaque administrateur est un utilisateur avec role='bloc_admin', affecté à un Bloc précis.
     """
     POSTE_CHOICES = [
         ('responsable', 'Responsable de Bloc (Chef d’équipe)'),

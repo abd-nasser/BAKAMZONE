@@ -1,0 +1,10 @@
+<div class="alert alert-error rounded-2xl" role="alert" aria-live="assertive">
+    <div>
+        <p class="font-bold">L'article n'a pas pu être ajouté :</p>
+        <ul class="list-disc list-inside">
+            {% for label, error in errors %}
+                <li>{{ label }} : {{ error }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
