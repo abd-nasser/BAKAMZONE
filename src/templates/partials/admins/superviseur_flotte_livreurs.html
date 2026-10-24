@@ -1,0 +1,43 @@
+<section
+    id="superviseur-flotte-livreurs"
+    class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
+    aria-live="polite"
+>
+    {% for livreur in livreurs %}
+        <article class="card border border-base-300 bg-base-100 shadow-sm">
+            <div class="card-body">
+                <h3 class="card-title">{{ livreur.user.get_full_name }}</h3>
+                <p class="text-sm text-base-content/70">{{ livreur.user.telephone }}</p>
+                <div class="mt-2 flex flex-wrap gap-2">
+                    <span class="badge badge-outline">{{ livreur.get_type_vehicule_display }}</span>
+                    <span class="badge {% if livreur.actif %}badge-success{% else %}badge-ghost{% endif %}">
+                        {% if livreur.actif %}Actif{% else %}Inactif{% endif %}
+                    </span>
+                    <span class="badge {% if livreur.disponible %}badge-info{% else %}badge-ghost{% endif %}">
+                        {% if livreur.disponible %}Disponible{% else %}Indisponible{% endif %}
+                    </span>
+                </div>
+                <p class="mt-2 text-sm text-base-content/70">
+                    Vérification : {{ livreur.get_statut_verification_display }}
+                </p>
+                <p class="text-sm text-base-content/70">
+                    {{ livreur.nb_livraisons }} livraison(s) · Note {{ livreur.note_moyenne }}
+                </p>
+                {% if livreur.google_maps_url %}
+                    <a
+                        href="{{ livreur.google_maps_url }}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="btn btn-outline btn-success mt-3 rounded-xl"
+                    >
+                        Voir la position
+                    </a>
+                {% endif %}
+            </div>
+        </article>
+    {% empty %}
+        <p class="col-span-full rounded-2xl border border-dashed border-base-300 p-8 text-center text-base-content/60">
+            Aucun livreur ne correspond à cette recherche.
+        </p>
+    {% endfor %}
+</section>

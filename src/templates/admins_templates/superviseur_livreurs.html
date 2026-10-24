@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} | BAKAMZONE{% endblock %}
+
+{% block content %}
+<main class="mx-auto max-w-7xl space-y-6 px-4 py-10">
+    <header class="rounded-3xl bg-gradient-to-br from-[#047857] to-[#059669] p-6 text-white shadow-xl sm:p-9">
+        <p class="text-sm font-semibold uppercase tracking-wider text-white/75">Tableau de bord — Superviseur de flotte</p>
+        <h1 class="mt-2 text-3xl font-black">{{ bloc.nom }}</h1>
+        <p class="mt-2 text-sm text-white/80">{{ description }}</p>
+    </header>
+
+    <section class="space-y-5">
+        <div>
+            <h2 class="text-2xl font-bold">Livreurs du bloc</h2>
+            <p class="text-sm text-base-content/60">
+                {{ livreurs|length }} livreur(s) correspondent à votre recherche.
+            </p>
+        </div>
+
+        <form
+            method="get"
+            action="{% url 'admins_app:tableau-de-bord-flotte' %}"
+            hx-get="{% url 'admins_app:tableau-de-bord-flotte' %}"
+            hx-trigger="input changed delay:300ms"
+            hx-target="#superviseur-flotte-livreurs"
+            hx-swap="outerHTML"
+            hx-push-url="true"
+        >
+            <label class="form-control">
+                <span class="label">
+                    <span class="label-text font-semibold">Rechercher un livreur</span>
+                </span>
+                <input
+                    type="search"
+                    name="q"
+                    value="{{ search_query }}"
+                    placeholder="Nom, prénom, téléphone ou identifiant"
+                    class="input input-bordered w-full rounded-xl"
+                >
+            </label>
+        </form>
+
+        {% include "partials/admins/superviseur_flotte_livreurs.html" %}
+    </section>
+</main>
+{% endblock %}

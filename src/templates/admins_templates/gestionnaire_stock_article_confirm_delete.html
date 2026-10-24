@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Supprimer {{ article.nom }} | BAKAMZONE{% endblock %}
+
+{% block content %}
+<main class="mx-auto max-w-2xl px-4 py-10">
+    <section class="card border border-base-300 bg-base-100 shadow-sm">
+        <div class="card-body">
+            <h1 class="card-title text-2xl">Supprimer l'article</h1>
+            <p>
+                Confirmez-vous la suppression de « {{ article.nom }} » du catalogue de
+                {{ entreprise.nom_entreprise }} ?
+            </p>
+            <p class="text-sm text-warning">
+                La suppression retire aussi les stocks de cet article dans les autres blocs.
+            </p>
+            <form method="post" class="mt-4 flex flex-wrap gap-3">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-error rounded-xl">
+                    Confirmer la suppression
+                </button>
+                <a
+                    href="{% url 'admins_app:entreprise-detail-stock' entreprise.pk %}"
+                    class="btn btn-ghost rounded-xl"
+                >
+                    Annuler
+                </a>
+            </form>
+        </div>
+    </section>
+</main>
+{% endblock %}

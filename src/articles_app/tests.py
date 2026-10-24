@@ -100,6 +100,7 @@ class ArticleEntrepriseFormTests(TestCase):
         AdminBloc.objects.create(
             user=bloc_admin,
             bloc=bloc,
+            poste="gestionnaire_stock",
             actif=True,
         )
         form = ArticleBlocAdminForm(
@@ -132,7 +133,7 @@ class ArticleEntrepriseFormTests(TestCase):
 
         self.assertFalse(form.is_valid())
         self.assertIn(
-            "Aucun bloc actif n'est associé à cet administrateur.",
+            "Aucun poste de gestionnaire de stock actif n'est associé à cet administrateur.",
             form.non_field_errors(),
         )
 
@@ -145,6 +146,33 @@ class ArticleEntrepriseFormTests(TestCase):
         self.assertFalse(form.is_valid())
         self.assertIn(
             "Seuls les administrateurs de bloc peuvent utiliser ce formulaire.",
+            form.non_field_errors(),
+        )
+
+    def test_block_admin_form_rejects_other_active_postes(self):
+        bloc = Blocs.objects.create(
+            nom="Bloc Karpala",
+            ville="ouagadougou",
+            quartier="karpala",
+        )
+        bloc_admin = User.objects.create(
+            telephone="70000116",
+            role="bloc_admin",
+        )
+        AdminBloc.objects.create(
+            user=bloc_admin,
+            bloc=bloc,
+            poste="assistant",
+            actif=True,
+        )
+        form = ArticleBlocAdminForm(
+            data=self.article_data | {"entreprise": self.entreprise.pk},
+            user=bloc_admin,
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn(
+            "Aucun poste de gestionnaire de stock actif n'est associé à cet administrateur.",
             form.non_field_errors(),
         )
 
@@ -190,6 +218,249 @@ class ArticleEntrepriseFormTests(TestCase):
             "Votre compte n'est associé à aucune entreprise autorisée.",
         ):
             form.save()
+
+
+class ArticleBlocAdminCRUDViewTests(TestCase):
+    def setUp(self):
+        self.bloc = Blocs.objects.create(
+            nom="Bloc Tampouy",
+            ville="ouagadougou",
+            quartier="tampouy",
+        )
+        self.user = User.objects.create(
+            telephone="70000117",
+            role="bloc_admin",
+        )
+        AdminBloc.objects.create(
+            user=self.user,
+            bloc=self.bloc,
+            poste="gestionnaire_stock",
+            actif=True,
+        )
+        self.entreprise = Entreprise.objects.create(
+            user_principal=User.objects.create(
+                telephone="70000118",
+                role="entreprise",
+            ),
+            nom_entreprise="Entreprise Faso",
+            address="Ouagadougou",
+            palier="standard",
+        )
+        self.article_data = {
+            "nom": "Riz local",
+            "description": "Sac de riz local",
+            "prix": "2500.00",
+            "disponible": "on",
+        }
+        self.detail_url = reverse(
+            "admins_app:entreprise-detail-stock",
+            args=[self.entreprise.pk],
+        )
+        self.create_url = reverse(
+            "articles_app:bloc-admin-ajouter-article",
+            args=[self.entreprise.pk],
+        )
+        self.client.force_login(self.user)
+
+    def test_create_form_is_in_enterprise_context_and_assigns_company(self):
+        detail_response = self.client.get(self.detail_url)
+
+        self.assertEqual(detail_response.status_code, 200)
+        self.assertNotIn(
+            "entreprise",
+            detail_response.context["create_article_form"].fields,
+        )
+        self.assertContains(
+            detail_response,
+            f'action="{self.create_url}"',
+        )
+
+        response = self.client.get(self.create_url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("entreprise", response.context["form"].fields)
+
+        response = self.client.post(self.create_url, self.article_data)
+
+        self.assertRedirects(response, self.detail_url)
+        article = Article.objects.get(nom="Riz local")
+        self.assertEqual(article.entreprise, self.entreprise)
+        self.assertTrue(article.en_bloc)
+        self.assertTrue(
+            StockBloc.objects.filter(article=article, bloc=self.bloc).exists()
+        )
+
+    def test_create_ignores_another_enterprise_id_and_uses_url_enterprise(self):
+        other_entreprise = Entreprise.objects.create(
+            user_principal=User.objects.create(
+                telephone="70000119",
+                role="entreprise",
+            ),
+            nom_entreprise="Autre entreprise",
+            address="Bobo-Dioulasso",
+        )
+
+        response = self.client.post(
+            self.create_url,
+            self.article_data | {"entreprise": other_entreprise.pk},
+        )
+
+        self.assertRedirects(response, self.detail_url)
+        article = Article.objects.get(nom="Riz local")
+        self.assertEqual(article.entreprise, self.entreprise)
+
+    def test_invalid_create_reopens_modal_with_form_errors(self):
+        response = self.client.post(
+            self.create_url,
+            {"nom": "Riz local", "disponible": "on"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(
+            response,
+            "admins_templates/gestionnaire_stock_entreprise_detail.html",
+        )
+        self.assertIn("prix", response.context["create_article_form"].errors)
+        self.assertContains(
+            response,
+            "document.getElementById('create-article-modal').showModal()",
+        )
+        self.assertFalse(Article.objects.exists())
+
+    def test_create_is_blocked_when_enterprise_article_quota_is_reached(self):
+        Article.objects.bulk_create([
+            Article(
+                entreprise=self.entreprise,
+                nom=f"Article {index}",
+                prix="100.00",
+            )
+            for index in range(self.entreprise.quota_articles)
+        ])
+
+        response = self.client.post(self.create_url, self.article_data)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(
+            response,
+            "admins_templates/gestionnaire_stock_entreprise_detail.html",
+        )
+        self.assertTrue(
+            any(
+                "quota d'articles de cette entreprise est atteint"
+                in error.lower()
+                for error in response.context[
+                    "create_article_form"
+                ].non_field_errors()
+            )
+        )
+        self.assertContains(
+            response,
+            "document.getElementById('create-article-modal').showModal()",
+        )
+        self.assertEqual(
+            Article.objects.filter(entreprise=self.entreprise).count(),
+            self.entreprise.quota_articles,
+        )
+
+    def test_manager_can_update_article_and_get_stock_for_their_block(self):
+        article = Article.objects.create(
+            entreprise=self.entreprise,
+            nom="Riz local",
+            prix="2500.00",
+        )
+        update_url = reverse(
+            "articles_app:bloc-admin-modifier-article",
+            args=[self.entreprise.pk, article.pk],
+        )
+
+        response = self.client.post(
+            update_url,
+            self.article_data | {"nom": "Riz local modifié", "prix": "3000.00"},
+        )
+
+        self.assertRedirects(response, self.detail_url)
+        article.refresh_from_db()
+        self.assertEqual(article.nom, "Riz local modifié")
+        stock = StockBloc.objects.get(article=article, bloc=self.bloc)
+        self.assertEqual(stock.quantite, 0)
+
+    def test_invalid_update_reopens_the_matching_edit_modal_with_errors(self):
+        article = Article.objects.create(
+            entreprise=self.entreprise,
+            nom="Riz local",
+            prix="2500.00",
+        )
+        update_url = reverse(
+            "articles_app:bloc-admin-modifier-article",
+            args=[self.entreprise.pk, article.pk],
+        )
+
+        response = self.client.post(
+            update_url,
+            {"nom": "Riz modifié", "prix": ""},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.context["articles"][0].admin_form.errors.keys(),
+            {"prix"},
+        )
+        self.assertContains(
+            response,
+            f"document.getElementById('edit-article-modal-{article.pk}').showModal()",
+        )
+
+    def test_manager_can_delete_article(self):
+        article = Article.objects.create(
+            entreprise=self.entreprise,
+            nom="Riz local",
+            prix="2500.00",
+        )
+        StockBloc.objects.create(article=article, bloc=self.bloc, quantite=4)
+        delete_url = reverse(
+            "articles_app:bloc-admin-supprimer-article",
+            args=[self.entreprise.pk, article.pk],
+        )
+
+        response = self.client.get(delete_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "autres blocs")
+
+        response = self.client.post(delete_url)
+
+        self.assertRedirects(response, self.detail_url)
+        self.assertFalse(Article.objects.filter(pk=article.pk).exists())
+        self.assertFalse(StockBloc.objects.filter(article=article).exists())
+
+    def test_manager_cannot_manage_article_from_another_enterprise(self):
+        other_entreprise = Entreprise.objects.create(
+            user_principal=User.objects.create(
+                telephone="70000120",
+                role="entreprise",
+            ),
+            nom_entreprise="Autre entreprise",
+            address="Bobo-Dioulasso",
+        )
+        article = Article.objects.create(
+            entreprise=other_entreprise,
+            nom="Article privé",
+            prix="100.00",
+        )
+        update_url = reverse(
+            "articles_app:bloc-admin-modifier-article",
+            args=[self.entreprise.pk, article.pk],
+        )
+
+        response = self.client.get(update_url)
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_other_post_cannot_use_article_crud(self):
+        AdminBloc.objects.filter(user=self.user).update(poste="assistant")
+
+        response = self.client.get(self.create_url)
+
+        self.assertEqual(response.status_code, 403)
 
 
 class AjouteArticleViewTests(TestCase):

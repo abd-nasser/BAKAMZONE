@@ -16,6 +16,12 @@
                         {% if entreprise.subscription_active %}Abonnement actif{% else %}Abonnement inactif{% endif %}
                     </span>
                 </div>
+                <a
+                    href="{% url 'admins_app:entreprise-detail-stock' entreprise.pk %}"
+                    class="btn btn-outline btn-success mt-3 rounded-xl"
+                >
+                    Voir l'entreprise et ses articles
+                </a>
             </div>
         </article>
     {% empty %}

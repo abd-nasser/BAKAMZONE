@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block title %}{{ entreprise.nom_entreprise }} | Gestionnaire de stock{% endblock %}
+
+{% block content %}
+<main class="mx-auto max-w-7xl space-y-6 px-4 py-10">
+    <header class="rounded-3xl bg-gradient-to-br from-[#047857] to-[#059669] p-6 text-white shadow-xl sm:p-9">
+        <a href="{% url 'admins_app:tableau-de-bord-stock' %}" class="link link-hover text-sm text-white/80">
+            Retour aux entreprises
+        </a>
+        <p class="mt-5 text-sm font-semibold uppercase tracking-wider text-white/75">
+            {{ bloc.nom }} — Gestionnaire de stock
+        </p>
+        <h1 class="mt-2 text-3xl font-black">{{ entreprise.nom_entreprise }}</h1>
+        <p class="mt-2 text-sm text-white/80">{{ entreprise.address }}</p>
+    </header>
+
+    <section class="card border border-base-300 bg-base-100 shadow-sm">
+        <div class="card-body">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                    <h2 class="card-title text-2xl">Articles de l'entreprise</h2>
+                    <p class="text-sm text-base-content/60">
+                        Le stock affiché correspond au bloc {{ bloc.nom }}.
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    aria-haspopup="dialog"
+                    aria-controls="create-article-modal"
+                    onclick="document.getElementById('create-article-modal').showModal()"
+                    class="btn btn-success rounded-xl"
+                >
+                    Ajouter un article
+                </button>
+            </div>
+
+            <div class="mt-4 overflow-x-auto">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Article</th>
+                            <th>Prix</th>
+                            <th>Disponible</th>
+                            <th>Stock du bloc</th>
+                            <th><span class="sr-only">Actions</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for article in articles %}
+                            <tr>
+                                <td>
+                                    <div class="font-semibold">{{ article.nom }}</div>
+                                    <div class="text-sm text-base-content/60">{{ article.description|default:"—" }}</div>
+                                </td>
+                                <td>{{ article.prix_actuel }} FCFA</td>
+                                <td>
+                                    {% if article.disponible %}
+                                        <span class="badge badge-success">Oui</span>
+                                    {% else %}
+                                        <span class="badge badge-ghost">Non</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% for stock in article.stock_du_bloc %}
+                                        {{ stock.quantite }}
+                                    {% empty %}
+                                        Pas dans le stock du bloc
+                                    {% endfor %}
+                                </td>
+                                <td>
+                                    <div class="flex flex-wrap justify-end gap-2">
+                                        <button
+                                            type="button"
+                                            onclick="document.getElementById('edit-article-modal-{{ article.pk }}').showModal()"
+                                            aria-haspopup="dialog"
+                                            aria-controls="edit-article-modal-{{ article.pk }}"
+                                            class="btn btn-sm btn-outline rounded-lg"
+                                        >
+                                            Modifier
+                                        </button>
+                                        <button
+                                            type="button"
+                                            aria-haspopup="dialog"
+                                            aria-controls="delete-article-modal-{{ article.pk }}"
+                                            onclick="document.getElementById('delete-article-modal-{{ article.pk }}').showModal()"
+                                            class="btn btn-sm btn-error btn-outline rounded-lg"
+                                        >
+                                            Supprimer
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="5" class="py-10 text-center text-base-content/60">
+                                    Aucun article n'est encore associé à cette entreprise.
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <dialog id="create-article-modal" aria-labelledby="create-article-title" class="modal modal-bottom sm:modal-middle">
+        <div class="modal-box max-w-2xl">
+            <form method="dialog">
+                <button type="submit" class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" aria-label="Fermer">x</button>
+            </form>
+            <h2 id="create-article-title" class="text-2xl font-bold">Ajouter un article</h2>
+            <p class="mt-1 text-sm text-base-content/60">
+                L'article sera automatiquement associé à {{ entreprise.nom_entreprise }}.
+            </p>
+            <form
+                method="post"
+                enctype="multipart/form-data"
+                action="{% url 'articles_app:bloc-admin-ajouter-article' entreprise.pk %}"
+                class="mt-5 space-y-4"
+            >
+                {% csrf_token %}
+                {% if create_article_form.non_field_errors %}
+                    <div class="alert alert-error" role="alert">
+                        {% for error in create_article_form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+                    </div>
+                {% endif %}
+                {% include "modal/admins/gestionnaire_stock_article_form_fields.html" with form=create_article_form %}
+                <button type="submit" class="btn btn-success rounded-xl">Enregistrer l'article</button>
+            </form>
+        </div>
+        <form method="dialog" class="modal-backdrop"><button type="submit">Fermer</button></form>
+    </dialog>
+
+    {% for article in articles %}
+        <dialog id="edit-article-modal-{{ article.pk }}" aria-labelledby="edit-article-title-{{ article.pk }}" class="modal modal-bottom sm:modal-middle">
+            <div class="modal-box max-w-2xl">
+                <form method="dialog">
+                    <button type="submit" class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" aria-label="Fermer">x</button>
+                </form>
+                <h2 id="edit-article-title-{{ article.pk }}" class="text-2xl font-bold">Modifier {{ article.nom }}</h2>
+                <p class="mt-1 text-sm text-base-content/60">
+                    Entreprise : {{ entreprise.nom_entreprise }} — Bloc : {{ bloc.nom }}
+                </p>
+                <form
+                    method="post"
+                    enctype="multipart/form-data"
+                    action="{% url 'articles_app:bloc-admin-modifier-article' entreprise.pk article.pk %}"
+                    class="mt-5 space-y-4"
+                >
+                    {% csrf_token %}
+                    {% if article.admin_form.non_field_errors %}
+                        <div class="alert alert-error" role="alert">
+                            {% for error in article.admin_form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+                        </div>
+                    {% endif %}
+                    {% include "modal/admins/gestionnaire_stock_article_form_fields.html" with form=article.admin_form %}
+                    <button type="submit" class="btn btn-success rounded-xl">Enregistrer les modifications</button>
+                </form>
+            </div>
+            <form method="dialog" class="modal-backdrop"><button type="submit">Fermer</button></form>
+        </dialog>
+
+        <dialog id="delete-article-modal-{{ article.pk }}" aria-labelledby="delete-article-title-{{ article.pk }}" class="modal modal-bottom sm:modal-middle">
+            <div class="modal-box max-w-lg">
+                <form method="dialog">
+                    <button type="submit" class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" aria-label="Fermer">x</button>
+                </form>
+                <h2 id="delete-article-title-{{ article.pk }}" class="text-2xl font-bold">Supprimer l'article</h2>
+                <p class="mt-3">
+                    Confirmez-vous la suppression de « {{ article.nom }} » du catalogue de
+                    {{ entreprise.nom_entreprise }} ?
+                </p>
+                <p class="mt-2 text-sm text-warning">
+                    La suppression retire aussi les stocks de cet article dans les autres blocs.
+                </p>
+                <form
+                    method="post"
+                    action="{% url 'articles_app:bloc-admin-supprimer-article' entreprise.pk article.pk %}"
+                    class="mt-5 flex flex-wrap gap-3"
+                >
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-error rounded-xl">Confirmer la suppression</button>
+                    <button type="button" class="btn btn-ghost rounded-xl" onclick="document.getElementById('delete-article-modal-{{ article.pk }}').close()">Annuler</button>
+                </form>
+            </div>
+            <form method="dialog" class="modal-backdrop"><button type="submit">Fermer</button></form>
+        </dialog>
+    {% endfor %}
+
+    {% if open_modal %}
+        <script>document.getElementById('{{ open_modal }}').showModal();</script>
+    {% endif %}
+</main>
+{% endblock %}

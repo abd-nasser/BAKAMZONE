@@ -140,12 +140,16 @@ class ArticleBlocAdminForm(forms.ModelForm):
             }),
         }
 
-    def __init__(self, *args, user, **kwargs):
+    def __init__(self, *args, user, entreprise=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.user = user
-        self.fields["entreprise"].queryset = Entreprise.objects.order_by(
-            "nom_entreprise"
-        )
+        self.entreprise = entreprise
+        if entreprise is None:
+            self.fields["entreprise"].queryset = Entreprise.objects.order_by(
+                "nom_entreprise"
+            )
+        else:
+            self.fields.pop("entreprise")
         self.fields["date_expiration"].input_formats = [
             "%Y-%m-%dT%H:%M",
             *self.fields["date_expiration"].input_formats,
@@ -160,11 +164,12 @@ class ArticleBlocAdminForm(forms.ModelForm):
 
         self.admin_bloc = AdminBloc.objects.filter(
             user=self.user,
+            poste="gestionnaire_stock",
             actif=True,
         ).select_related("bloc").first()
         if self.admin_bloc is None:
             raise forms.ValidationError(
-                "Aucun bloc actif n'est associé à cet administrateur."
+                "Aucun poste de gestionnaire de stock actif n'est associé à cet administrateur."
             )
 
         return cleaned_data
@@ -172,12 +177,14 @@ class ArticleBlocAdminForm(forms.ModelForm):
     @transaction.atomic
     def save(self, commit=True):
         article = super().save(commit=False)
+        if self.entreprise is not None:
+            article.entreprise = self.entreprise
         article.en_bloc = True
 
         if commit:
             article.save()
             self.save_m2m()
-            StockBloc.objects.create(
+            StockBloc.objects.get_or_create(
                 article=article,
                 bloc=self.admin_bloc.bloc,
             )
