@@ -79,6 +79,11 @@
                             <li>
                                 <a href="{% url 'home_app:home' %}" class="py-2.5">🏠 Accueil BAKAMZONE</a>
                             </li>
+                            {% if request.user.role == 'client' %}
+                                <li>
+                                    <a href="{% url 'clients_app:tableau-de-bord' %}" class="py-2.5">🛍️ Mon espace client</a>
+                                </li>
+                            {% endif %}
                             {% if request.user.role == 'entreprise' %}
                                 <li>
                                     <a href="{% url 'entreprise_app:entreprise-detail' %}" class="py-2.5">📊 Tableau de bord entreprise</a>

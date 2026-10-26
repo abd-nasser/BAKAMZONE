@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}Profil de {{ livreur.user.get_full_name }} | BAKAMZONE{% endblock %}
+
+{% block content %}
+<main class="mx-auto max-w-4xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
+    <a href="{% url 'clients_app:tableau-de-bord' %}#livreurs" class="btn btn-ghost rounded-xl">
+        ← Retour aux livreurs
+    </a>
+
+    <article class="card overflow-hidden border border-base-300 bg-base-100 shadow-xl">
+        {% if livreur.photo_profil %}
+            <figure class="max-h-96 bg-base-200">
+                <img
+                    src="{{ livreur.photo_profil.url }}"
+                    alt="Photo de {{ livreur.user.get_full_name }}"
+                    class="max-h-96 w-full object-cover"
+                >
+            </figure>
+        {% endif %}
+        <div class="card-body gap-5 p-6 sm:p-9">
+            <header class="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                    <p class="text-sm font-semibold uppercase tracking-wider text-[#059669]">Profil livreur</p>
+                    <h1 class="mt-1 text-3xl font-black">{{ livreur.user.get_full_name }}</h1>
+                    <p class="mt-1 text-base-content/70">{{ livreur.get_type_vehicule_display }}</p>
+                </div>
+                <span class="badge {% if livreur.disponible %}badge-success{% else %}badge-ghost{% endif %} badge-lg">
+                    {% if livreur.disponible %}Disponible{% else %}Indisponible{% endif %}
+                </span>
+            </header>
+
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div class="rounded-2xl bg-base-200 p-4">
+                    <p class="text-sm text-base-content/60">Bloc</p>
+                    <p class="mt-1 font-bold">{{ livreur.blocs.nom }}</p>
+                    <p class="text-sm text-base-content/70">{{ livreur.blocs.get_quartier_display }} · {{ livreur.blocs.get_ville_display }}</p>
+                </div>
+                <div class="rounded-2xl bg-base-200 p-4">
+                    <p class="text-sm text-base-content/60">Zone actuelle</p>
+                    <p class="mt-1 font-bold">
+                        {% if livreur.zone_actuelle %}{{ livreur.zone_actuelle.nom }}{% else %}Non renseignée{% endif %}
+                    </p>
+                </div>
+                <div class="rounded-2xl bg-base-200 p-4">
+                    <p class="text-sm text-base-content/60">Note moyenne</p>
+                    <p class="mt-1 font-bold">★ {{ livreur.note_moyenne }}</p>
+                </div>
+                <div class="rounded-2xl bg-base-200 p-4">
+                    <p class="text-sm text-base-content/60">Livraisons effectuées</p>
+                    <p class="mt-1 font-bold">{{ livreur.nb_livraisons }}</p>
+                </div>
+            </div>
+
+            <div class="card-actions justify-end">
+                <a href="#" class="btn rounded-xl bg-[#059669] text-white hover:bg-[#047857]">
+                    Démarrer un chat
+                </a>
+            </div>
+        </div>
+    </article>
+</main>
+{% endblock %}

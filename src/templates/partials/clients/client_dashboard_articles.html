@@ -1,0 +1,34 @@
+<div id="client-articles-results" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-live="polite">
+    {% for article in articles %}
+        <article class="card overflow-hidden border border-base-300 bg-base-100 shadow-sm">
+            {% if article.image %}
+                <figure class="aspect-square bg-base-200">
+                    <img src="{{ article.image.url }}" alt="{{ article.nom }}" class="h-full w-full object-cover">
+                </figure>
+            {% else %}
+                <div class="flex aspect-square items-center justify-center bg-base-200 text-5xl" aria-hidden="true">📦</div>
+            {% endif %}
+            <div class="card-body gap-2">
+                <div class="flex items-start justify-between gap-2">
+                    <h3 class="card-title text-lg">{{ article.nom }}</h3>
+                    {% if article.est_en_promotion %}<span class="badge badge-warning">Promo</span>{% endif %}
+                </div>
+                <p class="text-xs font-semibold uppercase tracking-wide text-base-content/60">{{ article.entreprise.nom_entreprise }}</p>
+                {% if article.description %}
+                    <p class="text-sm text-base-content/70">{{ article.description|truncatewords:18 }}</p>
+                {% endif %}
+                <p class="mt-auto pt-2 font-black">
+                    {% if article.est_en_promotion %}
+                        <span class="mr-1 text-sm font-medium text-base-content/50 line-through">{{ article.prix }} FCFA</span>
+                    {% endif %}
+                    <span class="text-[#059669]">{{ article.prix_actuel }} FCFA</span>
+                </p>
+                <span class="badge badge-success badge-outline w-fit">En stock</span>
+            </div>
+        </article>
+    {% empty %}
+        <p class="col-span-full rounded-2xl border border-dashed border-base-300 p-8 text-center text-base-content/60">
+            Aucun article disponible ne correspond à ces filtres.
+        </p>
+    {% endfor %}
+</div>

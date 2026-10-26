@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block title %}Mon espace client | BAKAMZONE{% endblock %}
+
+{% block content %}
+<main class="mx-auto max-w-7xl space-y-10 px-4 py-8 sm:px-6 lg:px-8">
+    <header class="rounded-3xl bg-gradient-to-br from-[#047857] to-[#059669] p-6 text-white shadow-xl sm:p-9">
+        <p class="text-sm font-semibold text-white/75">Espace client</p>
+        <h1 class="mt-2 text-3xl font-black sm:text-4xl">
+            Bonjour {{ client.user.first_name }}
+        </h1>
+        <p class="mt-2 max-w-2xl text-sm text-white/80 sm:text-base">
+            Trouvez un livreur disponible et découvrez les articles en stock dans nos blocs.
+        </p>
+    </header>
+
+    <section id="livreurs" class="space-y-5">
+        <div>
+            <p class="text-sm font-bold uppercase tracking-wider text-[#059669]">Livraison</p>
+            <h2 class="mt-1 text-2xl font-black sm:text-3xl">Livreurs du réseau</h2>
+        </div>
+
+        <form
+            method="get"
+            action="{% url 'clients_app:tableau-de-bord' %}"
+            hx-get="{% url 'clients_app:tableau-de-bord' %}"
+            hx-trigger="keyup changed delay:350ms, change, submit"
+            hx-target="#client-livreurs-results"
+            hx-swap="outerHTML"
+            hx-push-url="true"
+            class="rounded-2xl border border-base-300 bg-base-100 p-4 shadow-sm"
+        >
+            <input type="hidden" name="article_q" value="{{ article_query }}">
+            <input type="hidden" name="article_entreprise" value="{{ article_entreprise }}">
+            <input type="hidden" name="article_tri" value="{{ article_tri }}">
+            <input type="hidden" name="article_promo" value="{{ article_promo }}">
+            <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <label class="form-control">
+                    <span class="label-text mb-1 font-semibold">Rechercher un livreur</span>
+                    <input type="search" name="livreur_q" value="{{ livreur_query }}" placeholder="Nom, téléphone ou quartier" class="input input-bordered w-full rounded-xl">
+                </label>
+                <label class="form-control">
+                    <span class="label-text mb-1 font-semibold">Véhicule</span>
+                    <select name="livreur_vehicule" class="select select-bordered w-full rounded-xl">
+                        <option value="">Tous les véhicules</option>
+                        {% for value, label in livreur_types_vehicule %}
+                            <option value="{{ value }}" {% if livreur_vehicule == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <label class="form-control">
+                    <span class="label-text mb-1 font-semibold">Bloc</span>
+                    <select name="livreur_bloc" class="select select-bordered w-full rounded-xl">
+                        <option value="">Tous les blocs</option>
+                        {% for bloc in livreur_blocs %}
+                            <option value="{{ bloc.pk }}" {% if livreur_bloc == bloc.pk|stringformat:"s" %}selected{% endif %}>{{ bloc.nom }} — {{ bloc.get_quartier_display }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <label class="label cursor-pointer justify-start gap-3 self-end rounded-xl border border-base-300 px-3">
+                    <input type="checkbox" name="livreur_favoris" value="1" class="checkbox checkbox-success" {% if livreurs_favoris == "1" %}checked{% endif %}>
+                    <span class="label-text font-semibold">Mes favoris uniquement</span>
+                </label>
+            </div>
+            <div class="mt-4 flex flex-wrap gap-2">
+                <button type="submit" class="btn rounded-xl bg-[#059669] text-white hover:bg-[#047857]">Filtrer les livreurs</button>
+                <a href="{% url 'clients_app:tableau-de-bord' %}?article_q={{ article_query|urlencode }}&article_entreprise={{ article_entreprise|urlencode }}&article_tri={{ article_tri|urlencode }}&article_promo={{ article_promo|urlencode }}#livreurs" class="btn btn-ghost rounded-xl">Effacer les filtres livreurs</a>
+            </div>
+        </form>
+
+        {% include "partials/clients/client_dashboard_livreurs.html" %}
+    </section>
+
+    <section id="articles" class="space-y-5">
+        <div>
+            <p class="text-sm font-bold uppercase tracking-wider text-[#F97316]">Catalogue</p>
+            <h2 class="mt-1 text-2xl font-black sm:text-3xl">Articles disponibles</h2>
+        </div>
+
+        <form
+            method="get"
+            action="{% url 'clients_app:tableau-de-bord' %}"
+            hx-get="{% url 'clients_app:tableau-de-bord' %}"
+            hx-trigger="keyup changed delay:350ms, change, submit"
+            hx-target="#client-articles-results"
+            hx-swap="outerHTML"
+            hx-push-url="true"
+            class="rounded-2xl border border-base-300 bg-base-100 p-4 shadow-sm"
+        >
+            <input type="hidden" name="livreur_q" value="{{ livreur_query }}">
+            <input type="hidden" name="livreur_vehicule" value="{{ livreur_vehicule }}">
+            <input type="hidden" name="livreur_bloc" value="{{ livreur_bloc }}">
+            {% if livreurs_favoris == "1" %}<input type="hidden" name="livreur_favoris" value="1">{% endif %}
+            <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <label class="form-control">
+                    <span class="label-text mb-1 font-semibold">Rechercher un article</span>
+                    <input type="search" name="article_q" value="{{ article_query }}" placeholder="Nom, description ou entreprise" class="input input-bordered w-full rounded-xl">
+                </label>
+                <label class="form-control">
+                    <span class="label-text mb-1 font-semibold">Entreprise</span>
+                    <select name="article_entreprise" class="select select-bordered w-full rounded-xl">
+                        <option value="">Toutes les entreprises</option>
+                        {% for entreprise_id, entreprise_nom in article_entreprises %}
+                            <option value="{{ entreprise_id }}" {% if article_entreprise == entreprise_id|stringformat:"s" %}selected{% endif %}>{{ entreprise_nom }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <label class="form-control">
+                    <span class="label-text mb-1 font-semibold">Trier par</span>
+                    <select name="article_tri" class="select select-bordered w-full rounded-xl">
+                        <option value="recent" {% if article_tri == "recent" %}selected{% endif %}>Plus récents</option>
+                        <option value="prix_croissant" {% if article_tri == "prix_croissant" %}selected{% endif %}>Prix croissant</option>
+                        <option value="prix_decroissant" {% if article_tri == "prix_decroissant" %}selected{% endif %}>Prix décroissant</option>
+                    </select>
+                </label>
+                <label class="label cursor-pointer justify-start gap-3 self-end rounded-xl border border-base-300 px-3">
+                    <input type="checkbox" name="article_promo" value="1" class="checkbox checkbox-warning" {% if article_promo == "1" %}checked{% endif %}>
+                    <span class="label-text font-semibold">Promotions uniquement</span>
+                </label>
+            </div>
+            <div class="mt-4 flex flex-wrap gap-2">
+                <button type="submit" class="btn rounded-xl bg-[#F97316] text-white hover:bg-[#EA580C]">Filtrer les articles</button>
+                <a href="{% url 'clients_app:tableau-de-bord' %}?livreur_q={{ livreur_query|urlencode }}&livreur_vehicule={{ livreur_vehicule|urlencode }}&livreur_bloc={{ livreur_bloc|urlencode }}{% if livreurs_favoris == '1' %}&livreur_favoris=1{% endif %}#articles" class="btn btn-ghost rounded-xl">Effacer les filtres articles</a>
+            </div>
+        </form>
+
+        {% include "partials/clients/client_dashboard_articles.html" %}
+    </section>
+</main>
+{% endblock %}

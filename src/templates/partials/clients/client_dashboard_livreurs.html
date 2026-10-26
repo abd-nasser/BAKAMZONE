@@ -1,0 +1,41 @@
+<div id="client-livreurs-results" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-live="polite">
+    {% for livreur in livreurs %}
+        <article class="card border border-base-300 bg-base-100 shadow-sm">
+            {% if livreur.photo_profil %}
+                <figure class="aspect-[4/3] bg-base-200">
+                    <img src="{{ livreur.photo_profil.url }}" alt="Photo de {{ livreur.user.get_full_name }}" class="h-full w-full object-cover">
+                </figure>
+            {% endif %}
+            <div class="card-body">
+                <div class="flex items-start justify-between gap-3">
+                    <div>
+                        <h3 class="card-title">{{ livreur.user.get_full_name }}</h3>
+                        <p class="text-sm text-base-content/60">{{ livreur.get_type_vehicule_display }}</p>
+                    </div>
+                    <span class="badge {% if livreur.disponible %}badge-success{% else %}badge-ghost{% endif %}">
+                        {% if livreur.disponible %}Disponible{% else %}Indisponible{% endif %}
+                    </span>
+                </div>
+                <p class="text-sm text-base-content/70">
+                    {{ livreur.blocs.nom }} · {{ livreur.blocs.get_quartier_display }}
+                </p>
+                {% if livreur.zone_actuelle %}
+                    <p class="text-sm text-base-content/70">Zone : {{ livreur.zone_actuelle.nom }}</p>
+                {% endif %}
+                <div class="mt-2 flex items-center gap-2 text-sm text-base-content/70">
+                    <span aria-label="Note moyenne">★ {{ livreur.note_moyenne }}</span>
+                    <span>·</span>
+                    <span>{{ livreur.nb_livraisons }} livraison(s)</span>
+                </div>
+                <div class="card-actions mt-3">
+                    <a href="{% url 'clients_app:profil-livreur' livreur.pk %}" class="btn btn-outline btn-success flex-1 rounded-xl">Voir le profil</a>
+                    <a href="#" class="btn rounded-xl bg-[#059669] text-white hover:bg-[#047857]">Chat</a>
+                </div>
+            </div>
+        </article>
+    {% empty %}
+        <p class="col-span-full rounded-2xl border border-dashed border-base-300 p-8 text-center text-base-content/60">
+            Aucun livreur ne correspond à ces filtres.
+        </p>
+    {% endfor %}
+</div>

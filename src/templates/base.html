@@ -62,6 +62,9 @@
                         {% if request.user.role == 'entreprise' %}
                             <a href="{% url 'entreprise_app:choix-palier' %}" class="btn btn-outline btn-success btn-sm rounded-xl">Mon abonnement</a>
                         {% endif %}
+                        {% if request.user.role == 'client' %}
+                            <a href="{% url 'clients_app:tableau-de-bord' %}" class="btn btn-ghost btn-sm rounded-xl">Mon espace</a>
+                        {% endif %}
                         <a href="{% url 'auth_app:deconnexion' %}" class="btn btn-outline btn-error btn-sm rounded-xl">Déconnexion</a>
                     {% else %}
                         <a href="{% url 'clients_app:inscription-client' %}" class="btn btn-outline btn-sm rounded-xl border-[#059669] text-[#059669] hover:bg-[#059669] hover:text-white">

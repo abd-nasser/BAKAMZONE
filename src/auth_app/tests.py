@@ -120,3 +120,30 @@ class BlockAdminLoginRedirectTests(TestCase):
                 expected_url = reverse(f"admins_app:{route_name}")
                 self.assertEqual(response.status_code, 200)
                 self.assertEqual(response.headers["HX-Redirect"], expected_url)
+
+
+class ClientLoginRedirectTests(TestCase):
+    def test_client_login_redirects_to_client_dashboard(self):
+        user = User.objects.create(
+            telephone="70000807",
+            first_name="Awa",
+            last_name="Traore",
+            role="client",
+        )
+        user.set_password("StrongPassword123!")
+        user.save()
+
+        response = self.client.post(
+            reverse("auth_app:connexion_htmx"),
+            {
+                "identifiant": user.telephone,
+                "password": "StrongPassword123!",
+            },
+            HTTP_HX_REQUEST="true",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.headers["HX-Redirect"],
+            reverse("clients_app:tableau-de-bord"),
+        )
