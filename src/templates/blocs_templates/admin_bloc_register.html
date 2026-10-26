@@ -15,7 +15,9 @@
     </div>
 
     <form
-        hx-post="{% url 'admins_app:creer' %}"
+        method="post"
+        action="{% url 'admins_app:creer-admin-bloc' %}"
+        hx-post="{% url 'admins_app:creer-admin-bloc' %}"
         hx-target="#toast-container"
         hx-swap="beforeend"
         hx-indicator="#admin-bloc-spinner"

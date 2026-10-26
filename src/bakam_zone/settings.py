@@ -12,6 +12,8 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 from pathlib import Path
 import os
+from django.conf.locale.fr import formats
+formats.NUMBER_GROUPING = 3
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -49,7 +51,7 @@ INSTALLED_APPS = [
     'articles_app',
     'clients_app',
     'livreurs_app',
-    'commandes_app',
+    'demande_livraison_app',
     'zones_app',
     'admins_app',
     'avis_app',
@@ -161,3 +163,56 @@ CRISPY_TEMPLATE_PACK = "tailwind"
 import shutil
 
 NPM_BIN_PATH = shutil.which("npm") or "/usr/bin/npm"
+
+# Host Redis par défaut selon le mode
+REDIS_HOST = '127.0.0.1' if DEBUG else 'redis'
+
+
+CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', f'redis://{REDIS_HOST}:6379/0')
+CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND', f'redis://{REDIS_HOST}:6379/1')
+
+'''
+CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://redis:6379/0')
+CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', 'redis://redis:6379/1')
+'''
+
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'UTC'
+
+# Robustesse & Sécurité VPS
+CELERY_TASK_ACKS_LATE = True
+CELERY_WORKER_MAX_TASKS_PER_CHILD = 100
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+
+#Email configuration
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 465  # Port SSL
+EMAIL_USE_SSL = True  # Au lieu de TLS
+EMAIL_USE_TLS = False
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
+DEFAULT_FROM_EMAIL = os.getenv("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
+
+
+#LIGDICASH configurations
+LIGDICASH_API_KEY = os.getenv("LIGDICASH_API_KEY")
+LIGDICASH_API_TOKEN = os.getenv("LIGDICASH_API_TOKEN")
+
+
+# Sécurité CSRF pour HTTPS
+# CSRF Settings
+'''CSRF_TRUSTED_ORIGINS = [
+  
+    
+]'''
+
+CSRF_COOKIE_SECURE = False
+CSRF_COOKIE_HTTPONLY = False
+CSRF_USE_SESSIONS = False
+CSRF_COOKIE_SAMESITE = 'Lax'
+
+SESSION_COOKIE_SECURE = False
+SESSION_COOKIE_SAMESITE = 'Lax'

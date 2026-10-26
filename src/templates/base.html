@@ -27,11 +27,11 @@
 <body class="min-h-screen bg-base-100 text-base-content flex flex-col font-sans antialiased selection:bg-secondary selection:text-white"
       hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
 
-    {% if messages %}
-        <div class="fixed top-4 right-4 z-50 space-y-2 max-w-sm w-full px-4">
+    <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2 max-w-sm w-full px-4">
+        {% if messages %}
             {% for message in messages %}
-                <div x-data="{ show: true }" 
-                     x-show="show" 
+                <div x-data="{ show: true }"
+                     x-show="show"
                      x-init="setTimeout(() => show = false, 5000)"
                      x-transition
                      class="alert {% if message.tags == 'error' %}alert-error{% else %}alert-success{% endif %} shadow-xl text-sm rounded-2xl flex justify-between items-center">
@@ -39,8 +39,8 @@
                     <button @click="show = false" class="btn btn-xs btn-circle btn-ghost">✕</button>
                 </div>
             {% endfor %}
-        </div>
-    {% endif %}
+        {% endif %}
+    </div>
 
     {% block navbar %}
     <header class="sticky top-0 z-40 border-b border-base-200 bg-base-100/90 backdrop-blur-md">

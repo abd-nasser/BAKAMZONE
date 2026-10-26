@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Supervision de flotte | BAKAMZONE{% endblock %}
+
+{% block content %}
+<main class="mx-auto max-w-7xl space-y-6 px-4 py-10">
+    <header class="rounded-3xl bg-gradient-to-br from-[#047857] to-[#059669] p-6 text-white shadow-xl sm:p-9">
+        <p class="text-sm font-semibold uppercase tracking-wider text-white/75">Tableau de bord — Superviseur de flotte</p>
+        <h1 class="mt-2 text-3xl font-black">Espace Superviseur de Flotte</h1>
+        <p class="mt-2 text-xl font-bold">{{ bloc.nom }}</p>
+        <p class="mt-2 text-sm text-white/80">Accédez à la flotte de livreurs et aux demandes de livraison concernant votre bloc.</p>
+    </header>
+
+    <section class="grid gap-5 md:grid-cols-2" aria-label="Gestion de la flotte">
+        <a
+            href="{% url 'admins_app:tableau-de-bord-flotte-livreurs' %}"
+            class="card border border-base-300 bg-base-100 shadow-sm transition hover:shadow-md"
+        >
+            <div class="card-body">
+                <h2 class="card-title">Livreurs du bloc</h2>
+                <p class="text-3xl font-black text-success">{{ livreurs_count }}</p>
+                <p class="text-sm text-base-content/70">Consulter les profils, disponibilités et statuts de vérification.</p>
+                <span class="btn btn-success mt-3 self-start rounded-xl">Voir les livreurs</span>
+            </div>
+        </a>
+
+        <a
+            href="{% url 'admins_app:tableau-de-bord-flotte-demandes-livraison' %}"
+            class="card border border-base-300 bg-base-100 shadow-sm transition hover:shadow-md"
+        >
+            <div class="card-body">
+                <h2 class="card-title">Demandes de livraison</h2>
+                <p class="text-3xl font-black text-success">{{ demandes_livraison_count }}</p>
+                <p class="text-sm text-base-content/70">Consulter les demandes dont le départ ou l’arrivée concerne votre bloc.</p>
+                <span class="btn btn-outline btn-success mt-3 self-start rounded-xl">Voir les demandes</span>
+            </div>
+        </a>
+    </section>
+</main>
+{% endblock %}

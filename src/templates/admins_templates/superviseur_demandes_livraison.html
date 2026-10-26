@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}Demandes de livraison | BAKAMZONE{% endblock %}
+
+{% block content %}
+<main class="mx-auto max-w-7xl space-y-6 px-4 py-10">
+    <header class="rounded-3xl bg-gradient-to-br from-[#047857] to-[#059669] p-6 text-white shadow-xl sm:p-9">
+        <a href="{% url 'admins_app:tableau-de-bord-flotte' %}" class="text-sm font-semibold text-white/75 hover:text-white">
+            ← Tableau de bord de flotte
+        </a>
+        <h1 class="mt-2 text-3xl font-black">Demandes de livraison — {{ bloc.nom }}</h1>
+        <p class="mt-2 text-sm text-white/80">Demandes dont le départ ou l’arrivée concerne votre bloc.</p>
+    </header>
+
+    <section class="space-y-5">
+        <form method="get" action="{% url 'admins_app:tableau-de-bord-flotte-demandes-livraison' %}">
+            <label class="form-control">
+                <span class="label"><span class="label-text font-semibold">Rechercher une demande</span></span>
+                <input
+                    type="search"
+                    name="q"
+                    value="{{ search_query }}"
+                    placeholder="Client, téléphone, zone ou colis"
+                    class="input input-bordered w-full rounded-xl"
+                >
+            </label>
+        </form>
+
+        <div class="space-y-4">
+            {% for demande in demandes_livraison %}
+                <article class="card border border-base-300 bg-base-100 shadow-sm">
+                    <div class="card-body gap-3">
+                        <div class="flex flex-wrap items-start justify-between gap-3">
+                            <div>
+                                <h2 class="card-title">Demande #{{ demande.pk }}</h2>
+                                <p class="text-sm text-base-content/70">
+                                    {{ demande.client.user.get_full_name }} · {{ demande.client.user.telephone }}
+                                </p>
+                            </div>
+                            <span class="badge badge-outline">{{ demande.get_statut_display }}</span>
+                        </div>
+                        <p class="font-semibold">{{ demande.zone_depart.nom }} → {{ demande.zone_arrivee.nom }}</p>
+                        {% if demande.description_colis %}
+                            <p class="text-sm text-base-content/70">{{ demande.description_colis }}</p>
+                        {% endif %}
+                        <div class="flex flex-wrap justify-between gap-2 text-sm text-base-content/70">
+                            <span>Prix : {{ demande.prix }}</span>
+                            <span>
+                                Livreur :
+                                {% if demande.livreur %}{{ demande.livreur.user.get_full_name }}{% else %}Non attribué{% endif %}
+                            </span>
+                        </div>
+                    </div>
+                </article>
+            {% empty %}
+                <p class="rounded-2xl border border-dashed border-base-300 p-8 text-center text-base-content/60">
+                    Aucune demande de livraison ne correspond à votre recherche.
+                </p>
+            {% endfor %}
+        </div>
+    </section>
+</main>
+{% endblock %}

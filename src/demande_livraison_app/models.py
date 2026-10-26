@@ -1,11 +1,9 @@
 from django.db import models
-from django.urls import reverse
-from auth_app.models import User
 from livreurs_app.models import Livreur
 from zones_app.models import Zone
 
 
-class Commande(models.Model):
+class DemandeLivraison(models.Model):
     STATUT_CHOICES = [
         ('en_attente', 'En attente de livreur'),
         ('acceptee', 'Acceptée'),
@@ -14,11 +12,29 @@ class Commande(models.Model):
         ('annulee', 'Annulée'),
     ]
 
-    client = models.ForeignKey('clients_app.client', on_delete=models.PROTECT, related_name='commandes_client')
-    livreur = models.ForeignKey(Livreur, on_delete=models.PROTECT, null=True, blank=True, related_name='commandes')
+    client = models.ForeignKey(
+        'clients_app.client',
+        on_delete=models.PROTECT,
+        related_name='demandes_livraison',
+    )
+    livreur = models.ForeignKey(
+        Livreur,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='demandes_livraison',
+    )
 
-    zone_depart = models.ForeignKey(Zone, on_delete=models.PROTECT, related_name='commandes_depart')
-    zone_arrivee = models.ForeignKey(Zone, on_delete=models.PROTECT, related_name='commandes_arrivee')
+    zone_depart = models.ForeignKey(
+        Zone,
+        on_delete=models.PROTECT,
+        related_name='demandes_livraison_depart',
+    )
+    zone_arrivee = models.ForeignKey(
+        Zone,
+        on_delete=models.PROTECT,
+        related_name='demandes_livraison_arrivee',
+    )
     latitude_depart = models.DecimalField(max_digits=9, decimal_places=6)
     longitude_depart = models.DecimalField(max_digits=9, decimal_places=6)
     latitude_arrivee = models.DecimalField(max_digits=9, decimal_places=6)
@@ -33,7 +49,7 @@ class Commande(models.Model):
 
     class Meta:
         ordering = ['-date_creation']
-        indexes = [models.Index(fields=['statut', 'date_creation'])]
+        indexes = [models.Index(fields=['statut', 'date_creation'], name='commandes_a_statut_f79ac0_idx')]
 
     def __str__(self):
-        return f"Commande #{self.pk} — {self.client} → {self.zone_arrivee}"
+        return f"Demande de livraison #{self.pk} — {self.client} → {self.zone_arrivee}"

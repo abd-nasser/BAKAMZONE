@@ -4,8 +4,11 @@ from django.urls import reverse
 from auth_app.models import User
 from articles_app.models import Article
 from blocs_app.models import Blocs
+from clients_app.models import Client
+from demande_livraison_app.models import DemandeLivraison
 from entreprise_app.models import Entreprise
 from livreurs_app.models import Livreur
+from zones_app.models import Zone
 
 from .forms import AdminBlocForms
 from .models import AdminBloc
@@ -303,17 +306,64 @@ class AdminBlocPostDashboardViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(
             response,
+            "admins_templates/superviseur_flotte_dashboard.html",
+        )
+        self.assertEqual(response.context["livreurs_count"], 1)
+        self.assertContains(
+            response,
+            reverse("admins_app:tableau-de-bord-flotte-livreurs"),
+        )
+        self.assertContains(
+            response,
+            reverse("admins_app:tableau-de-bord-flotte-demandes-livraison"),
+        )
+
+    def test_livreur_list_displays_only_livreurs_from_supervisor_block(self):
+        self.admin_bloc.poste = "superviseur_flotte"
+        self.admin_bloc.save(update_fields=["poste"])
+        local_user = User.objects.create(
+            telephone="70000914",
+            first_name="Issa",
+            last_name="Kaboré",
+            role="livreur",
+        )
+        local_livreur = Livreur.objects.create(
+            user=local_user,
+            type_vehicule="moto",
+            blocs=self.bloc,
+        )
+        other_user = User.objects.create(
+            telephone="70000915",
+            first_name="Aminata",
+            last_name="Diallo",
+            role="livreur",
+        )
+        other_livreur = Livreur.objects.create(
+            user=other_user,
+            type_vehicule="velo",
+            blocs=self.bloc,
+        )
+        response = self.client.get(
+            reverse("admins_app:tableau-de-bord-flotte-livreurs")
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(
+            response,
             "admins_templates/superviseur_livreurs.html",
         )
-        self.assertEqual(list(response.context["livreurs"]), [livreur])
-        self.assertContains(response, "Moussa Zongo")
-        self.assertNotContains(response, "Awa Traore")
+        self.assertEqual(
+            list(response.context["livreurs"]),
+            [other_livreur, local_livreur],
+        )
+        self.assertContains(response, "Issa Kaboré")
+        self.assertContains(response, "Aminata Diallo")
 
-    def test_htmx_fleet_dashboard_filters_livreurs_by_name_and_phone(self):
+    def test_htmx_livreur_list_filters_by_name_and_phone(self):
         self.admin_bloc.poste = "superviseur_flotte"
         self.admin_bloc.save(update_fields=["poste"])
         matching_user = User.objects.create(
-            telephone="70000914",
+            telephone="70000916",
             first_name="Issa",
             last_name="Kaboré",
             role="livreur",
@@ -324,20 +374,15 @@ class AdminBlocPostDashboardViewTests(TestCase):
             blocs=self.bloc,
         )
         other_user = User.objects.create(
-            telephone="70000915",
+            telephone="70000917",
             first_name="Aminata",
             last_name="Diallo",
             role="livreur",
         )
-        Livreur.objects.create(
-            user=other_user,
-            type_vehicule="velo",
-            blocs=self.bloc,
-        )
-
+        Livreur.objects.create(user=other_user, type_vehicule="velo", blocs=self.bloc)
         response = self.client.get(
-            reverse("admins_app:tableau-de-bord-flotte"),
-            {"q": "70000914"},
+            reverse("admins_app:tableau-de-bord-flotte-livreurs"),
+            {"q": "70000916"},
             HTTP_HX_REQUEST="true",
         )
 
@@ -350,8 +395,109 @@ class AdminBlocPostDashboardViewTests(TestCase):
         self.assertContains(response, "Issa Kaboré")
         self.assertNotContains(response, "Aminata Diallo")
 
+    def test_delivery_list_contains_requests_involving_supervisor_block(self):
+        self.admin_bloc.poste = "superviseur_flotte"
+        self.admin_bloc.save(update_fields=["poste"])
+        client_user = User.objects.create(
+            telephone="70000918",
+            first_name="Mariam",
+            last_name="Ouedraogo",
+            role="client",
+        )
+        client_profile = Client.objects.create(user=client_user)
+        local_zone = Zone.objects.create(nom="Zone supervision", bloc=self.bloc)
+        other_bloc = Blocs.objects.create(
+            nom="Bloc Zogona",
+            ville="ouagadougou",
+            quartier="zogona",
+        )
+        other_zone = Zone.objects.create(nom="Zone éloignée", bloc=other_bloc)
+        local_demand = DemandeLivraison.objects.create(
+            client=client_profile,
+            zone_depart=local_zone,
+            zone_arrivee=other_zone,
+            latitude_depart="12.345678",
+            longitude_depart="-1.234567",
+            latitude_arrivee="12.456789",
+            longitude_arrivee="-1.345678",
+            prix="1500",
+        )
+        DemandeLivraison.objects.create(
+            client=client_profile,
+            zone_depart=other_zone,
+            zone_arrivee=other_zone,
+            latitude_depart="12.345678",
+            longitude_depart="-1.234567",
+            latitude_arrivee="12.456789",
+            longitude_arrivee="-1.345678",
+            prix="1500",
+        )
+
+        response = self.client.get(
+            reverse("admins_app:tableau-de-bord-flotte-demandes-livraison")
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(
+            response,
+            "admins_templates/superviseur_demandes_livraison.html",
+        )
+        self.assertEqual(
+            list(response.context["demandes_livraison"]),
+            [local_demand],
+        )
+        self.assertContains(response, "Mariam Ouedraogo")
 
 class AdminBlocCreationFormTests(TestCase):
+    def setUp(self):
+        self.bloc = Blocs.objects.create(
+            nom="Bloc Koulouba",
+            ville="ouagadougou",
+            quartier="koulouba",
+        )
+        self.superuser = User.objects.create(
+            telephone="70000920",
+            first_name="Super",
+            last_name="Admin",
+            role="client",
+            is_superuser=True,
+        )
+        self.client.force_login(self.superuser)
+        self.url = reverse("admins_app:creer-admin-bloc")
+
+    def test_valid_post_creates_admin_and_returns_success_partial(self):
+        response = self.client.post(self.url, {
+            "first_name": "Issa",
+            "last_name": "Ouedraogo",
+            "telephone": "70000922",
+            "email": "issa@example.test",
+            "bloc": self.bloc.pk,
+            "poste": "gestionnaire_stock",
+            "actif": "on",
+        }, HTTP_HX_REQUEST="true")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(AdminBloc.objects.count(), 1)
+        self.assertEqual(
+            AdminBloc.objects.get().user.telephone,
+            "70000922",
+        )
+        self.assertContains(response, "Administrateur créé")
+
+    def test_invalid_post_does_not_create_admin_and_returns_visible_errors(self):
+        response = self.client.post(self.url, {
+            "last_name": "Ouedraogo",
+            "telephone": "70000923",
+            "bloc": self.bloc.pk,
+            "poste": "gestionnaire_stock",
+            "actif": "on",
+        }, HTTP_HX_REQUEST="true")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(AdminBloc.objects.count(), 0)
+        self.assertContains(response, "n’a pas pu être créé")
+        self.assertContains(response, "Ce champ est obligatoire.")
+
     def test_created_admin_account_uses_dashboard_supported_role(self):
         bloc = Blocs.objects.create(
             nom="Bloc Pissy",

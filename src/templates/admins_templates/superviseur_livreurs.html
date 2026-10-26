@@ -6,6 +6,9 @@
 <main class="mx-auto max-w-7xl space-y-6 px-4 py-10">
     <header class="rounded-3xl bg-gradient-to-br from-[#047857] to-[#059669] p-6 text-white shadow-xl sm:p-9">
         <p class="text-sm font-semibold uppercase tracking-wider text-white/75">Tableau de bord — Superviseur de flotte</p>
+        <a href="{% url 'admins_app:tableau-de-bord-flotte' %}" class="mt-2 inline-block text-sm font-semibold text-white/75 hover:text-white">
+            ← Retour au tableau de bord
+        </a>
         <h1 class="mt-2 text-3xl font-black">{{ bloc.nom }}</h1>
         <p class="mt-2 text-sm text-white/80">{{ description }}</p>
     </header>
@@ -20,8 +23,8 @@
 
         <form
             method="get"
-            action="{% url 'admins_app:tableau-de-bord-flotte' %}"
-            hx-get="{% url 'admins_app:tableau-de-bord-flotte' %}"
+            action="{% url 'admins_app:tableau-de-bord-flotte-livreurs' %}"
+            hx-get="{% url 'admins_app:tableau-de-bord-flotte-livreurs' %}"
             hx-trigger="input changed delay:300ms"
             hx-target="#superviseur-flotte-livreurs"
             hx-swap="outerHTML"

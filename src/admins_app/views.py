@@ -12,8 +12,8 @@ from articles_app.forms import ArticleBlocAdminForm
 from entreprise_app.models import Entreprise
 from articles_app.models import StockBloc
 
+from demande_livraison_app.models import DemandeLivraison
 from livreurs_app.models import Livreur
-from commandes_app.models import Commande
 
 
 class SuperuserRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
@@ -69,6 +69,7 @@ class AdminBlocCreateView(SuperuserRequiredMixin, CreateView):
 
     def form_valid(self, form):
         self.object = form.save()
+        
         response = render(
             self.request,
             'partials/result/admin_bloc_success.html',
@@ -226,13 +227,7 @@ class GestionnaireStockEntrepriseDetailView(LoginRequiredMixin, DetailView):
 ###########################################################################################################################""
 #_____________________________________________SUPERVISEUR_FLOTTE________________________________________
 ############################################################################################################################
-class SuperviseurFlotteDashbordView(LoginRequiredMixin, ListView):
-    model = Livreur
-    context_object_name = "livreurs"
-    template_name = "admins_templates/superviseur_livreurs.html"
-    title = "Espace Superviseur de Flotte"
-    description = "Suivi opérationnel de la flotte de livreurs de votre bloc."
-
+class SuperviseurFlotteRequiredMixin(LoginRequiredMixin):
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
             return super().dispatch(request, *args, **kwargs)
@@ -243,9 +238,25 @@ class SuperviseurFlotteDashbordView(LoginRequiredMixin, ListView):
         ).select_related("bloc", "user").first()
         if request.user.role != "bloc_admin" or self.admin_bloc is None:
             return HttpResponseForbidden(
-                "Ce tableau de bord est réservé aux superviseurs de flotte actifs."
+                "Cet espace est réservé aux superviseurs de flotte actifs."
             )
         return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update({
+            "admin_bloc": self.admin_bloc,
+            "bloc": self.admin_bloc.bloc,
+        })
+        return context
+
+
+class LivreurListView(SuperviseurFlotteRequiredMixin, ListView):
+    model = Livreur
+    context_object_name = "livreurs"
+    template_name = "admins_templates/superviseur_livreurs.html"
+    title = "Espace Superviseur de Flotte"
+    description = "Suivi opérationnel de la flotte de livreurs de votre bloc."
 
     def get_queryset(self):
         queryset = Livreur.objects.filter(
@@ -267,8 +278,6 @@ class SuperviseurFlotteDashbordView(LoginRequiredMixin, ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context.update({
-            "admin_bloc": self.admin_bloc,
-            "bloc": self.admin_bloc.bloc,
             "title": self.title,
             "description": self.description,
             "search_query": self.request.GET.get("q", ""),
@@ -279,3 +288,56 @@ class SuperviseurFlotteDashbordView(LoginRequiredMixin, ListView):
         if self.request.headers.get("HX-Request") == "true":
             return ["partials/admins/superviseur_flotte_livreurs.html"]
         return [self.template_name]
+
+
+class DemandeLivraisonListView(SuperviseurFlotteRequiredMixin, ListView):
+    model = DemandeLivraison
+    context_object_name = "demandes_livraison"
+    template_name = "admins_templates/superviseur_demandes_livraison.html"
+
+    def get_queryset(self):
+        bloc = self.admin_bloc.bloc
+        queryset = DemandeLivraison.objects.filter(
+            Q(zone_depart__bloc=bloc)
+            | Q(zone_arrivee__bloc=bloc)
+            | Q(livreur__blocs=bloc)
+        ).select_related(
+            "client__user",
+            "livreur__user",
+            "zone_depart",
+            "zone_arrivee",
+        ).distinct()
+        search = self.request.GET.get("q", "").strip()
+        if search:
+            queryset = queryset.filter(
+                Q(client__user__first_name__icontains=search)
+                | Q(client__user__last_name__icontains=search)
+                | Q(client__user__telephone__icontains=search)
+                | Q(description_colis__icontains=search)
+                | Q(zone_depart__nom__icontains=search)
+                | Q(zone_arrivee__nom__icontains=search)
+            )
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["search_query"] = self.request.GET.get("q", "")
+        return context
+
+
+class SuperviseurFlotteDashbordView(SuperviseurFlotteRequiredMixin, TemplateView):
+    template_name = "admins_templates/superviseur_flotte_dashboard.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        bloc = self.admin_bloc.bloc
+        demandes_livraison = DemandeLivraison.objects.filter(
+            Q(zone_depart__bloc=bloc)
+            | Q(zone_arrivee__bloc=bloc)
+            | Q(livreur__blocs=bloc)
+        ).distinct()
+        context.update({
+            "livreurs_count": Livreur.objects.filter(blocs=bloc).count(),
+            "demandes_livraison_count": demandes_livraison.count(),
+        })
+        return context
