@@ -1,15 +1,20 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.db.models import Case, DecimalField, Exists, F, OuterRef, Q, When
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.utils import timezone
+from django.views import View
 from django.views.generic import CreateView, DetailView, TemplateView
 
 from articles_app.models import Article, StockBloc
 from blocs_app.models import Blocs
 from clients_app.forms import InscriptionClientForm
 from clients_app.models import Client
+from demande_livraison_app.forms import DemandeLivraisonForm
+from demande_livraison_app.pricing import obtenir_tarifs_livraison
 from livreurs_app.models import Livreur
+from zones_app.models import Zone
 
 
 class ClientDashboardView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
@@ -169,6 +174,89 @@ class LivreurProfilViewByClient(
             actif=True,
             blocs__actif=True,
         ).select_related("user", "blocs", "zone_actuelle")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        client = Client.objects.get(user=self.request.user)
+        livreur = self.object
+
+        est_favori = livreur.favoris_de.filter(pk=client.pk).exists()
+        avis_qs = livreur.avis.select_related("client__user").order_by("-date_creation")
+        nb_avis = avis_qs.count()
+
+        tarif_intra, tarif_inter = obtenir_tarifs_livraison()
+        zones = Zone.objects.select_related("bloc").all().order_by("bloc__nom", "nom")
+
+        if "form" not in context:
+            initial_data = {}
+            if livreur.zone_actuelle:
+                initial_data["zone_depart"] = livreur.zone_actuelle
+            context["form"] = DemandeLivraisonForm(initial=initial_data)
+
+        context.update({
+            "client": client,
+            "est_favori": est_favori,
+            "nb_favoris": livreur.nb_ajout_favoris,
+            "avis_list": avis_qs[:10],
+            "nb_avis": nb_avis,
+            "zones": zones,
+            "tarif_intra": int(tarif_intra),
+            "tarif_inter": int(tarif_inter),
+        })
+        return context
+
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        client = Client.objects.get(user=request.user)
+
+        form = DemandeLivraisonForm(request.POST)
+        if form.is_valid():
+            demande = form.save(client=client, commit=False)
+            demande.livreur = self.object
+            demande.statut = "en_attente"
+            demande.save()
+            messages.success(
+                request,
+                f"Votre demande de livraison #{demande.pk} a été envoyée directement à {self.object.user.get_full_name()} !",
+            )
+            return redirect("clients_app:tableau-de-bord")
+
+        context = self.get_context_data(form=form)
+        return self.render_to_response(context)
+
+
+class ToggleFavoriLivreurView(LoginRequiredMixin, UserPassesTestMixin, View):
+    """Permet au client d'ajouter ou retirer un livreur de ses favoris (likes)."""
+    login_url = reverse_lazy("home_app:home")
+
+    def test_func(self):
+        return (
+            self.request.user.role == "client"
+            and Client.objects.filter(user=self.request.user).exists()
+        )
+
+    def post(self, request, pk, *args, **kwargs):
+        livreur = get_object_or_404(Livreur, pk=pk, actif=True, blocs__actif=True)
+        client = Client.objects.get(user=request.user)
+
+        if livreur.favoris_de.filter(pk=client.pk).exists():
+            livreur.favoris_de.remove(client)
+            est_favori = False
+        else:
+            livreur.favoris_de.add(client)
+            est_favori = True
+
+        if request.headers.get("HX-Request") == "true":
+            return render(
+                request,
+                "partials/clients/livreur_favori_button.html",
+                {
+                    "livreur": livreur,
+                    "est_favori": est_favori,
+                    "nb_favoris": livreur.nb_ajout_favoris,
+                },
+            )
+        return redirect("clients_app:profil-livreur", pk=livreur.pk)
 
 
 class InscriptionClientView(CreateView):

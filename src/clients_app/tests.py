@@ -6,13 +6,16 @@ from django.urls import reverse
 from django.utils import timezone
 
 from articles_app.models import Article, StockBloc
+from avis_app.models import AvisLivreur
 from blocs_app.models import Blocs
 from auth_app.models import User
 from clients_app.forms import InscriptionClientForm
 from clients_app.models import Client
 from clients_app.views import LivreurProfilViewByClient
+from demande_livraison_app.models import DemandeLivraison
 from entreprise_app.models import Entreprise
 from livreurs_app.models import Livreur
+from zones_app.models import Zone
 
 
 class InscriptionClientViewTests(TestCase):
@@ -336,3 +339,91 @@ class ClientDashboardViewTests(TestCase):
             response,
             reverse("clients_app:tableau-de-bord"),
         )
+
+    def test_livreur_profile_view_direct_delivery_request_post(self):
+        livreur = Livreur.objects.get(user__telephone="70000803")
+        zone_depart = Zone.objects.create(
+            nom="Tampouy Centre",
+            bloc=self.bloc,
+            latitude=Decimal("12.390000"),
+            longitude=Decimal("-1.540000"),
+        )
+        zone_arrivee = Zone.objects.create(
+            nom="Tampouy Nord",
+            bloc=self.bloc,
+            latitude=Decimal("12.395000"),
+            longitude=Decimal("-1.545000"),
+        )
+
+        response = self.client.post(
+            reverse("clients_app:profil-livreur", args=[livreur.pk]),
+            {
+                "zone_depart": zone_depart.pk,
+                "zone_arrivee": zone_arrivee.pk,
+                "latitude_depart": "12.390000",
+                "longitude_depart": "-1.540000",
+                "whatsapp_destinataire": "+22678123456",
+                "description_colis": "Colis direct pour Moussa",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, reverse("clients_app:tableau-de-bord"))
+
+        demande = DemandeLivraison.objects.filter(whatsapp_destinataire="+22678123456").first()
+        self.assertIsNotNone(demande)
+        self.assertEqual(demande.livreur, livreur)
+        self.assertEqual(demande.client, self.client_profile)
+        self.assertEqual(demande.statut, "en_attente")
+        self.assertEqual(demande.prix, Decimal("1000"))
+
+    def test_toggle_favori_livreur_view(self):
+        livreur = Livreur.objects.get(user__telephone="70000803")
+        url = reverse("clients_app:toggle-favori-livreur", args=[livreur.pk])
+
+        # 1. Ajouter aux favoris (like)
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(livreur.favoris_de.filter(pk=self.client_profile.pk).exists())
+        self.assertEqual(livreur.nb_ajout_favoris, 1)
+
+        # 2. Retirer des favoris (unlike) via HTMX
+        response_htmx = self.client.post(url, HTTP_HX_REQUEST="true")
+        self.assertEqual(response_htmx.status_code, 200)
+        self.assertFalse(livreur.favoris_de.filter(pk=self.client_profile.pk).exists())
+        self.assertEqual(livreur.nb_ajout_favoris, 0)
+        self.assertContains(response_htmx, "Ajouter aux favoris")
+
+    def test_livreur_profile_displays_reviews_and_social_stats(self):
+        livreur = Livreur.objects.get(user__telephone="70000803")
+        livreur.favoris_de.add(self.client_profile)
+        livreur.nb_livraisons = 42
+        livreur.note_moyenne = Decimal("4.85")
+        livreur.save()
+
+        # Création d'une livraison factice pour rattacher un avis
+        zone = Zone.objects.create(nom="Test Zone", bloc=self.bloc)
+        demande = DemandeLivraison.objects.create(
+            client=self.client_profile,
+            livreur=livreur,
+            zone_depart=zone,
+            zone_arrivee=zone,
+            latitude_depart=Decimal("12.39"),
+            longitude_depart=Decimal("-1.54"),
+            prix=Decimal("1000"),
+            whatsapp_destinataire="+22670112233",
+        )
+        AvisLivreur.objects.create(
+            demande_livraison=demande,
+            client=self.client_profile,
+            livreur=livreur,
+            note=5,
+            commentaire="Livreur rapide et ponctuel !",
+        )
+
+        response = self.client.get(reverse("clients_app:profil-livreur", args=[livreur.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "42")
+        self.assertContains(response, "Livreur rapide et ponctuel !")
+        self.assertContains(response, "Demander une course à Moussa")
+        self.assertContains(response, "Favoris / Likes")

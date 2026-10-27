@@ -66,6 +66,10 @@ class Livreur(models.Model):
     @property
     def moyen_de_transport(self):
         return self.get_type_vehicule_display()
+
+    @property
+    def nb_ajout_favoris(self):
+        return self.favoris_de.count()
     
 class PositionLivreur(models.Model):
     """Historique de position — à purger périodiquement (voir note plus bas)"""

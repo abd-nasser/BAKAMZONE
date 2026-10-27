@@ -1,0 +1,324 @@
+{% extends "base.html" %}
+
+{% block title %}Cockpit Livreur | BAKAMZONE{% endblock %}
+
+{% block content %}
+<main class="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
+
+    <!-- En-tête Cockpit Livreur -->
+    <header class="rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-950 p-6 text-white shadow-xl sm:p-8">
+        <div class="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+            <!-- Profil Livreur -->
+            <div class="flex items-center gap-4">
+                <div class="relative">
+                    <div class="h-16 w-16 sm:h-20 sm:w-20 rounded-2xl bg-emerald-600/30 border-2 border-emerald-500 overflow-hidden flex items-center justify-center text-white font-black text-xl">
+                        {% if livreur.photo_profil %}
+                            <img src="{{ livreur.photo_profil.url }}" alt="{{ livreur.user.get_full_name }}" class="h-full w-full object-cover">
+                        {% else %}
+                            {{ livreur.user.first_name|slice:":1" }}{{ livreur.user.last_name|slice:":1" }}
+                        {% endif %}
+                    </div>
+                    <span class="absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-slate-900 {% if livreur.disponible %}bg-emerald-400 animate-pulse{% else %}bg-slate-500{% endif %}"></span>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="text-xl sm:text-2xl font-black">{{ livreur.user.get_full_name }}</h1>
+                        <span class="badge badge-sm bg-emerald-500/20 text-emerald-400 border-emerald-500/30 capitalize">
+                            {{ livreur.get_type_vehicule_display }}
+                        </span>
+                    </div>
+                    <p class="text-xs sm:text-sm text-slate-300 mt-0.5">
+                        Bloc : <strong>{{ livreur.blocs.nom }}</strong> ({{ livreur.blocs.get_quartier_display }})
+                    </p>
+                    <p class="text-[11px] text-slate-400">
+                        @{{ livreur.user.username }} · Flotte officielle
+                    </p>
+                </div>
+            </div>
+
+            <!-- Interrupteur de disponibilité & Stats rapides -->
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                <form method="post" action="{% url 'livreurs_app:toggle-disponibilite' %}">
+                    {% csrf_token %}
+                    <button
+                        type="submit"
+                        class="btn btn-sm sm:btn-md w-full rounded-2xl border-0 font-bold shadow-lg transition-all {% if livreur.disponible %}bg-emerald-600 hover:bg-emerald-700 text-white{% else %}bg-slate-700 hover:bg-slate-600 text-slate-200{% endif %}"
+                    >
+                        <span class="h-2.5 w-2.5 rounded-full {% if livreur.disponible %}bg-white animate-pulse{% else %}bg-slate-400{% endif %}"></span>
+                        {% if livreur.disponible %}
+                            En ligne (Prêt pour courses)
+                        {% else %}
+                            Hors ligne (Cliquer pour activer)
+                        {% endif %}
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Compteurs opérationnels -->
+        <div class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4 border-t border-slate-700/60 pt-6">
+            <div class="rounded-2xl bg-white/5 p-3 text-center backdrop-blur-sm">
+                <p class="text-lg sm:text-2xl font-black text-amber-400">⚡ {{ demandes_en_attente|length }}</p>
+                <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">À prendre</p>
+            </div>
+            <div class="rounded-2xl bg-white/5 p-3 text-center backdrop-blur-sm">
+                <p class="text-lg sm:text-2xl font-black text-emerald-400">🛵 {{ courses_actives|length }}</p>
+                <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">En cours</p>
+            </div>
+            <div class="rounded-2xl bg-white/5 p-3 text-center backdrop-blur-sm">
+                <p class="text-lg sm:text-2xl font-black text-white">📦 {{ livreur.nb_livraisons }}</p>
+                <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Livrées</p>
+            </div>
+            <div class="rounded-2xl bg-white/5 p-3 text-center backdrop-blur-sm">
+                <p class="text-lg sm:text-2xl font-black text-rose-400">❤️ {{ nb_favoris }}</p>
+                <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Favoris</p>
+            </div>
+        </div>
+    </header>
+
+    <!-- SECTION 1 : Demandes en attente -->
+    <section class="space-y-4">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <span class="flex h-3 w-3 rounded-full bg-amber-500 animate-ping"></span>
+                <h2 class="text-xl sm:text-2xl font-black text-base-content">
+                    Nouvelles demandes de course
+                </h2>
+                <span class="badge badge-warning font-bold text-xs">{{ demandes_en_attente|length }}</span>
+            </div>
+        </div>
+
+        {% if demandes_en_attente %}
+            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {% for d in demandes_en_attente %}
+                    <div class="card rounded-3xl border border-amber-300 dark:border-amber-800/60 bg-base-100 shadow-md overflow-hidden flex flex-col justify-between">
+                        <div class="card-body p-5 space-y-4">
+                            <!-- En-tête de carte -->
+                            <div class="flex items-start justify-between gap-2 border-b border-base-200 pb-3">
+                                <div>
+                                    <span class="badge badge-sm font-bold bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border-0">
+                                        Course #{{ d.pk }}
+                                    </span>
+                                    {% if d.livreur == livreur %}
+                                        <span class="badge badge-sm badge-secondary font-bold ml-1">Directe pour vous</span>
+                                    {% endif %}
+                                    <p class="text-xs text-base-content/60 mt-1">
+                                        Client : <strong>{{ d.client.user.get_full_name }}</strong>
+                                    </p>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-xl font-black text-emerald-600 dark:text-emerald-400">{{ d.prix }} FCFA</span>
+                                </div>
+                            </div>
+
+                            <!-- Trajet -->
+                            <div class="space-y-2 text-xs">
+                                <div class="flex items-start gap-2">
+                                    <span class="text-emerald-600 font-bold">🟢 Départ :</span>
+                                    <div>
+                                        <p class="font-bold text-base-content">{{ d.zone_depart.nom }}</p>
+                                        <a
+                                            href="https://www.google.com/maps?q={{ d.latitude_depart }},{{ d.longitude_depart }}"
+                                            target="_blank"
+                                            class="text-[11px] text-emerald-600 hover:underline flex items-center gap-1 font-medium mt-0.5"
+                                        >
+                                            🗺️ Ouvrir GPS ramassage ↗
+                                        </a>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-start gap-2 pt-1 border-t border-base-200">
+                                    <span class="text-orange-500 font-bold">🔴 Arrivée :</span>
+                                    <div>
+                                        <p class="font-bold text-base-content">{{ d.zone_arrivee.nom }}</p>
+                                        <p class="text-[11px] text-base-content/60">Destinataire : {{ d.whatsapp_destinataire }}</p>
+                                    </div>
+                                </div>
+
+                                {% if d.description_colis %}
+                                    <div class="p-2.5 rounded-xl bg-base-200 text-base-content/80 text-[11px] mt-2">
+                                        <span class="font-bold">Colis :</span> {{ d.description_colis }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Boutons Accepter / Refuser -->
+                        <div class="p-4 bg-base-200/50 border-t border-base-200 flex items-center gap-2">
+                            <!-- Accepter -->
+                            <form method="post" action="{% url 'livreurs_app:accepter-demande' d.pk %}" class="flex-1">
+                                {% csrf_token %}
+                                <button
+                                    type="submit"
+                                    class="btn btn-sm btn-success w-full text-white font-extrabold rounded-xl shadow border-0"
+                                >
+                                    ✓ Accepter (WhatsApp)
+                                </button>
+                            </form>
+
+                            <!-- Refuser -->
+                            {% if d.livreur == livreur %}
+                                <form method="post" action="{% url 'livreurs_app:refuser-demande' d.pk %}">
+                                    {% csrf_token %}
+                                    <button
+                                        type="submit"
+                                        class="btn btn-sm btn-ghost text-error rounded-xl"
+                                        title="Décliner cette course"
+                                    >
+                                        ✕
+                                    </button>
+                                </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="rounded-3xl border border-dashed border-base-300 bg-base-100 p-8 text-center space-y-2">
+                <p class="text-3xl">☕</p>
+                <p class="font-bold text-base-content">Aucune course en attente</p>
+                <p class="text-xs text-base-content/60 max-w-sm mx-auto">
+                    Dès qu'un client réserve ou commande dans votre secteur, la course apparaîtra ici avec notification.
+                </p>
+            </div>
+        {% endif %}
+    </section>
+
+    <!-- SECTION 2 : Mes courses actives (En cours) -->
+    <section class="space-y-4">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <span class="flex h-3 w-3 rounded-full bg-emerald-500"></span>
+                <h2 class="text-xl sm:text-2xl font-black text-base-content">
+                    Mes courses actives
+                </h2>
+                <span class="badge badge-success text-white font-bold text-xs">{{ courses_actives|length }}</span>
+            </div>
+        </div>
+
+        {% if courses_actives %}
+            <div class="grid gap-4 sm:grid-cols-2">
+                {% for ca in courses_actives %}
+                    <div class="card rounded-3xl border border-emerald-400 dark:border-emerald-800 bg-base-100 shadow-xl overflow-hidden">
+                        <div class="card-body p-6 space-y-5">
+                            <!-- En-tête -->
+                            <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                                <div>
+                                    <span class="text-xs font-bold text-emerald-600">Course #{{ ca.pk }}</span>
+                                    <span class="badge badge-sm font-bold ml-2 {% if ca.statut == 'en_cours' %}badge-info{% else %}badge-primary{% endif %}">
+                                        {{ ca.get_statut_display }}
+                                    </span>
+                                </div>
+                                <span class="text-xl font-black text-emerald-600">{{ ca.prix }} FCFA</span>
+                            </div>
+
+                            <!-- Suivi Smart-Drop WhatsApp & GPS Destinataire -->
+                            <div class="rounded-2xl p-4 {% if ca.position_destinataire_validee %}bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200{% elif ca.statut_destinataire == 'alerte_assistant' %}bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200{% else %}bg-base-200 text-base-content/80{% endif %} space-y-2">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-bold flex items-center gap-1.5">
+                                        {% if ca.position_destinataire_validee %}
+                                            📍 Position destinataire reçue
+                                        {% elif ca.statut_destinataire == 'alerte_assistant' %}
+                                            ⚠️ Délai 3 min dépassé (Alerte Assistant)
+                                        {% else %}
+                                            ⏳ En attente validation destinataire
+                                        {% endif %}
+                                    </span>
+                                    <span class="text-[11px] font-mono">{{ ca.whatsapp_destinataire }}</span>
+                                </div>
+
+                                {% if ca.position_destinataire_validee and ca.latitude_destinataire_reelle %}
+                                    <a
+                                        href="https://www.google.com/maps?q={{ ca.latitude_destinataire_reelle }},{{ ca.longitude_destinataire_reelle }}"
+                                        target="_blank"
+                                        class="btn btn-sm bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl w-full gap-2 font-bold shadow"
+                                    >
+                                        🚀 Naviguer vers la position exacte du client ↗
+                                    </a>
+                                {% else %}
+                                    <p class="text-xs opacity-80">
+                                        Le lien de partage de position est en attente de validation. Sans réponse après 3 minutes, l'assistant du bloc sera alerté.
+                                    </p>
+                                    <a
+                                        href="https://wa.me/{{ ca.whatsapp_destinataire|cut:'+'|cut:' ' }}"
+                                        target="_blank"
+                                        class="btn btn-xs btn-outline rounded-lg text-xs"
+                                    >
+                                        💬 Ouvrir WhatsApp du destinataire
+                                    </a>
+                                {% endif %}
+                            </div>
+
+                            <!-- Actions de transition d'état -->
+                            <div class="pt-2 border-t border-base-200 flex items-center gap-3">
+                                {% if ca.statut == 'acceptee' %}
+                                    <form method="post" action="{% url 'livreurs_app:changer-statut-demande' ca.pk %}" class="w-full">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="statut" value="en_cours">
+                                        <button type="submit" class="btn btn-sm btn-primary w-full rounded-xl font-bold">
+                                            📦 Colis récupéré (Démarrer la course)
+                                        </button>
+                                    </form>
+                                {% elif ca.statut == 'en_cours' %}
+                                    <form method="post" action="{% url 'livreurs_app:changer-statut-demande' ca.pk %}" class="w-full">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="statut" value="livree">
+                                        <button type="submit" class="btn btn-sm btn-success text-white w-full rounded-xl font-black">
+                                            🎉 Colis remis (Valider la livraison)
+                                        </button>
+                                    </form>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="rounded-3xl border border-base-200 bg-base-100 p-6 text-center text-xs text-base-content/60">
+                Vous n'avez aucune course active en ce moment.
+            </div>
+        {% endif %}
+    </section>
+
+    <!-- SECTION 3 : Historique des livraisons terminées -->
+    <section class="space-y-4">
+        <h2 class="text-lg sm:text-xl font-bold text-base-content">
+            Historique récent ({{ courses_terminees|length }})
+        </h2>
+
+        {% if courses_terminees %}
+            <div class="overflow-x-auto rounded-2xl border border-base-300 bg-base-100 shadow-sm">
+                <table class="table table-sm">
+                    <thead>
+                        <tr class="bg-base-200/60 text-xs">
+                            <th>Course</th>
+                            <th>Date</th>
+                            <th>Trajet</th>
+                            <th>Montant</th>
+                            <th>Statut</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-xs">
+                        {% for ct in courses_terminees %}
+                            <tr>
+                                <td class="font-bold">#{{ ct.pk }}</td>
+                                <td>{{ ct.date_creation|date:"d/m/Y H:i" }}</td>
+                                <td>{{ ct.zone_depart.nom }} ➔ {{ ct.zone_arrivee.nom }}</td>
+                                <td class="font-bold text-emerald-600">{{ ct.prix }} FCFA</td>
+                                <td>
+                                    <span class="badge badge-xs {% if ct.statut == 'livree' %}badge-success text-white{% else %}badge-ghost{% endif %}">
+                                        {{ ct.get_statut_display }}
+                                    </span>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="text-xs text-base-content/50">Aucune course terminée pour l'instant.</p>
+        {% endif %}
+    </section>
+
+</main>
+{% endblock %}

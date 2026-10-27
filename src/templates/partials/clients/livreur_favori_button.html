@@ -1,0 +1,26 @@
+<form
+    id="favori-btn-container-{{ livreur.pk }}"
+    method="post"
+    action="{% url 'clients_app:toggle-favori-livreur' livreur.pk %}"
+    hx-post="{% url 'clients_app:toggle-favori-livreur' livreur.pk %}"
+    hx-target="#favori-btn-container-{{ livreur.pk }}"
+    hx-swap="outerHTML"
+    class="inline-block"
+>
+    {% csrf_token %}
+    <button
+        type="submit"
+        class="btn btn-sm sm:btn-md gap-2 rounded-2xl border transition-all duration-200 {% if est_favori %}bg-rose-50 border-rose-300 text-rose-600 hover:bg-rose-100 dark:bg-rose-950/40 dark:border-rose-800 dark:text-rose-400{% else %}bg-base-100 border-base-300 text-base-content/80 hover:bg-base-200 hover:text-rose-600{% endif %}"
+        title="{% if est_favori %}Retirer des favoris{% else %}Ajouter aux favoris{% endif %}"
+    >
+        <span class="text-base sm:text-lg {% if est_favori %}scale-110{% endif %} transition-transform">
+            {% if est_favori %}❤️{% else %}🤍{% endif %}
+        </span>
+        <span class="font-bold text-xs sm:text-sm">
+            {% if est_favori %}Favori{% else %}Ajouter aux favoris{% endif %}
+        </span>
+        <span class="badge badge-sm font-black {% if est_favori %}badge-error text-white{% else %}badge-ghost{% endif %}">
+            {{ nb_favoris }}
+        </span>
+    </button>
+</form>

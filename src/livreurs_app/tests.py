@@ -1,9 +1,16 @@
+from decimal import Decimal
+from unittest.mock import patch
+
 from django.test import TestCase
 from django.urls import reverse
+from kombu.exceptions import OperationalError as CeleryOperationalError
 
 from auth_app.models import User
 from blocs_app.models import Blocs
+from clients_app.models import Client
+from demande_livraison_app.models import DemandeLivraison
 from livreurs_app.forms import InscriptionLivreurForm
+from livreurs_app.models import Livreur
 from zones_app.models import Zone
 
 
@@ -203,3 +210,114 @@ class InscriptionLivreurFormTests(TestCase):
 
         self.assertIn(self.zone, form.fields['zone_actuelle'].queryset)
         self.assertNotIn(self.bloc, form.fields['zone_actuelle'].queryset)
+
+
+class LivreurDeliveryWorkflowTests(TestCase):
+    def setUp(self):
+        self.bloc = Blocs.objects.create(nom='Bloc de livraison')
+        self.zone = Zone.objects.create(nom='Zone de livraison', bloc=self.bloc)
+        client_user = User.objects.create_user(
+            telephone='70000101',
+            password='client-password',
+            username='client-test',
+            first_name='Client',
+            last_name='Test',
+            role='client',
+        )
+        self.client_profile = Client.objects.create(user=client_user)
+        livreur_user = User.objects.create_user(
+            telephone='70000102',
+            password='livreur-password',
+            username='livreur-test',
+            first_name='Livreur',
+            last_name='Test',
+            role='livreur',
+        )
+        self.livreur = Livreur.objects.create(
+            user=livreur_user,
+            type_vehicule='moto',
+            blocs=self.bloc,
+        )
+        self.client.force_login(livreur_user)
+        self.demande = DemandeLivraison.objects.create(
+            client=self.client_profile,
+            zone_depart=self.zone,
+            zone_arrivee=self.zone,
+            latitude_depart=Decimal('12.345678'),
+            longitude_depart=Decimal('-1.234567'),
+            prix=Decimal('1000'),
+            whatsapp_destinataire='+22670000000',
+        )
+
+    def test_dashboard_shows_same_block_requests_and_actions(self):
+        response = self.client.get(reverse('livreurs_app:tableau-de-bord'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, f'Course #{self.demande.pk}')
+        self.assertContains(
+            response,
+            reverse('livreurs_app:accepter-demande', args=[self.demande.pk]),
+        )
+
+    @patch('livreurs_app.views.envoyer_notification_smartdrop_destinataire_task.delay')
+    def test_accepting_same_block_request_sends_smartdrop_task(self, send_notification):
+        response = self.client.post(
+            reverse('livreurs_app:accepter-demande', args=[self.demande.pk]),
+        )
+
+        self.assertRedirects(response, reverse('livreurs_app:tableau-de-bord'))
+        self.demande.refresh_from_db()
+        self.assertEqual(self.demande.livreur, self.livreur)
+        self.assertEqual(self.demande.statut, 'acceptee')
+        self.assertIsNotNone(self.demande.date_acceptation)
+        send_notification.assert_called_once_with(
+            self.demande.pk,
+            base_url='http://testserver',
+        )
+
+    @patch('livreurs_app.views.envoyer_notification_smartdrop_destinataire_task.delay')
+    def test_cannot_accept_request_from_another_block(self, send_notification):
+        other_block = Blocs.objects.create(nom='Autre bloc')
+        other_zone = Zone.objects.create(nom='Autre zone', bloc=other_block)
+        self.demande.zone_depart = other_zone
+        self.demande.save(update_fields=['zone_depart'])
+
+        response = self.client.post(
+            reverse('livreurs_app:accepter-demande', args=[self.demande.pk]),
+        )
+
+        self.assertRedirects(response, reverse('livreurs_app:tableau-de-bord'))
+        self.demande.refresh_from_db()
+        self.assertEqual(self.demande.statut, 'en_attente')
+        self.assertIsNone(self.demande.livreur)
+        send_notification.assert_not_called()
+
+    @patch(
+        'livreurs_app.views.envoyer_notification_smartdrop_destinataire_task.delay',
+        side_effect=CeleryOperationalError('broker unavailable'),
+    )
+    def test_reports_when_smartdrop_notification_cannot_be_queued(self, send_notification):
+        response = self.client.post(
+            reverse('livreurs_app:accepter-demande', args=[self.demande.pk]),
+            follow=True,
+        )
+
+        self.assertContains(response, "notification WhatsApp")
+        self.assertContains(response, "assistance")
+        self.demande.refresh_from_db()
+        self.assertEqual(self.demande.livreur, self.livreur)
+        self.assertEqual(self.demande.statut, 'acceptee')
+        send_notification.assert_called_once()
+
+    def test_refusing_direct_request_releases_it_to_the_block(self):
+        self.demande.livreur = self.livreur
+        self.demande.save(update_fields=['livreur'])
+
+        response = self.client.post(
+            reverse('livreurs_app:refuser-demande', args=[self.demande.pk]),
+        )
+
+        self.assertRedirects(response, reverse('livreurs_app:tableau-de-bord'))
+        self.demande.refresh_from_db()
+        self.assertEqual(self.demande.statut, 'en_attente')
+        self.assertIsNone(self.demande.livreur)

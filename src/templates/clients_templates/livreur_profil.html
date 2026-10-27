@@ -1,63 +1,490 @@
 {% extends "base.html" %}
 
-{% block title %}Profil de {{ livreur.user.get_full_name }} | BAKAMZONE{% endblock %}
+{% block title %}{{ livreur.user.get_full_name }} (@{{ livreur.user.username }}) | BAKAMZONE{% endblock %}
 
 {% block content %}
-<main class="mx-auto max-w-4xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
-    <a href="{% url 'clients_app:tableau-de-bord' %}#livreurs" class="btn btn-ghost rounded-xl">
-        ← Retour aux livreurs
-    </a>
+<main class="mx-auto max-w-4xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
 
-    <article class="card overflow-hidden border border-base-300 bg-base-100 shadow-xl">
-        {% if livreur.photo_profil %}
-            <figure class="max-h-96 bg-base-200">
-                <img
-                    src="{{ livreur.photo_profil.url }}"
-                    alt="Photo de {{ livreur.user.get_full_name }}"
-                    class="max-h-96 w-full object-cover"
-                >
-            </figure>
-        {% endif %}
-        <div class="card-body gap-5 p-6 sm:p-9">
-            <header class="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                    <p class="text-sm font-semibold uppercase tracking-wider text-[#059669]">Profil livreur</p>
-                    <h1 class="mt-1 text-3xl font-black">{{ livreur.user.get_full_name }}</h1>
-                    <p class="mt-1 text-base-content/70">{{ livreur.get_type_vehicule_display }}</p>
-                </div>
-                <span class="badge {% if livreur.disponible %}badge-success{% else %}badge-ghost{% endif %} badge-lg">
-                    {% if livreur.disponible %}Disponible{% else %}Indisponible{% endif %}
+    <!-- Fil d'Ariane & Retour -->
+    <div class="flex items-center justify-between">
+        <a href="{% url 'clients_app:tableau-de-bord' %}#livreurs" class="btn btn-sm btn-ghost gap-2 rounded-xl text-base-content/75 hover:text-emerald-600">
+            ← Retour aux livreurs
+        </a>
+        <span class="text-xs font-semibold uppercase tracking-wider text-base-content/50">Profil Livreur Officiel</span>
+    </div>
+
+    <!-- CARTE PROFIL STYLE RÉSEAU SOCIAL -->
+    <article class="overflow-hidden rounded-3xl border border-base-300 bg-base-100 shadow-xl">
+        <!-- Bannière Cover -->
+        <div class="relative h-44 sm:h-56 bg-gradient-to-r from-emerald-700 via-emerald-600 to-teal-700">
+            <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-white/10 via-transparent to-black/20"></div>
+            <!-- Badge statut de disponibilité en haut à droite -->
+            <div class="absolute top-4 right-4 sm:top-6 sm:right-6">
+                <span class="inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-extrabold shadow-lg backdrop-blur-md {% if livreur.disponible %}bg-emerald-500/90 text-white{% else %}bg-slate-800/80 text-slate-200{% endif %}">
+                    <span class="h-2 w-2 rounded-full {% if livreur.disponible %}bg-white animate-pulse{% else %}bg-slate-400{% endif %}"></span>
+                    {% if livreur.disponible %}En ligne & Prêt{% else %}Actuellement hors ligne{% endif %}
                 </span>
-            </header>
+            </div>
+        </div>
 
-            <div class="grid gap-4 sm:grid-cols-2">
-                <div class="rounded-2xl bg-base-200 p-4">
-                    <p class="text-sm text-base-content/60">Bloc</p>
-                    <p class="mt-1 font-bold">{{ livreur.blocs.nom }}</p>
-                    <p class="text-sm text-base-content/70">{{ livreur.blocs.get_quartier_display }} · {{ livreur.blocs.get_ville_display }}</p>
+        <!-- Contenu sous la bannière -->
+        <div class="relative px-6 pb-8 sm:px-9">
+            <!-- Header avec Avatar chevauchant -->
+            <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 -mt-16 sm:-mt-20">
+                <!-- Avatar -->
+                <div class="relative inline-block">
+                    <div class="h-28 w-28 sm:h-36 sm:w-36 rounded-full border-4 border-base-100 bg-emerald-100 dark:bg-emerald-950 shadow-2xl overflow-hidden flex items-center justify-center">
+                        {% if livreur.photo_profil %}
+                            <img
+                                src="{{ livreur.photo_profil.url }}"
+                                alt="Photo de {{ livreur.user.get_full_name }}"
+                                class="h-full w-full object-cover"
+                            >
+                        {% else %}
+                            <span class="text-3xl sm:text-4xl font-black text-emerald-700 dark:text-emerald-300">
+                                {{ livreur.user.first_name|slice:":1" }}{{ livreur.user.last_name|slice:":1" }}
+                            </span>
+                        {% endif %}
+                    </div>
+                    <!-- Pastille live présence sur l'avatar -->
+                    <span
+                        class="absolute bottom-2 right-2 h-5 w-5 rounded-full border-2 border-base-100 {% if livreur.disponible %}bg-emerald-500{% else %}bg-slate-400{% endif %}"
+                        title="{% if livreur.disponible %}En service{% else %}Hors service{% endif %}"
+                    ></span>
                 </div>
-                <div class="rounded-2xl bg-base-200 p-4">
-                    <p class="text-sm text-base-content/60">Zone actuelle</p>
-                    <p class="mt-1 font-bold">
-                        {% if livreur.zone_actuelle %}{{ livreur.zone_actuelle.nom }}{% else %}Non renseignée{% endif %}
-                    </p>
-                </div>
-                <div class="rounded-2xl bg-base-200 p-4">
-                    <p class="text-sm text-base-content/60">Note moyenne</p>
-                    <p class="mt-1 font-bold">★ {{ livreur.note_moyenne }}</p>
-                </div>
-                <div class="rounded-2xl bg-base-200 p-4">
-                    <p class="text-sm text-base-content/60">Livraisons effectuées</p>
-                    <p class="mt-1 font-bold">{{ livreur.nb_livraisons }}</p>
+
+                <!-- Boutons d'interaction rapide (Like/Favori & Commander & Chat) -->
+                <div class="flex flex-wrap items-center gap-3 pt-2 sm:pt-0">
+                    <!-- Bouton Favori / Like HTMX -->
+                    {% include "partials/clients/livreur_favori_button.html" %}
+
+                    <a href="#demande-course" class="btn btn-sm sm:btn-md bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-2xl shadow-md border-0 gap-2">
+                        <span>⚡ Commander avec {{ livreur.user.first_name }}</span>
+                    </a>
+
+                    <a href="#" class="btn btn-sm sm:btn-md btn-outline border-base-300 rounded-2xl gap-2">
+                        <span>💬 Démarrer un chat</span>
+                    </a>
                 </div>
             </div>
 
-            <div class="card-actions justify-end">
-                <a href="#" class="btn rounded-xl bg-[#059669] text-white hover:bg-[#047857]">
-                    Démarrer un chat
-                </a>
+            <!-- Identité & Informations principales -->
+            <div class="mt-4 sm:mt-5 space-y-1">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <h1 class="text-2xl sm:text-3xl font-black tracking-tight text-base-content">
+                        {{ livreur.user.get_full_name }}
+                    </h1>
+                    {% if livreur.statut_verification == 'verifie' %}
+                        <span class="inline-flex items-center gap-1 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 px-2.5 py-0.5 text-xs font-bold" title="Identité et documents validés par BAKAMZONE">
+                            <svg class="w-3.5 h-3.5 text-emerald-600 fill-current" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>
+                            Certifié
+                        </span>
+                    {% endif %}
+                </div>
+                <p class="text-sm font-medium text-base-content/60">
+                    @{{ livreur.user.username }} · Flotte officielle BAKAMZONE
+                </p>
+                <p class="text-sm text-base-content/80 pt-1 flex items-center gap-2">
+                    <span class="inline-block">📍 Rattaché au <strong>{{ livreur.blocs.nom }}</strong> ({{ livreur.blocs.get_quartier_display }})</span>
+                    {% if livreur.zone_actuelle %}
+                        <span>· Actuellement à <strong>{{ livreur.zone_actuelle.nom }}</strong></span>
+                    {% endif %}
+                </p>
+            </div>
+
+            <!-- COMPTEURS RÉSEAU SOCIAL (Stats bar) -->
+            <div class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <!-- Likes / Favoris -->
+                <div class="rounded-2xl border border-base-200 bg-base-200/50 p-4 text-center transition hover:bg-base-200">
+                    <p class="text-xl sm:text-2xl font-black text-rose-600">❤️ {{ nb_favoris }}</p>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-base-content/60 mt-1">Favoris / Likes</p>
+                </div>
+
+                <!-- Livraisons effectuées -->
+                <div class="rounded-2xl border border-base-200 bg-base-200/50 p-4 text-center transition hover:bg-base-200">
+                    <p class="text-xl sm:text-2xl font-black text-emerald-600">📦 {{ livreur.nb_livraisons }}</p>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-base-content/60 mt-1">Courses livrées</p>
+                </div>
+
+                <!-- Note moyenne -->
+                <div class="rounded-2xl border border-base-200 bg-base-200/50 p-4 text-center transition hover:bg-base-200">
+                    <p class="text-xl sm:text-2xl font-black text-amber-500">⭐ {{ livreur.note_moyenne|default:"5.0" }}</p>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-base-content/60 mt-1">Note globale</p>
+                </div>
+
+                <!-- Véhicule -->
+                <div class="rounded-2xl border border-base-200 bg-base-200/50 p-4 text-center transition hover:bg-base-200">
+                    <p class="text-xl sm:text-2xl font-black text-orange-500">
+                        {% if livreur.type_vehicule == 'moto' %}🛵
+                        {% elif livreur.type_vehicule == 'velo' %}🚲
+                        {% elif livreur.type_vehicule == 'voiture' %}🚗
+                        {% else %}🚶{% endif %}
+                        <span class="text-base sm:text-lg font-bold capitalize">{{ livreur.get_type_vehicule_display }}</span>
+                    </p>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-base-content/60 mt-1">Véhicule</p>
+                </div>
             </div>
         </div>
     </article>
+
+    <!-- SECTION COMMANDE DIRECTE AVEC CE LIVREUR -->
+    <section id="demande-course" class="space-y-4">
+        <div class="flex items-center justify-between">
+            <div>
+                <span class="text-xs font-bold uppercase tracking-wider text-emerald-600">Réservation directe</span>
+                <h2 class="text-2xl font-black text-base-content">Demander une course à {{ livreur.user.first_name }}</h2>
+            </div>
+            {% if not livreur.disponible %}
+                <span class="badge badge-warning text-xs font-bold p-2.5">
+                    Livreur hors ligne · Délai allongé
+                </span>
+            {% endif %}
+        </div>
+
+        <div
+            x-data="demandeDirecteForm({{ tarif_intra }}, {{ tarif_inter }}, '{{ livreur.zone_actuelle.id|default:'' }}', '{{ livreur.zone_actuelle.bloc_id|default:'' }}')"
+            class="card rounded-3xl border border-base-300 bg-base-100 shadow-xl"
+        >
+            <form method="post" action="{% url 'clients_app:profil-livreur' livreur.pk %}" class="card-body p-6 sm:p-8 space-y-6">
+                {% csrf_token %}
+
+                {% if form.non_field_errors %}
+                    <div class="alert alert-error rounded-2xl shadow">
+                        {% for error in form.non_field_errors %}
+                            <p class="text-sm font-semibold">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <!-- Bandeau livreur ciblé -->
+                <div class="flex items-center gap-3 p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-xs sm:text-sm text-emerald-900 dark:text-emerald-200">
+                    <span class="text-lg">🎯</span>
+                    <span>Cette demande sera assignée et notifiée en priorité à <strong>{{ livreur.user.get_full_name }}</strong>.</span>
+                </div>
+
+                <!-- GPS & Zones -->
+                <div class="space-y-4">
+                    <!-- Bouton GPS Alpine -->
+                    <div class="rounded-2xl border-2 border-dashed border-emerald-500/30 bg-emerald-50/50 p-4 dark:bg-emerald-950/20">
+                        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                            <div>
+                                <p class="text-sm font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-2">
+                                    📍 Position GPS de départ
+                                </p>
+                                <p class="text-xs text-base-content/70">Validez votre adresse précise pour le ramassage.</p>
+                            </div>
+                            <button
+                                type="button"
+                                @click="capturerGPS()"
+                                :disabled="isGeolocating"
+                                class="btn btn-sm bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl border-0 shrink-0"
+                            >
+                                <span x-show="!isGeolocating && !geoSuccess">📍 Capturer ma position</span>
+                                <span x-show="isGeolocating" class="loading loading-spinner loading-xs"></span>
+                                <span x-show="isGeolocating">Capture...</span>
+                                <span x-show="!isGeolocating && geoSuccess">🔄 Réactualiser</span>
+                            </button>
+                        </div>
+                        <div x-show="geoSuccess" x-cloak class="mt-2 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+                            ✓ Coordonnées : <span x-text="latDepart"></span>, <span x-text="lngDepart"></span>
+                        </div>
+                        <div x-show="geoError" x-cloak class="mt-2 text-xs text-amber-700 dark:text-amber-400">
+                            <span x-text="geoError"></span>
+                        </div>
+                    </div>
+
+                    <input type="hidden" name="latitude_depart" id="id_latitude_depart" x-model="latDepart" value="{{ form.latitude_depart.value|default:'' }}">
+                    <input type="hidden" name="longitude_depart" id="id_longitude_depart" x-model="lngDepart" value="{{ form.longitude_depart.value|default:'' }}">
+
+                    <!-- Sélecteurs de zones -->
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <div class="form-control">
+                            <label class="label pb-1" for="id_zone_depart">
+                                <span class="label-text font-bold text-xs">Zone de départ <span class="text-error">*</span></span>
+                            </label>
+                            <select
+                                name="zone_depart"
+                                id="id_zone_depart"
+                                required
+                                class="select select-bordered select-sm sm:select-md w-full rounded-xl"
+                                @change="onZoneDepartChange($event)"
+                            >
+                                <option value="">Sélectionnez la zone</option>
+                                {% for z in zones %}
+                                    <option
+                                        value="{{ z.id }}"
+                                        data-bloc-id="{{ z.bloc_id }}"
+                                        {% if form.zone_depart.value|stringformat:"s" == z.id|stringformat:"s" or z.id|stringformat:"s" == livreur.zone_actuelle.id|stringformat:"s" %}selected{% endif %}
+                                    >
+                                        {{ z.nom }} ({{ z.bloc.nom }})
+                                    </option>
+                                {% endfor %}
+                            </select>
+                            {% if form.zone_depart.errors %}
+                                <p class="text-xs text-error mt-1">{{ form.zone_depart.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+
+                        <div class="form-control">
+                            <label class="label pb-1" for="id_zone_arrivee">
+                                <span class="label-text font-bold text-xs">Zone d'arrivée (destinataire) <span class="text-error">*</span></span>
+                            </label>
+                            <select
+                                name="zone_arrivee"
+                                id="id_zone_arrivee"
+                                required
+                                class="select select-bordered select-sm sm:select-md w-full rounded-xl"
+                                @change="onZoneArriveeChange($event)"
+                            >
+                                <option value="">Sélectionnez la zone</option>
+                                {% for z in zones %}
+                                    <option
+                                        value="{{ z.id }}"
+                                        data-bloc-id="{{ z.bloc_id }}"
+                                        {% if form.zone_arrivee.value|stringformat:"s" == z.id|stringformat:"s" %}selected{% endif %}
+                                    >
+                                        {{ z.nom }} ({{ z.bloc.nom }})
+                                    </option>
+                                {% endfor %}
+                            </select>
+                            {% if form.zone_arrivee.errors %}
+                                <p class="text-xs text-error mt-1">{{ form.zone_arrivee.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tarif garanti en temps réel -->
+                <div class="rounded-2xl border border-base-300 bg-base-200/50 p-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <span class="text-xs font-semibold text-base-content/65">Tarif de la course :</span>
+                            <div class="flex items-center gap-2 mt-0.5">
+                                <span
+                                    x-show="typeTrajet"
+                                    class="badge badge-sm font-bold"
+                                    :class="typeTrajet === 'intra' ? 'badge-success text-white' : 'badge-warning text-slate-900'"
+                                    x-text="typeTrajet === 'intra' ? 'Intra-bloc' : 'Inter-blocs'"
+                                ></span>
+                                <span class="text-xs text-base-content/70" x-show="!typeTrajet">Choisissez les deux zones</span>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-2xl font-black text-emerald-600 dark:text-emerald-400" x-text="tarifAffiche || '—'"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Destinataire & Colis -->
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <div class="form-control">
+                        <label class="label pb-1" for="id_whatsapp_destinataire">
+                            <span class="label-text font-bold text-xs">WhatsApp du destinataire <span class="text-error">*</span></span>
+                        </label>
+                        <input
+                            type="text"
+                            name="whatsapp_destinataire"
+                            id="id_whatsapp_destinataire"
+                            required
+                            value="{{ form.whatsapp_destinataire.value|default:'' }}"
+                            placeholder="+226 70 00 00 00"
+                            class="input input-bordered input-sm sm:input-md w-full rounded-xl"
+                        >
+                        {% if form.whatsapp_destinataire.errors %}
+                            <p class="text-xs text-error mt-1">{{ form.whatsapp_destinataire.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-control">
+                        <label class="label pb-1" for="id_description_colis">
+                            <span class="label-text font-bold text-xs">Description du colis</span>
+                        </label>
+                        <input
+                            type="text"
+                            name="description_colis"
+                            id="id_description_colis"
+                            value="{{ form.description_colis.value|default:'' }}"
+                            placeholder="Ex : Pochette documents, nourriture..."
+                            class="input input-bordered input-sm sm:input-md w-full rounded-xl"
+                        >
+                    </div>
+                </div>
+
+                <!-- Soumission -->
+                <button
+                    type="submit"
+                    :disabled="!zoneDepartId || !zoneArriveeId"
+                    class="btn btn-md sm:btn-lg w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-2xl shadow-lg border-0 disabled:bg-base-300 disabled:text-base-content/40"
+                >
+                    <span>Confirmer et envoyer la course à {{ livreur.user.first_name }} (<span x-text="tarifAffiche"></span>) ➔</span>
+                </button>
+            </form>
+        </div>
+    </section>
+
+    <!-- SECTION AVIS & COMMENTAIRES CLIENTS (Style social/reviews) -->
+    <section class="space-y-4">
+        <div class="flex items-center justify-between border-b border-base-200 pb-3">
+            <div>
+                <span class="text-xs font-bold uppercase tracking-wider text-amber-500">Retours d'expérience</span>
+                <h2 class="text-xl sm:text-2xl font-black text-base-content">
+                    Avis clients ({{ nb_avis }})
+                </h2>
+            </div>
+            <div class="flex items-center gap-1.5 text-sm font-bold text-amber-500">
+                <span class="text-lg">⭐</span>
+                <span>{{ livreur.note_moyenne|default:"5.0" }} / 5</span>
+            </div>
+        </div>
+
+        {% if avis_list %}
+            <div class="space-y-3">
+                {% for avis in avis_list %}
+                    <div class="rounded-2xl border border-base-200 bg-base-100 p-4 sm:p-5 shadow-sm space-y-2">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2.5">
+                                <div class="h-9 w-9 rounded-full bg-emerald-100 dark:bg-emerald-950 flex items-center justify-center font-bold text-xs text-emerald-800 dark:text-emerald-300">
+                                    {{ avis.client.user.first_name|slice:":1" }}
+                                </div>
+                                <div>
+                                    <p class="font-bold text-sm text-base-content">
+                                        {{ avis.client.user.first_name }} {{ avis.client.user.last_name|slice:":1" }}.
+                                    </p>
+                                    <p class="text-[11px] text-base-content/50">
+                                        {{ avis.date_creation|timesince }}
+                                    </p>
+                                </div>
+                            </div>
+                            <!-- Étoiles -->
+                            <div class="flex items-center gap-0.5 text-amber-400 text-xs">
+                                {% for i in "12345" %}
+                                    {% if forloop.counter <= avis.note %}
+                                        ★
+                                    {% else %}
+                                        ☆
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% if avis.commentaire %}
+                            <p class="text-sm text-base-content/85 pl-11">
+                                « {{ avis.commentaire }} »
+                            </p>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <!-- État vide des avis -->
+            <div class="rounded-3xl border border-dashed border-base-300 bg-base-200/40 p-8 text-center space-y-2">
+                <p class="text-3xl">✨</p>
+                <p class="font-bold text-base-content">Aucun avis pour l'instant</p>
+                <p class="text-xs text-base-content/60 max-w-sm mx-auto">
+                    Commandez avec {{ livreur.user.first_name }} et partagez votre expérience dès la livraison terminée !
+                </p>
+            </div>
+        {% endif %}
+    </section>
+
 </main>
+
+<script>
+function demandeDirecteForm(tarifIntraVal, tarifInterVal, initZoneDepartId, initBlocDepartId) {
+    return {
+        tarifIntra: Number(tarifIntraVal) || 1000,
+        tarifInter: Number(tarifInterVal) || 1500,
+
+        zoneDepartId: initZoneDepartId || '',
+        zoneArriveeId: '',
+        blocDepartId: initBlocDepartId || null,
+        blocArriveeId: null,
+
+        latDepart: '{{ form.latitude_depart.value|default:"" }}',
+        lngDepart: '{{ form.longitude_depart.value|default:"" }}',
+
+        isGeolocating: false,
+        geoSuccess: Boolean('{{ form.latitude_depart.value|default:"" }}'),
+        geoError: '',
+
+        tarifCalcule: null,
+        typeTrajet: null,
+
+        init() {
+            const selectDepart = document.getElementById('id_zone_depart');
+            const selectArrivee = document.getElementById('id_zone_arrivee');
+
+            if (selectDepart && selectDepart.value) {
+                this.zoneDepartId = selectDepart.value;
+                const opt = selectDepart.options[selectDepart.selectedIndex];
+                this.blocDepartId = opt ? opt.dataset.blocId : null;
+            }
+            if (selectArrivee && selectArrivee.value) {
+                this.zoneArriveeId = selectArrivee.value;
+                const opt = selectArrivee.options[selectArrivee.selectedIndex];
+                this.blocArriveeId = opt ? opt.dataset.blocId : null;
+            }
+            this.recalculer();
+        },
+
+        onZoneDepartChange(event) {
+            this.zoneDepartId = event.target.value;
+            const opt = event.target.selectedOptions[0];
+            this.blocDepartId = opt ? opt.dataset.blocId : null;
+            this.recalculer();
+        },
+
+        onZoneArriveeChange(event) {
+            this.zoneArriveeId = event.target.value;
+            const opt = event.target.selectedOptions[0];
+            this.blocArriveeId = opt ? opt.dataset.blocId : null;
+            this.recalculer();
+        },
+
+        recalculer() {
+            if (!this.zoneDepartId || !this.zoneArriveeId || !this.blocDepartId || !this.blocArriveeId) {
+                this.tarifCalcule = null;
+                this.typeTrajet = null;
+                return;
+            }
+
+            if (String(this.blocDepartId) === String(this.blocArriveeId)) {
+                this.tarifCalcule = this.tarifIntra;
+                this.typeTrajet = 'intra';
+            } else {
+                this.tarifCalcule = this.tarifInter;
+                this.typeTrajet = 'inter';
+            }
+        },
+
+        get tarifAffiche() {
+            if (this.tarifCalcule === null) return '';
+            return new Intl.NumberFormat('fr-FR').format(this.tarifCalcule) + ' FCFA';
+        },
+
+        capturerGPS() {
+            if (!navigator.geolocation) {
+                this.geoError = "La géolocalisation n'est pas supportée par votre appareil.";
+                return;
+            }
+
+            this.isGeolocating = true;
+            this.geoError = '';
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    this.latDepart = position.coords.latitude.toFixed(6);
+                    this.lngDepart = position.coords.longitude.toFixed(6);
+                    this.isGeolocating = false;
+                    this.geoSuccess = true;
+                },
+                (error) => {
+                    this.isGeolocating = false;
+                    this.geoError = "Impossible d'accéder au GPS. Veuillez autoriser la localisation.";
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            );
+        }
+    };
+}
+</script>
 {% endblock %}

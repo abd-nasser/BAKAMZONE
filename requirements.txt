@@ -6,6 +6,7 @@ charset-normalizer==3.5.2
 click==8.5.0
 colorama==0.4.6
 cookiecutter==2.7.1
+celery[redis]==5.4.0
 Django==6.0.4
 django-browser-reload==1.21.0
 django-tailwind==4.5.0
@@ -22,6 +23,7 @@ python-dateutil==2.9.0.post0
 python-slugify==9.1.2
 PyYAML==6.0.3
 requests==2.34.2
+redis==5.0.8
 rich==15.0.0
 six==1.17.0
 sqlparse==0.6.0

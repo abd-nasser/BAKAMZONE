@@ -1,0 +1,426 @@
+{% extends "base.html" %}
+
+{% block title %}Nouvelle demande de livraison | BAKAMZONE{% endblock %}
+
+{% block content %}
+<main class="mx-auto max-w-4xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
+
+    <!-- Fil d'Ariane -->
+    <nav class="breadcrumbs text-sm text-base-content/70">
+        <ul>
+            <li><a href="{% url 'home_app:home' %}">Accueil</a></li>
+            <li><a href="{% url 'clients_app:tableau-de-bord' %}">Espace client</a></li>
+            <li class="font-semibold text-emerald-600">Commander une livraison</li>
+        </ul>
+    </nav>
+
+    <!-- En-tête -->
+    <header class="rounded-3xl bg-gradient-to-br from-[#047857] to-[#059669] p-6 text-white shadow-xl sm:p-8">
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <span class="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-xs font-bold uppercase tracking-wider text-white">
+                    ⚡ Course Express
+                </span>
+                <h1 class="mt-2 text-2xl font-black sm:text-3xl">
+                    Demander une livraison de proximité
+                </h1>
+                <p class="mt-1 text-sm text-white/80 sm:text-base">
+                    Un livreur de notre flotte rattaché à votre bloc prendra en charge votre colis.
+                </p>
+            </div>
+            <a href="{% url 'clients_app:tableau-de-bord' %}" class="btn btn-sm btn-outline border-white text-white hover:bg-white hover:text-[#047857] self-start sm:self-auto rounded-xl">
+                ← Retour au tableau de bord
+            </a>
+        </div>
+    </header>
+
+    <!-- Formulaire interactif avec Alpine.js -->
+    <div
+        x-data="demandeLivraisonForm({{ tarif_intra }}, {{ tarif_inter }})"
+        class="space-y-6"
+    >
+        <form method="post" action="{% url 'demande_livraison_app:creer-demande' %}" class="space-y-6">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+                <div class="alert alert-error shadow-lg rounded-2xl">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <div>
+                        {% for error in form.non_field_errors %}
+                            <p class="font-medium text-sm">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- SECTION 1 : Localisation et Itinéraire -->
+            <div class="card rounded-3xl border border-base-300 bg-base-100 shadow-md">
+                <div class="card-body p-6 sm:p-8 space-y-6">
+                    <div class="flex items-center gap-3 border-b border-base-200 pb-4">
+                        <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 font-bold dark:bg-emerald-950/60 dark:text-emerald-400">
+                            1
+                        </div>
+                        <div>
+                            <h2 class="text-xl font-bold">Itinéraire & Géolocalisation</h2>
+                            <p class="text-xs text-base-content/70 sm:text-sm">Définissez le lieu de ramassage et la zone du destinataire.</p>
+                        </div>
+                    </div>
+
+                    <!-- Bouton GPS Alpine.js -->
+                    <div class="rounded-2xl border-2 border-dashed border-emerald-500/30 bg-emerald-50/50 p-4 dark:bg-emerald-950/20 sm:p-5">
+                        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                            <div>
+                                <p class="text-sm font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-2">
+                                    <svg class="w-5 h-5 text-emerald-600 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
+                                    </svg>
+                                    Position GPS de départ
+                                </p>
+                                <p class="text-xs text-base-content/70 mt-1">
+                                    Permet au livreur de trouver précisément votre pas de porte ou boutique.
+                                </p>
+                            </div>
+
+                            <button
+                                type="button"
+                                @click="capturerGPS()"
+                                :disabled="isGeolocating"
+                                class="btn btn-sm sm:btn-md bg-emerald-600 hover:bg-emerald-700 text-white border-0 shadow rounded-xl shrink-0 gap-2 font-semibold"
+                            >
+                                <span x-show="!isGeolocating && !geoSuccess">📍 Capturer ma position actuelle</span>
+                                <span x-show="isGeolocating" class="loading loading-spinner loading-xs"></span>
+                                <span x-show="isGeolocating">Capture en cours...</span>
+                                <span x-show="!isGeolocating && geoSuccess">🔄 Réactualiser ma position</span>
+                            </button>
+                        </div>
+
+                        <!-- Feedback de capture GPS -->
+                        <div x-show="geoSuccess" x-cloak class="mt-3 flex items-center gap-2 text-xs font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-100/80 dark:bg-emerald-900/40 p-2.5 rounded-xl">
+                            <svg class="w-4 h-4 text-emerald-600 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>
+                            <span>Coordonnées enregistrées : <span x-text="latDepart"></span>, <span x-text="lngDepart"></span></span>
+                        </div>
+
+                        <!-- Erreur GPS éventuelle -->
+                        <div x-show="geoError" x-cloak class="mt-3 text-xs text-amber-700 dark:text-amber-400 bg-amber-100/80 dark:bg-amber-950/40 p-2.5 rounded-xl">
+                            <span x-text="geoError"></span>
+                            <span class="block mt-0.5 text-base-content/70">La position indicative de votre zone de départ sera utilisée en repli.</span>
+                        </div>
+                    </div>
+
+                    <!-- Champs cachés pour le formulaire Django -->
+                    <input type="hidden" name="latitude_depart" id="id_latitude_depart" x-model="latDepart" value="{{ form.latitude_depart.value|default:'' }}">
+                    <input type="hidden" name="longitude_depart" id="id_longitude_depart" x-model="lngDepart" value="{{ form.longitude_depart.value|default:'' }}">
+
+                    {% if form.latitude_depart.errors %}
+                        <p class="text-xs text-error font-medium">{{ form.latitude_depart.errors.0 }}</p>
+                    {% endif %}
+
+                    <!-- Sélecteurs de zones -->
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <!-- Zone de départ -->
+                        <div class="form-control">
+                            <label class="label pb-1.5" for="id_zone_depart">
+                                <span class="label-text font-bold text-sm">Zone de départ <span class="text-error">*</span></span>
+                            </label>
+                            <select
+                                name="zone_depart"
+                                id="id_zone_depart"
+                                required
+                                class="select select-bordered w-full rounded-xl focus:border-emerald-500 focus:outline-none"
+                                @change="onZoneDepartChange($event)"
+                            >
+                                <option value="">Sélectionnez la zone de départ</option>
+                                {% for z in zones %}
+                                    <option
+                                        value="{{ z.id }}"
+                                        data-bloc-id="{{ z.bloc_id }}"
+                                        data-bloc-nom="{{ z.bloc.nom }}"
+                                        {% if form.zone_depart.value|stringformat:"s" == z.id|stringformat:"s" %}selected{% endif %}
+                                    >
+                                        {{ z.nom }} — [{{ z.bloc.nom }}]
+                                    </option>
+                                {% endfor %}
+                            </select>
+                            {% if form.zone_depart.errors %}
+                                <p class="text-xs text-error mt-1">{{ form.zone_depart.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Zone d'arrivée -->
+                        <div class="form-control">
+                            <label class="label pb-1.5" for="id_zone_arrivee">
+                                <span class="label-text font-bold text-sm">Zone d'arrivée (destinataire) <span class="text-error">*</span></span>
+                            </label>
+                            <select
+                                name="zone_arrivee"
+                                id="id_zone_arrivee"
+                                required
+                                class="select select-bordered w-full rounded-xl focus:border-emerald-500 focus:outline-none"
+                                @change="onZoneArriveeChange($event)"
+                            >
+                                <option value="">Sélectionnez la zone d'arrivée</option>
+                                {% for z in zones %}
+                                    <option
+                                        value="{{ z.id }}"
+                                        data-bloc-id="{{ z.bloc_id }}"
+                                        data-bloc-nom="{{ z.bloc.nom }}"
+                                        {% if form.zone_arrivee.value|stringformat:"s" == z.id|stringformat:"s" %}selected{% endif %}
+                                    >
+                                        {{ z.nom }} — [{{ z.bloc.nom }}]
+                                    </option>
+                                {% endfor %}
+                            </select>
+                            {% if form.zone_arrivee.errors %}
+                                <p class="text-xs text-error mt-1">{{ form.zone_arrivee.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 2 : Tarification Matrice Dynamique -->
+            <div class="card rounded-3xl border border-base-300 bg-base-100 shadow-md overflow-hidden">
+                <div class="card-body p-6 sm:p-8">
+                    <div class="flex items-center gap-3 border-b border-base-200 pb-4">
+                        <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-100 text-orange-600 font-bold dark:bg-orange-950/60 dark:text-orange-400">
+                            2
+                        </div>
+                        <div>
+                            <h2 class="text-xl font-bold">Tarif garanti de la course</h2>
+                            <p class="text-xs text-base-content/70 sm:text-sm">Calcul instantané basé sur les blocs desservis.</p>
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <!-- Quand les deux zones sont sélectionnées -->
+                        <div x-show="tarifCalcule !== null" x-cloak class="flex flex-col sm:flex-row items-center justify-between gap-4 p-5 rounded-2xl bg-base-200/60 border border-base-300">
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <span
+                                        class="badge font-bold py-3 px-3 text-xs"
+                                        :class="typeTrajet === 'intra' ? 'badge-success text-white' : 'badge-warning text-slate-900'"
+                                        x-text="typeTrajet === 'intra' ? '🏠 Intra-bloc (Même secteur)' : '🚀 Inter-blocs (Transit)'"
+                                    ></span>
+                                    <span class="text-xs text-base-content/65 font-medium" x-text="typeTrajet === 'intra' ? 'Tarif direct sans escale' : 'Supplément transit inter-blocs'"></span>
+                                </div>
+                                <p class="text-sm text-base-content/80 mt-2">
+                                    Montant forfaitaire appliqué pour cette course :
+                                </p>
+                            </div>
+                            <div class="text-right sm:border-l sm:border-base-300 sm:pl-6">
+                                <span class="text-3xl sm:text-4xl font-black text-emerald-600 dark:text-emerald-400" x-text="tarifAffiche"></span>
+                                <span class="block text-xs font-semibold text-base-content/60">Paiement Mobile Money ou Espèces</span>
+                            </div>
+                        </div>
+
+                        <!-- Quand les deux zones ne sont pas encore choisies -->
+                        <div x-show="tarifCalcule === null" class="p-6 text-center rounded-2xl bg-base-200/40 border border-dashed border-base-300">
+                            <p class="text-sm font-medium text-base-content/70">
+                                👈 Sélectionnez vos zones de départ et d'arrivée pour afficher le prix immédiat.
+                            </p>
+                            <p class="text-xs text-base-content/50 mt-1">
+                                Forfait fixe intra-bloc : <strong>{{ tarif_intra }} FCFA</strong> · Inter-blocs : <strong>{{ tarif_inter }} FCFA</strong>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 3 : Colis & Destinataire (Smart-Drop WhatsApp) -->
+            <div class="card rounded-3xl border border-base-300 bg-base-100 shadow-md">
+                <div class="card-body p-6 sm:p-8 space-y-6">
+                    <div class="flex items-center gap-3 border-b border-base-200 pb-4">
+                        <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 font-bold dark:bg-emerald-950/60 dark:text-emerald-400">
+                            3
+                        </div>
+                        <div>
+                            <h2 class="text-xl font-bold">Destinataire & Contenu</h2>
+                            <p class="text-xs text-base-content/70 sm:text-sm">Smart-Drop : géolocalisation autonome par WhatsApp.</p>
+                        </div>
+                    </div>
+
+                    <!-- WhatsApp destinataire -->
+                    <div class="form-control">
+                        <label class="label pb-1.5" for="id_whatsapp_destinataire">
+                            <span class="label-text font-bold text-sm flex items-center gap-2">
+                                <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                                Numéro WhatsApp du destinataire <span class="text-error">*</span>
+                            </span>
+                        </label>
+                        <div class="relative">
+                            <input
+                                type="text"
+                                name="whatsapp_destinataire"
+                                id="id_whatsapp_destinataire"
+                                required
+                                value="{{ form.whatsapp_destinataire.value|default:'' }}"
+                                placeholder="+226 70 00 00 00 ou 70000000"
+                                class="input input-bordered w-full rounded-xl pl-11 focus:border-emerald-500 focus:outline-none font-medium"
+                            >
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-emerald-600 font-bold">
+                                💬
+                            </span>
+                        </div>
+                        <span class="label-text-alt text-xs text-base-content/65 mt-1">
+                            Dès que le livreur accepte la course, un message WhatsApp automatique avec un lien PWA lui est transmis pour valider sa position exacte.
+                        </span>
+                        {% if form.whatsapp_destinataire.errors %}
+                            <p class="text-xs text-error mt-1">{{ form.whatsapp_destinataire.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Description du colis -->
+                    <div class="form-control">
+                        <label class="label pb-1.5" for="id_description_colis">
+                            <span class="label-text font-bold text-sm">Description du colis (facultatif)</span>
+                        </label>
+                        <textarea
+                            name="description_colis"
+                            id="id_description_colis"
+                            rows="3"
+                            placeholder="Ex : Pochette de documents, boîte de chaussures, repas chaud..."
+                            class="textarea textarea-bordered w-full rounded-xl focus:border-emerald-500 focus:outline-none text-sm"
+                        >{{ form.description_colis.value|default:'' }}</textarea>
+                        {% if form.description_colis.errors %}
+                            <p class="text-xs text-error mt-1">{{ form.description_colis.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bouton d'action final -->
+            <div class="pt-2">
+                <button
+                    type="submit"
+                    :disabled="!zoneDepartId || !zoneArriveeId"
+                    class="btn btn-lg w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black text-base sm:text-lg rounded-2xl shadow-xl hover:shadow-2xl transition duration-200 border-0 disabled:bg-base-300 disabled:text-base-content/40"
+                >
+                    <span x-show="tarifCalcule !== null">Confirmer et commander la livraison (<span x-text="tarifAffiche"></span>) ➔</span>
+                    <span x-show="tarifCalcule === null">Sélectionnez les zones pour commander</span>
+                </button>
+                <p class="text-center text-xs text-base-content/60 mt-3">
+                    En validant, un livreur disponible de votre bloc sera alerté pour récupérer votre colis.
+                </p>
+            </div>
+        </form>
+    </div>
+</main>
+
+<script>
+function demandeLivraisonForm(tarifIntraVal, tarifInterVal) {
+    return {
+        tarifIntra: Number(tarifIntraVal) || 1000,
+        tarifInter: Number(tarifInterVal) || 1500,
+
+        zoneDepartId: '',
+        zoneArriveeId: '',
+        blocDepartId: null,
+        blocArriveeId: null,
+
+        latDepart: '{{ form.latitude_depart.value|default:"" }}',
+        lngDepart: '{{ form.longitude_depart.value|default:"" }}',
+
+        isGeolocating: false,
+        geoSuccess: Boolean('{{ form.latitude_depart.value|default:"" }}'),
+        geoError: '',
+
+        tarifCalcule: null,
+        typeTrajet: null,
+
+        init() {
+            // Lecture des valeurs initiales si le formulaire est réaffiché avec erreurs
+            const selectDepart = document.getElementById('id_zone_depart');
+            const selectArrivee = document.getElementById('id_zone_arrivee');
+
+            if (selectDepart && selectDepart.value) {
+                this.zoneDepartId = selectDepart.value;
+                const opt = selectDepart.options[selectDepart.selectedIndex];
+                this.blocDepartId = opt ? opt.dataset.blocId : null;
+            }
+            if (selectArrivee && selectArrivee.value) {
+                this.zoneArriveeId = selectArrivee.value;
+                const opt = selectArrivee.options[selectArrivee.selectedIndex];
+                this.blocArriveeId = opt ? opt.dataset.blocId : null;
+            }
+            this.recalculer();
+        },
+
+        onZoneDepartChange(event) {
+            this.zoneDepartId = event.target.value;
+            const opt = event.target.selectedOptions[0];
+            this.blocDepartId = opt ? opt.dataset.blocId : null;
+            this.recalculer();
+        },
+
+        onZoneArriveeChange(event) {
+            this.zoneArriveeId = event.target.value;
+            const opt = event.target.selectedOptions[0];
+            this.blocArriveeId = opt ? opt.dataset.blocId : null;
+            this.recalculer();
+        },
+
+        recalculer() {
+            if (!this.zoneDepartId || !this.zoneArriveeId || !this.blocDepartId || !this.blocArriveeId) {
+                this.tarifCalcule = null;
+                this.typeTrajet = null;
+                return;
+            }
+
+            if (String(this.blocDepartId) === String(this.blocArriveeId)) {
+                this.tarifCalcule = this.tarifIntra;
+                this.typeTrajet = 'intra';
+            } else {
+                this.tarifCalcule = this.tarifInter;
+                this.typeTrajet = 'inter';
+            }
+        },
+
+        get tarifAffiche() {
+            if (this.tarifCalcule === null) return '';
+            return new Intl.NumberFormat('fr-FR').format(this.tarifCalcule) + ' FCFA';
+        },
+
+        capturerGPS() {
+            if (!navigator.geolocation) {
+                this.geoError = "La géolocalisation n'est pas supportée par votre navigateur.";
+                return;
+            }
+
+            this.isGeolocating = true;
+            this.geoError = '';
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    this.latDepart = position.coords.latitude.toFixed(6);
+                    this.lngDepart = position.coords.longitude.toFixed(6);
+                    this.isGeolocating = false;
+                    this.geoSuccess = true;
+                    this.geoError = '';
+                },
+                (error) => {
+                    this.isGeolocating = false;
+                    switch (error.code) {
+                        case error.PERMISSION_DENIED:
+                            this.geoError = "Accès GPS refusé. Veuillez autoriser la localisation dans vos paramètres.";
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            this.geoError = "Signal GPS indisponible. Vérifiez votre connexion.";
+                            break;
+                        case error.TIMEOUT:
+                            this.geoError = "Délai de géolocalisation dépassé. Veuillez réessayer.";
+                            break;
+                        default:
+                            this.geoError = "Impossible de récupérer votre position GPS.";
+                    }
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                }
+            );
+        }
+    };
+}
+</script>
+{% endblock %}

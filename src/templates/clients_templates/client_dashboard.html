@@ -4,14 +4,19 @@
 
 {% block content %}
 <main class="mx-auto max-w-7xl space-y-10 px-4 py-8 sm:px-6 lg:px-8">
-    <header class="rounded-3xl bg-gradient-to-br from-[#047857] to-[#059669] p-6 text-white shadow-xl sm:p-9">
-        <p class="text-sm font-semibold text-white/75">Espace client</p>
-        <h1 class="mt-2 text-3xl font-black sm:text-4xl">
-            Bonjour {{ client.user.first_name }}
-        </h1>
-        <p class="mt-2 max-w-2xl text-sm text-white/80 sm:text-base">
-            Trouvez un livreur disponible et découvrez les articles en stock dans nos blocs.
-        </p>
+    <header class="flex flex-col gap-4 rounded-3xl bg-gradient-to-br from-[#047857] to-[#059669] p-6 text-white shadow-xl sm:flex-row sm:items-center sm:justify-between sm:p-9">
+        <div>
+            <p class="text-sm font-semibold text-white/75">Espace client</p>
+            <h1 class="mt-2 text-3xl font-black sm:text-4xl">
+                Bonjour {{ client.user.first_name }}
+            </h1>
+            <p class="mt-2 max-w-2xl text-sm text-white/80 sm:text-base">
+                Trouvez un livreur disponible et découvrez les articles en stock dans nos blocs.
+            </p>
+        </div>
+        <a href="{% url 'demande_livraison_app:creer-demande' %}" class="btn btn-md self-start border-0 bg-white font-black text-[#047857] shadow-lg hover:bg-emerald-50 sm:self-auto rounded-2xl shrink-0 gap-2">
+            <span>⚡ Commander une livraison</span>
+        </a>
     </header>
 
     <section id="livreurs" class="space-y-5">

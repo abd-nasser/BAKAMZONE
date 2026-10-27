@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+
+{% block title %}Réception de votre livraison | BAKAMZONE Smart-Drop{% endblock %}
+
+{% block content %}
+<main class="mx-auto max-w-xl px-4 py-8 sm:py-12">
+    <div
+        id="destinataire-geo-box"
+        x-data="destinataireGeoComponent()"
+        class="card rounded-3xl border border-base-300 bg-base-100 shadow-2xl overflow-hidden"
+    >
+        <!-- En-tête colorée -->
+        <div class="bg-gradient-to-br from-[#047857] to-[#059669] p-6 text-white text-center sm:p-8">
+            <span class="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-xs font-bold uppercase tracking-wider text-white">
+                📦 Livraison en approche
+            </span>
+            <h1 class="mt-3 text-2xl font-black sm:text-3xl">
+                Bonjour ! Votre colis arrive.
+            </h1>
+            <p class="mt-2 text-xs sm:text-sm text-white/80">
+                Partagez votre position GPS pour que votre livreur vous rejoigne directement à votre porte.
+            </p>
+        </div>
+
+        <div class="card-body p-6 sm:p-8 space-y-6">
+
+            <!-- Information de la course -->
+            <div class="rounded-2xl border border-base-200 bg-base-200/50 p-4 space-y-2 text-xs sm:text-sm">
+                <div class="flex items-center justify-between">
+                    <span class="text-base-content/60 font-semibold">Course N°</span>
+                    <span class="font-bold text-base-content">#{{ demande.pk }}</span>
+                </div>
+                {% if demande.livreur %}
+                    <div class="flex items-center justify-between">
+                        <span class="text-base-content/60 font-semibold">Livreur en charge</span>
+                        <span class="font-bold text-emerald-600">🛵 {{ demande.livreur.user.get_full_name }}</span>
+                    </div>
+                {% endif %}
+                {% if demande.description_colis %}
+                    <div class="flex items-center justify-between border-t border-base-300/40 pt-2">
+                        <span class="text-base-content/60 font-semibold">Contenu</span>
+                        <span class="font-medium text-base-content/90">{{ demande.description_colis }}</span>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- État 1 : Position déjà validée -->
+            {% if deja_valide or success %}
+                <div class="rounded-2xl border border-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 p-6 text-center space-y-3">
+                    <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-2xl text-emerald-600 dark:bg-emerald-900/60">
+                        ✓
+                    </div>
+                    <h2 class="text-lg font-black text-emerald-900 dark:text-emerald-200">
+                        Position GPS enregistrée avec succès !
+                    </h2>
+                    <p class="text-xs sm:text-sm text-emerald-800 dark:text-emerald-300">
+                        Votre livreur a reçu vos coordonnées précises et se dirige vers vous. Merci de rester joignable.
+                    </p>
+                    {% if demande.latitude_destinataire_reelle %}
+                        <p class="text-[11px] text-emerald-700/70 font-mono">
+                            Coordonnées : {{ demande.latitude_destinataire_reelle }}, {{ demande.longitude_destinataire_reelle }}
+                        </p>
+                    {% endif %}
+
+                    <!-- Option pour réactualiser si déplacé -->
+                    <div class="pt-3 border-t border-emerald-200 dark:border-emerald-800">
+                        <button
+                            type="button"
+                            @click="showForm = true"
+                            x-show="!showForm"
+                            class="btn btn-sm btn-ghost text-xs text-emerald-700 hover:text-emerald-900 dark:text-emerald-300"
+                        >
+                            🔄 Vous avez changé de lieu ? Réactualiser ma position
+                        </button>
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- État 2 : Formulaire de partage GPS en 1 clic -->
+            <div
+                x-show="!{{ deja_valide|yesno:'true,false' }} || showForm"
+                class="space-y-4"
+            >
+                {% if error %}
+                    <div class="alert alert-error text-xs rounded-xl shadow">
+                        <span>{{ error }}</span>
+                    </div>
+                {% endif %}
+
+                <div x-show="geoError" x-cloak class="alert alert-warning text-xs rounded-xl">
+                    <span x-text="geoError"></span>
+                </div>
+
+                <form
+                    method="post"
+                    action="{% url 'destinataire-geo' token %}"
+                    hx-post="{% url 'destinataire-geo' token %}"
+                    hx-target="#destinataire-geo-box"
+                    hx-swap="outerHTML"
+                    class="space-y-4"
+                >
+                    {% csrf_token %}
+                    <input type="hidden" name="latitude" x-model="latitude">
+                    <input type="hidden" name="longitude" x-model="longitude">
+
+                    <button
+                        type="button"
+                        @click="capturerEtEnvoyer($event)"
+                        :disabled="loading"
+                        class="btn btn-lg w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-2xl shadow-xl border-0 gap-2 text-sm sm:text-base"
+                    >
+                        <span x-show="!loading" class="text-xl">📍</span>
+                        <span x-show="!loading">Partager ma position en 1 clic</span>
+                        <span x-show="loading" class="loading loading-spinner loading-sm"></span>
+                        <span x-show="loading">Géolocalisation & transmission...</span>
+                    </button>
+                </form>
+
+                <p class="text-center text-[11px] text-base-content/60 leading-relaxed">
+                    💡 Cliquez sur <strong>« Autoriser »</strong> lorsque votre navigateur vous demande l'accès à la position. Vos données sont sécurisées et réservées exclusivement à cette course.
+                </p>
+            </div>
+
+        </div>
+    </div>
+</main>
+
+<script>
+function destinataireGeoComponent() {
+    return {
+        latitude: '',
+        longitude: '',
+        loading: false,
+        geoError: '',
+        showForm: false,
+
+        capturerEtEnvoyer(event) {
+            if (!navigator.geolocation) {
+                this.geoError = "La géolocalisation n'est pas supportée par votre navigateur.";
+                return;
+            }
+
+            this.loading = true;
+            this.geoError = '';
+
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    this.latitude = pos.coords.latitude.toFixed(6);
+                    this.longitude = pos.coords.longitude.toFixed(6);
+                    this.loading = false;
+                    // Soumission automatique du formulaire
+                    this.$nextTick(() => {
+                        const form = event.target.closest('form');
+                        if (form) {
+                            if (window.htmx) {
+                                htmx.trigger(form, 'submit');
+                            } else {
+                                form.submit();
+                            }
+                        }
+                    });
+                },
+                (err) => {
+                    this.loading = false;
+                    switch (err.code) {
+                        case err.PERMISSION_DENIED:
+                            this.geoError = "Vous devez autoriser l'accès à la localisation pour partager votre position.";
+                            break;
+                        case err.POSITION_UNAVAILABLE:
+                            this.geoError = "Signal GPS indisponible. Veuillez activer le GPS de votre téléphone.";
+                            break;
+                        case err.TIMEOUT:
+                            this.geoError = "Le délai de localisation a expiré. Veuillez réessayer.";
+                            break;
+                        default:
+                            this.geoError = "Impossible de récupérer votre position.";
+                    }
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                }
+            );
+        }
+    };
+}
+</script>
+{% endblock %}

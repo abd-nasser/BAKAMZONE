@@ -122,3 +122,70 @@ def send_whatsapp_notification_task(
     message_id = result["messages"][0]["id"]
     logger.info("WhatsApp notification accepted: %s", message_id)
     return message_id
+
+
+@shared_task(bind=True)
+def envoyer_notification_smartdrop_destinataire_task(self, demande_id: int, base_url: str | None = None) -> bool:
+    """
+    Envoie un message WhatsApp au destinataire avec le lien PWA de géolocalisation en 1 clic
+    et programme le contrôle d'escalade après 3 minutes.
+    """
+    from demande_livraison_app.models import DemandeLivraison
+
+    try:
+        demande = DemandeLivraison.objects.select_related('livreur__user').get(pk=demande_id)
+    except DemandeLivraison.DoesNotExist:
+        logger.error("DemandeLivraison #%s introuvable pour Smart-Drop.", demande_id)
+        return False
+
+    url_base = base_url or getattr(settings, 'SITE_URL', 'http://localhost:8000')
+    verification_url = f"{url_base.rstrip('/')}/geo/verify/{demande.token_pwa_destinataire}/"
+
+    nom_livreur = demande.livreur.user.get_full_name() if demande.livreur else "Un livreur BAKAMZONE"
+    message = (
+        f"Bonjour ! Votre livraison BAKAMZONE (#{demande.pk}) est prise en charge par {nom_livreur}. "
+        f"Pour recevoir votre colis directement sans attendre, cliquez sur ce lien pour partager votre position en 1 clic : "
+        f"{verification_url}"
+    )
+
+    phone_id = getattr(settings, 'WHATSAPP_PHONE_NUMBER_ID', None)
+    token = getattr(settings, 'WHATSAPP_ACCESS_TOKEN', None)
+    verifier_delai_reponse_destinataire_task.apply_async(
+        args=[demande.pk],
+        countdown=180,
+    )
+
+    if phone_id and token:
+        send_whatsapp_notification_task.delay(demande.whatsapp_destinataire, message)
+    else:
+        logger.info(
+            "[DEV MODE] WhatsApp Smart-Drop non configuré pour la demande #%s.",
+            demande.pk,
+        )
+
+    return True
+
+
+@shared_task(bind=True)
+def verifier_delai_reponse_destinataire_task(self, demande_id: int) -> str:
+    """
+    Vérifie après 3 minutes si le destinataire a validé sa position GPS.
+    Si non, bascule statut_destinataire vers 'alerte_assistant' pour escalade vers l'assistant du bloc.
+    """
+    from demande_livraison_app.models import DemandeLivraison
+
+    try:
+        demande = DemandeLivraison.objects.get(pk=demande_id)
+    except DemandeLivraison.DoesNotExist:
+        return "not_found"
+
+    if not demande.position_destinataire_validee and demande.statut_destinataire == 'en_attente':
+        demande.statut_destinataire = 'alerte_assistant'
+        demande.save(update_fields=['statut_destinataire'])
+        logger.warning(
+            "Demande #%s : Délai de 3min dépassé sans position GPS du destinataire. Escalade en alerte assistant.",
+            demande_id,
+        )
+        return "alerte_assistant"
+
+    return "ok"

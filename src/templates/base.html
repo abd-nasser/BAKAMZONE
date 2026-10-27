@@ -64,6 +64,10 @@
                         {% endif %}
                         {% if request.user.role == 'client' %}
                             <a href="{% url 'clients_app:tableau-de-bord' %}" class="btn btn-ghost btn-sm rounded-xl">Mon espace</a>
+                            <a href="{% url 'demande_livraison_app:creer-demande' %}" class="btn bg-[#059669] hover:bg-[#047857] text-white btn-sm rounded-xl border-none">⚡ Nouvelle livraison</a>
+                        {% endif %}
+                        {% if request.user.role == 'livreur' %}
+                            <a href="{% url 'livreurs_app:tableau-de-bord' %}" class="btn bg-[#059669] hover:bg-[#047857] text-white btn-sm rounded-xl border-none">🛵 Mon Cockpit Livreur</a>
                         {% endif %}
                         <a href="{% url 'auth_app:deconnexion' %}" class="btn btn-outline btn-error btn-sm rounded-xl">Déconnexion</a>
                     {% else %}

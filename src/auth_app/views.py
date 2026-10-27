@@ -61,7 +61,7 @@ class ConnexionHTMXView(View):
                 or reverse('home_app:home')
             )
         elif user.role == 'livreur':
-            redirect_url = reverse('home_app:home')  # ou dashboard livreur
+            redirect_url = reverse('livreurs_app:tableau-de-bord')
         elif user.role == 'client':
             redirect_url = reverse('clients_app:tableau-de-bord')
         elif user.role == 'entreprise':
