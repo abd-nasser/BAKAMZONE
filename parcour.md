@@ -233,7 +233,7 @@ La roadmap de la section 4 correspond à l'état antérieur à l'historique ci-d
 - Les coordonnées estimées d'arrivée sont facultatives ; les coordonnées GPS réelles du destinataire sont enregistrées séparément. `position_destinataire_validee` et `statut_destinataire` permettent de suivre l'état de la réponse et de prévoir une escalade vers l'assistant du bloc après trois minutes.
 - `date_acceptation` complète les horodatages de la demande. Le modèle déclare également un index dédié au token pour les recherches par lien PWA.
 - Le flux côté livreur et destinataire a depuis été implémenté : affichage des demandes du bloc et des demandes directes dans son tableau de bord, acceptation/refus, programmation de la notification WhatsApp avec lien GPS, récupération de la demande par UUID, validation/enregistrement de la position et tâche d'escalade après trois minutes. Le détail du fonctionnement et les limites restantes sont documentés dans [`client_demande_livraison_workflow.md`](./client_demande_livraison_workflow.md).
-- La partie opérationnelle de l'assistant reste à développer : le délai dépassé passe `statut_destinataire` à `alerte_assistant`, mais aucun tableau de bord ni outil d'appel manuel dédié n'est encore fourni. L'envoi WhatsApp réel dépend de la configuration de Meta, Redis/Celery et de l'URL publique HTTPS.
+- Le tableau de bord assistant et ses outils de traitement manuel ont été ajoutés le 1er novembre 2026 (voir section 13). L'envoi WhatsApp réel dépend toujours de la configuration de Meta, Redis/Celery et de l'URL publique HTTPS.
 - La note de report des migrations est obsolète : la migration `demande_livraison_app.0002_demandelivraison_date_acceptation_and_more` a été appliquée le 27 octobre 2026 (voir section 10).
 
 
@@ -270,6 +270,23 @@ La roadmap de la section 4 correspond à l'état antérieur à l'historique ci-d
 - Reprise et achèvement du flux de traitement d'une demande depuis l'espace livreur : demandes directes ou ouvertes dans le bloc, actions POST accepter/refuser, changement de statut de course et suivi de la position destinataire.
 - Sécurisation de l'acceptation par mise à jour conditionnelle : seule une demande en attente qui est attribuée au livreur courant ou ouverte dans son bloc peut être acceptée, et la prise concurrente est évitée.
 - Après acceptation, programmation Celery de la notification Smart-Drop : récupération par identifiant de demande, construction de l'URL `/geo/verify/<token_pwa_destinataire>/`, tentative d'envoi WhatsApp et planification du contrôle de délai à 180 secondes.
-- Implémentation de l'accès public destinataire via UUID, capture GPS mobile et validation des plages de coordonnées avant enregistrement. Le token est unique mais n'expire pas encore ; le tableau de bord assistant et ses actions manuelles restent hors périmètre.
+- Implémentation de l'accès public destinataire via UUID, capture GPS mobile et validation des plages de coordonnées avant enregistrement. Le token est unique mais n'expire pas encore.
 - Documentation détaillée du flux, des routes, des tâches, de la récupération de la demande par token et des limites dans [`client_demande_livraison_workflow.md`](./client_demande_livraison_workflow.md).
 - Vérification : 35 tests réussis sur `livreurs_app.tests`, `bakam_zone.tests` et `demande_livraison_app.tests` ; contrôle syntaxique Python et `git diff --check` sans erreur.
+
+## 13. Dashboard assistant opérationnel — 1er novembre 2026
+
+- Confirmation que la tâche 4 de `bakamzone_todo_list.md` est le dashboard assistant de bloc, distinct de l'ancienne tâche 4 de la roadmap superuser en section 4 de ce journal.
+- Remplacement de la page générique assistant par un dashboard listant les livraisons actives impliquant le bloc et les alertes destinataire `alerte_assistant`, avec actualisation HTMX toutes les 30 secondes.
+- Ajout des outils de résolution pour les alertes : appel direct depuis le téléphone via `tel:`, saisie manuelle de coordonnées GPS avec validation, et statut `injoignable`. Les requêtes d'action sont limitées aux livraisons actives de la région du bloc et à un profil assistant actif.
+- Mise à jour de `bakamzone_todo_list.md` : étapes Smart-Drop et escalade marquées terminées ; les deux sous-tâches du dashboard assistant sont également terminées.
+- Vérification ciblée : 11 tests assistant et WhatsApp réussis ; `manage.py check` sans problème.
+
+## 14. Détail des blocs et support client — 2 novembre 2026
+
+- Création de la detailView client d'un bloc actif : affichage de ses zones rattachées, de ses livreurs actifs, de leur disponibilité et de leur profil.
+- Ajout de liens vers le détail depuis l'espace client et les blocs listés sur l'accueil. Les liens de l'accueil ne sont visibles que pour un utilisateur connecté avec `role == "client"`.
+- Création d'une messagerie persistante entre un client et l'assistant opérationnel actif de son bloc, avec une conversation par client et par bloc, actualisation HTMX du fil et signalement lorsque le bloc n'a aucun assistant actif.
+- Ajout de la boîte de réception au tableau de bord assistant ; les conversations sont limitées au bloc de l'assistant connecté et l'accès au fil est réservé au client concerné et à un assistant actif de ce bloc.
+- Ajout de la migration `clients_app.0002_supportconversation_supportmessage_and_more`.
+- Vérification : tests ciblés du détail, du chat, de l'assistant et de la page d'accueil réussis ; `manage.py check`, `makemigrations --check --dry-run` et `git diff --check` sans erreur. La suite complète a révélé trois erreurs préexistantes de résolution de l'URL `entreprise_app:detail`.
