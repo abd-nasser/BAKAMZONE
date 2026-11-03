@@ -13,6 +13,16 @@ Identifiant : s_visio_livreusmex_2ea5c527 · Mot de passe temporaire : cf86a7609
 Notez ces identifiants : le mot de passe ne sera plus affiché.
 
 
+#################################################################
+#################################################################
+
+Administrateur créé pour le bloc Bloc Tampouy Centre.
+
+Identifiant : aziz_bossbkg_7b5e8854 · Mot de passe temporaire : 65ac6de50bc94bb1803332e788f6d462
+
+Notez ces identifiants : le mot de passe ne sera plus affiché.
+
+
 
 ####################################################################
 ####################################################################
