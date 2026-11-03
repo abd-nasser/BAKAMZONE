@@ -73,6 +73,20 @@
             </div>
         </form>
 
+        <div class="flex flex-wrap items-center gap-2 rounded-2xl bg-base-200/60 p-4">
+            <span class="mr-1 text-sm font-bold">Découvrir un bloc :</span>
+            {% for bloc in livreur_blocs %}
+                <a
+                    href="{% url 'clients_app:detail-bloc' bloc.pk %}"
+                    class="btn btn-sm btn-outline rounded-xl"
+                >
+                    {{ bloc.nom }}
+                </a>
+            {% empty %}
+                <span class="text-sm text-base-content/60">Aucun bloc actif pour le moment.</span>
+            {% endfor %}
+        </div>
+
         {% include "partials/clients/client_dashboard_livreurs.html" %}
     </section>
 

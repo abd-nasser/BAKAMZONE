@@ -4187,11 +4187,14 @@
   .h-screen {
     height: 100vh;
   }
-  .max-h-96 {
-    max-height: calc(var(--spacing) * 96);
+  .max-h-\[60vh\] {
+    max-height: 60vh;
   }
   .min-h-12 {
     min-height: calc(var(--spacing) * 12);
+  }
+  .min-h-48 {
+    min-height: calc(var(--spacing) * 48);
   }
   .min-h-\[80vh\] {
     min-height: 80vh;
@@ -4290,6 +4293,9 @@
   }
   .max-w-7xl {
     max-width: var(--container-7xl);
+  }
+  .max-w-\[85\%\] {
+    max-width: 85%;
   }
   .max-w-lg {
     max-width: var(--container-lg);
@@ -4504,6 +4510,9 @@
   }
   .overflow-x-auto {
     overflow-x: auto;
+  }
+  .overflow-y-auto {
+    overflow-y: auto;
   }
   .scroll-smooth {
     scroll-behavior: smooth;
@@ -5416,6 +5425,12 @@
     --tw-tracking: var(--tracking-wider);
     letter-spacing: var(--tracking-wider);
   }
+  .break-words {
+    overflow-wrap: break-word;
+  }
+  .whitespace-pre-wrap {
+    white-space: pre-wrap;
+  }
   @layer daisyui.l1.l2 {
     .file-input-error {
       --btn-color: var(--color-error);
@@ -5695,6 +5710,14 @@
       color: color-mix(in oklab, var(--color-white) 80%, transparent);
     }
   }
+  .text-white\/85 {
+    color: color-mix(in srgb, #fff 85%, transparent);
+  }
+  @supports (color: color-mix(in lab, red, red)) {
+    .text-white\/85 {
+      color: color-mix(in oklab, var(--color-white) 85%, transparent);
+    }
+  }
   .capitalize {
     text-transform: capitalize;
   }
@@ -5723,6 +5746,9 @@
   }
   .opacity-50 {
     opacity: 50%;
+  }
+  .opacity-75 {
+    opacity: 75%;
   }
   .opacity-80 {
     opacity: 80%;
@@ -6201,6 +6227,9 @@
     .sm\:items-end {
       align-items: flex-end;
     }
+    .sm\:items-start {
+      align-items: flex-start;
+    }
     .sm\:justify-between {
       justify-content: space-between;
     }
@@ -6349,6 +6378,9 @@
     .lg\:col-span-7 {
       grid-column: span 7 / span 7;
     }
+    .lg\:grid-cols-2 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
     .lg\:grid-cols-3 {
       grid-template-columns: repeat(3, minmax(0, 1fr));
     }
@@ -6429,6 +6461,14 @@
     }
     .dark\:bg-amber-950 {
       background-color: var(--color-amber-950);
+    }
+    .dark\:bg-amber-950\/30 {
+      background-color: color-mix(in srgb, oklch(27.9% 0.077 45.635) 30%, transparent);
+    }
+    @supports (color: color-mix(in lab, red, red)) {
+      .dark\:bg-amber-950\/30 {
+        background-color: color-mix(in oklab, var(--color-amber-950) 30%, transparent);
+      }
     }
     .dark\:bg-amber-950\/40 {
       background-color: color-mix(in srgb, oklch(27.9% 0.077 45.635) 40%, transparent);

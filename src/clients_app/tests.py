@@ -5,13 +5,14 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
+from admins_app.models import AdminBloc
 from articles_app.models import Article, StockBloc
 from avis_app.models import AvisLivreur
 from blocs_app.models import Blocs
 from auth_app.models import User
 from clients_app.forms import InscriptionClientForm
-from clients_app.models import Client
-from clients_app.views import LivreurProfilViewByClient
+from clients_app.models import Client, SupportConversation, SupportMessage
+from clients_app.views import ClientBlocDetailView, LivreurProfilViewByClient
 from demande_livraison_app.models import DemandeLivraison
 from entreprise_app.models import Entreprise
 from livreurs_app.models import Livreur
@@ -200,6 +201,10 @@ class ClientDashboardViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Livreurs du réseau")
         self.assertContains(response, "Articles disponibles")
+        self.assertContains(
+            response,
+            reverse("clients_app:detail-bloc", args=[self.bloc.pk]),
+        )
         self.assertContains(response, "Moussa Ouedraogo")
         self.assertContains(response, "Indisponible")
         self.assertContains(response, "Riz local")
@@ -427,3 +432,197 @@ class ClientDashboardViewTests(TestCase):
         self.assertContains(response, "Livreur rapide et ponctuel !")
         self.assertContains(response, "Demander une course à Moussa")
         self.assertContains(response, "Favoris / Likes")
+
+
+class ClientBlocDetailAndSupportChatTests(TestCase):
+    def setUp(self):
+        self.client_user = User.objects.create(
+            telephone="70000931",
+            first_name="Awa",
+            last_name="Client",
+            role="client",
+        )
+        self.client_profile = Client.objects.create(user=self.client_user)
+        self.bloc = Blocs.objects.create(
+            nom="Bloc Support Tampouy",
+            quartier="tampouy",
+            actif=True,
+        )
+        self.assistant_user = User.objects.create(
+            telephone="70000932",
+            first_name="Issa",
+            last_name="Assistant",
+            role="bloc_admin",
+        )
+        self.assistant = AdminBloc.objects.create(
+            user=self.assistant_user,
+            bloc=self.bloc,
+            poste="assistant",
+            actif=True,
+        )
+        self.zone = Zone.objects.create(
+            nom="Tampouy Centre",
+            bloc=self.bloc,
+        )
+        self.livreur_user = User.objects.create(
+            telephone="70000933",
+            first_name="Moussa",
+            last_name="Livreur",
+            role="livreur",
+        )
+        self.livreur = Livreur.objects.create(
+            user=self.livreur_user,
+            type_vehicule="moto",
+            blocs=self.bloc,
+            zone_actuelle=self.zone,
+            actif=True,
+        )
+        self.client.force_login(self.client_user)
+
+    def test_client_can_view_active_block_zones_and_active_drivers(self):
+        inactive_user = User.objects.create(
+            telephone="70000934",
+            first_name="Livreur",
+            last_name="Inactif",
+            role="livreur",
+        )
+        Livreur.objects.create(
+            user=inactive_user,
+            type_vehicule="velo",
+            blocs=self.bloc,
+            actif=False,
+        )
+
+        response = self.client.get(
+            reverse("clients_app:detail-bloc", args=[self.bloc.pk])
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIs(ClientBlocDetailView.model, Blocs)
+        self.assertEqual(list(response.context["zones"]), [self.zone])
+        self.assertEqual(list(response.context["livreurs"]), [self.livreur])
+        self.assertTrue(response.context["assistant_disponible"])
+        self.assertContains(response, "Tampouy Centre")
+        self.assertContains(response, "Moussa Livreur")
+        self.assertContains(response, "Contacter l’assistant")
+        self.assertNotContains(response, "Livreur Inactif")
+
+    def test_block_detail_is_hidden_for_inactive_blocks_and_non_clients(self):
+        self.bloc.actif = False
+        self.bloc.save(update_fields=["actif"])
+        response = self.client.get(
+            reverse("clients_app:detail-bloc", args=[self.bloc.pk])
+        )
+        self.assertEqual(response.status_code, 404)
+
+        self.client.force_login(self.assistant_user)
+        response = self.client.get(
+            reverse("clients_app:detail-bloc", args=[self.bloc.pk])
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_client_can_start_and_exchange_messages_with_block_assistant(self):
+        start_url = reverse(
+            "clients_app:demarrer-chat-assistant",
+            args=[self.bloc.pk],
+        )
+        response = self.client.post(start_url)
+        conversation = SupportConversation.objects.get(
+            client=self.client_profile,
+            bloc=self.bloc,
+        )
+        chat_url = reverse("clients_app:chat-assistant", args=[conversation.pk])
+        self.assertRedirects(response, chat_url)
+
+        response = self.client.get(chat_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "clients_templates/support_chat.html")
+
+        response = self.client.post(chat_url, {"content": "Bonjour, besoin d’aide."})
+        self.assertRedirects(response, chat_url)
+        client_message = SupportMessage.objects.get(conversation=conversation)
+        self.assertEqual(client_message.sender, self.client_user)
+        self.assertEqual(client_message.content, "Bonjour, besoin d’aide.")
+
+        response = self.client.post(
+            chat_url,
+            {"content": "Message envoyé sans rechargement."},
+            HTTP_HX_REQUEST="true",
+            HTTP_HX_TARGET="support-chat-messages",
+        )
+        self.assertContains(response, "Message envoyé sans rechargement.")
+
+        self.client.force_login(self.assistant_user)
+        response = self.client.get(
+            reverse("admins_app:tableau-de-bord-assistant-messages")
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Awa Client")
+        self.assertContains(response, "Message envoyé sans rechargement.")
+        inbox_response = self.client.get(
+            reverse("admins_app:tableau-de-bord-assistant-messages"),
+            HTTP_HX_REQUEST="true",
+            HTTP_HX_TARGET="assistant-support-conversations",
+        )
+        self.assertTemplateUsed(
+            inbox_response,
+            "partials/admins/assistant_support_conversations.html",
+        )
+        self.assertContains(inbox_response, "Ouvrir la conversation")
+
+        response = self.client.get(chat_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Conversation avec Awa Client.")
+
+        response = self.client.post(
+            chat_url,
+            {"content": "Bonjour Awa, nous sommes à votre écoute."},
+        )
+        self.assertRedirects(response, chat_url)
+        self.assertEqual(conversation.messages.count(), 3)
+
+    def test_only_the_client_and_active_assistant_of_the_block_can_open_chat(self):
+        conversation = SupportConversation.objects.create(
+            client=self.client_profile,
+            bloc=self.bloc,
+        )
+        other_user = User.objects.create(
+            telephone="70000935",
+            first_name="Autre",
+            last_name="Client",
+            role="client",
+        )
+        Client.objects.create(user=other_user)
+        self.client.force_login(other_user)
+        response = self.client.get(
+            reverse("clients_app:chat-assistant", args=[conversation.pk])
+        )
+        self.assertEqual(response.status_code, 404)
+
+        self.assistant.actif = False
+        self.assistant.save(update_fields=["actif"])
+        self.client.force_login(self.assistant_user)
+        response = self.client.get(
+            reverse("clients_app:chat-assistant", args=[conversation.pk])
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_chat_start_reports_when_block_has_no_active_assistant(self):
+        self.assistant.actif = False
+        self.assistant.save(update_fields=["actif"])
+
+        response = self.client.post(
+            reverse(
+                "clients_app:demarrer-chat-assistant",
+                args=[self.bloc.pk],
+            ),
+            follow=True,
+        )
+
+        self.assertContains(response, "Aucun assistant opérationnel")
+        self.assertFalse(
+            SupportConversation.objects.filter(
+                client=self.client_profile,
+                bloc=self.bloc,
+            ).exists()
+        )

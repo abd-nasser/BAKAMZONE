@@ -1,0 +1,138 @@
+<section
+    id="assistant-operationnel-panel"
+    class="space-y-6"
+    hx-get="{% url 'admins_app:tableau-de-bord-assistant' %}"
+    hx-trigger="every 30s"
+    hx-swap="outerHTML"
+    aria-live="polite"
+>
+    <div class="grid gap-4 sm:grid-cols-2">
+        <article class="card border border-base-300 bg-base-100 shadow-sm">
+            <div class="card-body">
+                <p class="text-sm font-semibold text-base-content/70">Livraisons actives du bloc</p>
+                <p class="text-3xl font-black text-success">{{ livraisons_actives|length }}</p>
+            </div>
+        </article>
+        <article class="card border border-amber-300 bg-amber-50 shadow-sm dark:bg-amber-950/30">
+            <div class="card-body">
+                <p class="text-sm font-semibold text-amber-900 dark:text-amber-200">Alertes destinataire à traiter</p>
+                <p class="text-3xl font-black text-amber-700 dark:text-amber-300">{{ alertes_destinataire|length }}</p>
+            </div>
+        </article>
+    </div>
+
+    <section class="space-y-4" aria-labelledby="assistant-alerts-heading">
+        <div>
+            <h2 id="assistant-alerts-heading" class="text-xl font-black">Alertes en attente</h2>
+            <p class="text-sm text-base-content/70">Appelez le destinataire, saisissez sa position communiquée ou indiquez qu'il est injoignable.</p>
+        </div>
+
+        {% for demande in alertes_destinataire %}
+            <article class="card border border-amber-300 bg-base-100 shadow-sm">
+                <div class="card-body gap-4">
+                    <div class="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                            <h3 class="card-title">Demande #{{ demande.pk }}</h3>
+                            <p class="text-sm text-base-content/70">
+                                {{ demande.client.user.get_full_name }} · {{ demande.zone_depart.nom }} → {{ demande.zone_arrivee.nom }}
+                            </p>
+                        </div>
+                        <span class="badge badge-warning">{{ demande.get_statut_destinataire_display }}</span>
+                    </div>
+
+                    <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-base-200/60 p-3">
+                        <div>
+                            <p class="text-xs font-semibold text-base-content/60">Destinataire</p>
+                            <p class="font-bold">{{ demande.whatsapp_destinataire }}</p>
+                        </div>
+                        <a
+                            href="tel:{{ demande.whatsapp_destinataire }}"
+                            class="btn btn-sm btn-success rounded-xl text-white"
+                        >
+                            Appeler le destinataire
+                        </a>
+                    </div>
+
+                    <form
+                        method="post"
+                        action="{% url 'admins_app:tableau-de-bord-assistant' %}"
+                        class="space-y-3 rounded-2xl border border-base-300 p-4"
+                    >
+                        {% csrf_token %}
+                        <input type="hidden" name="demande_id" value="{{ demande.pk }}">
+                        <input type="hidden" name="action" value="enregistrer_position">
+                        <p class="text-sm font-bold">Enregistrer la position communiquée par téléphone</p>
+                        <div class="grid gap-3 sm:grid-cols-2">
+                            <label class="form-control">
+                                <span class="label-text mb-1 text-xs font-semibold">Latitude</span>
+                                <input name="latitude" type="number" step="0.000001" min="-90" max="90" required class="input input-bordered rounded-xl">
+                            </label>
+                            <label class="form-control">
+                                <span class="label-text mb-1 text-xs font-semibold">Longitude</span>
+                                <input name="longitude" type="number" step="0.000001" min="-180" max="180" required class="input input-bordered rounded-xl">
+                            </label>
+                        </div>
+                        <button type="submit" class="btn btn-sm btn-primary rounded-xl">Enregistrer la position</button>
+                    </form>
+
+                    <form method="post" action="{% url 'admins_app:tableau-de-bord-assistant' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="demande_id" value="{{ demande.pk }}">
+                        <input type="hidden" name="action" value="marquer_injoignable">
+                        <button type="submit" class="btn btn-sm btn-outline btn-error rounded-xl">
+                            Marquer le destinataire injoignable
+                        </button>
+                    </form>
+                </div>
+            </article>
+        {% empty %}
+            <p class="rounded-2xl border border-dashed border-base-300 p-6 text-center text-sm text-base-content/60">
+                Aucune alerte destinataire à traiter.
+            </p>
+        {% endfor %}
+    </section>
+
+    <section class="space-y-4" aria-labelledby="assistant-deliveries-heading">
+        <div>
+            <h2 id="assistant-deliveries-heading" class="text-xl font-black">Livraisons actives</h2>
+            <p class="text-sm text-base-content/70">Demandes acceptées ou en cours concernant votre bloc.</p>
+        </div>
+
+        <div class="grid gap-4 lg:grid-cols-2">
+            {% for demande in livraisons_actives %}
+                <article class="card border border-base-300 bg-base-100 shadow-sm">
+                    <div class="card-body gap-3">
+                        <div class="flex flex-wrap items-start justify-between gap-2">
+                            <h3 class="card-title">Demande #{{ demande.pk }}</h3>
+                            <span class="badge badge-outline">{{ demande.get_statut_display }}</span>
+                        </div>
+                        <p class="font-semibold">{{ demande.zone_depart.nom }} → {{ demande.zone_arrivee.nom }}</p>
+                        <p class="text-sm text-base-content/70">
+                            Client : {{ demande.client.user.get_full_name }} · Destinataire : {{ demande.whatsapp_destinataire }}
+                        </p>
+                        <p class="text-sm text-base-content/70">
+                            Livreur :
+                            {% if demande.livreur %}{{ demande.livreur.user.get_full_name }}{% else %}Non attribué{% endif %}
+                        </p>
+                        {% if demande.position_destinataire_validee %}
+                            <a
+                                href="https://www.google.com/maps?q={{ demande.latitude_destinataire_reelle }},{{ demande.longitude_destinataire_reelle }}"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="btn btn-sm btn-outline btn-success w-fit rounded-xl"
+                            >
+                                Voir la position GPS
+                            </a>
+                        {% else %}
+                            <span class="badge badge-ghost w-fit">{{ demande.get_statut_destinataire_display }}</span>
+                        {% endif %}
+                    </div>
+                </article>
+            {% empty %}
+                <p class="col-span-full rounded-2xl border border-dashed border-base-300 p-6 text-center text-sm text-base-content/60">
+                    Aucune livraison active pour votre bloc.
+                </p>
+            {% endfor %}
+        </div>
+    </section>
+</section>

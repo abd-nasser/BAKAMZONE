@@ -1,5 +1,6 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.core.exceptions import PermissionDenied
 from django.db.models import Case, DecimalField, Exists, F, OuterRef, Q, When
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
@@ -7,14 +8,25 @@ from django.utils import timezone
 from django.views import View
 from django.views.generic import CreateView, DetailView, TemplateView
 
+from admins_app.models import AdminBloc
 from articles_app.models import Article, StockBloc
 from blocs_app.models import Blocs
-from clients_app.forms import InscriptionClientForm
-from clients_app.models import Client
+from clients_app.forms import InscriptionClientForm, SupportMessageForm
+from clients_app.models import Client, SupportConversation, SupportMessage
 from demande_livraison_app.forms import DemandeLivraisonForm
 from demande_livraison_app.pricing import obtenir_tarifs_livraison
 from livreurs_app.models import Livreur
 from zones_app.models import Zone
+
+
+class ClientRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
+    login_url = reverse_lazy("home_app:home")
+
+    def test_func(self):
+        return (
+            self.request.user.role == "client"
+            and Client.objects.filter(user=self.request.user).exists()
+        )
 
 
 class ClientDashboardView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
@@ -223,6 +235,152 @@ class LivreurProfilViewByClient(
 
         context = self.get_context_data(form=form)
         return self.render_to_response(context)
+
+
+class ClientBlocDetailView(ClientRequiredMixin, DetailView):
+    model = Blocs
+    template_name = "clients_templates/bloc_detail.html"
+    context_object_name = "bloc"
+
+    def get_queryset(self):
+        return Blocs.objects.filter(actif=True)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["zones"] = self.object.zones.order_by("nom")
+        context["livreurs"] = self.object.livreurs_bloc.filter(
+            actif=True,
+        ).select_related(
+            "user",
+            "zone_actuelle",
+        ).order_by(
+            "user__first_name",
+            "user__last_name",
+        )
+        context["assistant_disponible"] = AdminBloc.objects.filter(
+            bloc=self.object,
+            poste="assistant",
+            actif=True,
+            user__is_active=True,
+        ).exists()
+        return context
+
+
+class StartBlocSupportChatView(ClientRequiredMixin, View):
+    def post(self, request, *args, **kwargs):
+        bloc = get_object_or_404(Blocs, pk=kwargs["pk"], actif=True)
+        assistant_disponible = AdminBloc.objects.filter(
+            bloc=bloc,
+            poste="assistant",
+            actif=True,
+            user__is_active=True,
+        ).exists()
+        if not assistant_disponible:
+            messages.error(
+                request,
+                "Aucun assistant opérationnel n’est actuellement disponible pour ce bloc.",
+            )
+            return redirect("clients_app:detail-bloc", pk=bloc.pk)
+
+        client = Client.objects.get(user=request.user)
+        conversation, _ = SupportConversation.objects.get_or_create(
+            client=client,
+            bloc=bloc,
+        )
+        return redirect(
+            "clients_app:chat-assistant",
+            pk=conversation.pk,
+        )
+
+
+class SupportChatView(LoginRequiredMixin, DetailView):
+    model = SupportConversation
+    template_name = "clients_templates/support_chat.html"
+    context_object_name = "conversation"
+    login_url = reverse_lazy("home_app:home")
+
+    def dispatch(self, request, *args, **kwargs):
+        self.client_profile = None
+        self.admin_bloc = None
+        if request.user.is_authenticated:
+            if request.user.role == "client":
+                self.client_profile = Client.objects.filter(
+                    user=request.user,
+                ).first()
+            elif request.user.role == "bloc_admin":
+                self.admin_bloc = AdminBloc.objects.filter(
+                    user=request.user,
+                    poste="assistant",
+                    actif=True,
+                    bloc__actif=True,
+                ).select_related("bloc").first()
+
+            if self.client_profile is None and self.admin_bloc is None:
+                raise PermissionDenied(
+                    "Cette conversation est réservée au client et à l’assistant du bloc."
+                )
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_queryset(self):
+        queryset = SupportConversation.objects.filter(
+            bloc__actif=True,
+        ).select_related(
+            "client__user",
+            "bloc",
+        )
+        if self.client_profile is not None:
+            return queryset.filter(client=self.client_profile)
+        return queryset.filter(bloc=self.admin_bloc.bloc)
+
+    def get_template_names(self):
+        if (
+            self.request.headers.get("HX-Request") == "true"
+            and self.request.headers.get("HX-Target") == "support-chat-messages"
+        ):
+            return ["partials/clients/support_chat_messages.html"]
+        return [self.template_name]
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["form"] = kwargs.get("form", SupportMessageForm())
+        context["is_client"] = self.client_profile is not None
+        context["messages"] = SupportMessage.objects.filter(
+            conversation=self.object,
+        ).select_related(
+            "sender",
+        ).order_by(
+            "created_at",
+        )
+        return context
+
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        form = SupportMessageForm(request.POST)
+        if form.is_valid():
+            message = form.save(commit=False)
+            message.conversation = self.object
+            message.sender = request.user
+            message.save()
+            self.object.save(update_fields=["updated_at"])
+            if request.headers.get("HX-Request") == "true":
+                return render(
+                    request,
+                    "partials/clients/support_chat_messages.html",
+                    self.get_context_data(),
+                )
+            return redirect("clients_app:chat-assistant", pk=self.object.pk)
+
+        if request.headers.get("HX-Request") == "true":
+            return render(
+                request,
+                "partials/clients/support_chat_messages.html",
+                self.get_context_data(form=form),
+                status=400,
+            )
+        return self.render_to_response(
+            self.get_context_data(form=form),
+            status=400,
+        )
 
 
 class ToggleFavoriLivreurView(LoginRequiredMixin, UserPassesTestMixin, View):

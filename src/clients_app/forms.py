@@ -6,7 +6,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
 from django.utils.text import slugify
-from clients_app.models import Client
+from clients_app.models import Client, SupportMessage
 from livreurs_app.models import Livreur
 
 User = get_user_model()
@@ -128,3 +128,17 @@ class InscriptionClientForm(forms.ModelForm):
             user.save()
             client.save()
         return client
+
+
+class SupportMessageForm(forms.ModelForm):
+    class Meta:
+        model = SupportMessage
+        fields = ["content"]
+        widgets = {
+            "content": forms.Textarea(attrs={
+                "rows": 3,
+                "maxlength": 2000,
+                "placeholder": "Écrivez votre message…",
+                "class": "textarea textarea-bordered w-full rounded-xl",
+            }),
+        }

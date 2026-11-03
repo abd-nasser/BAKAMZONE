@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}Assistance du bloc {{ conversation.bloc.nom }} | BAKAMZONE{% endblock %}
+
+{% block content %}
+<main class="mx-auto max-w-4xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
+    <header class="rounded-3xl bg-gradient-to-br from-[#047857] to-[#059669] p-6 text-white shadow-xl sm:p-8">
+        <a
+            href="{% if is_client %}{% url 'clients_app:detail-bloc' conversation.bloc_id %}{% else %}{% url 'admins_app:tableau-de-bord-assistant-messages' %}{% endif %}"
+            class="btn btn-sm btn-ghost mb-3 text-white"
+        >
+            ← Retour
+        </a>
+        <p class="text-sm font-semibold text-white/75">Support du bloc</p>
+        <h1 class="mt-1 text-2xl font-black">{{ conversation.bloc.nom }}</h1>
+        <p class="mt-1 text-sm text-white/80">
+            {% if is_client %}Échangez avec l’assistant opérationnel de votre bloc.{% else %}Conversation avec {{ conversation.client.user.get_full_name }}.{% endif %}
+        </p>
+    </header>
+
+    <section class="space-y-4 rounded-3xl border border-base-300 bg-base-100 p-4 shadow-sm sm:p-6" aria-label="Conversation">
+        {% include "partials/clients/support_chat_messages.html" %}
+        <form
+            method="post"
+            action="{% url 'clients_app:chat-assistant' conversation.pk %}"
+            hx-post="{% url 'clients_app:chat-assistant' conversation.pk %}"
+            hx-target="#support-chat-messages"
+            hx-swap="outerHTML"
+            class="space-y-3 border-t border-base-300 pt-4"
+        >
+            {% csrf_token %}
+            {{ form.content }}
+            {% for error in form.content.errors %}
+                <p class="text-sm text-error">{{ error }}</p>
+            {% endfor %}
+            <div class="flex justify-end">
+                <button type="submit" class="btn rounded-xl bg-[#059669] text-white hover:bg-[#047857]">
+                    Envoyer
+                </button>
+            </div>
+        </form>
+    </section>
+</main>
+{% endblock %}

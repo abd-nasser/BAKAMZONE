@@ -1,9 +1,11 @@
 import json
+from decimal import Decimal, InvalidOperation
 
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.contrib import messages
 from django.db.models import Count, Prefetch, Q
 from django.http import HttpResponseForbidden
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.views.generic import CreateView, DetailView, ListView, TemplateView
 
 from admins_app.forms import AdminBlocForms
@@ -11,6 +13,7 @@ from admins_app.models import AdminBloc
 from articles_app.forms import ArticleBlocAdminForm
 from entreprise_app.models import Entreprise
 from articles_app.models import StockBloc
+from clients_app.models import SupportConversation, SupportMessage
 
 from demande_livraison_app.models import DemandeLivraison
 from livreurs_app.models import Livreur
@@ -339,5 +342,147 @@ class SuperviseurFlotteDashbordView(SuperviseurFlotteRequiredMixin, TemplateView
         context.update({
             "livreurs_count": Livreur.objects.filter(blocs=bloc).count(),
             "demandes_livraison_count": demandes_livraison.count(),
+        })
+        return context
+
+
+##########################################################################################################################################
+#__________________________________________________________ASSISTANT_OPERATIONNEL____________________________________________________________
+#############################################################################################################################################
+
+class AssistantOperationnelDashboardView(AdminBlocPostDashboardView):
+    template_name = "admins_templates/assistant_operationnel_dashboard.html"
+    poste = "assistant"
+    active_delivery_statuses = ("acceptee", "en_cours")
+
+    def get_active_deliveries(self):
+        bloc = self.admin_bloc.bloc
+        return DemandeLivraison.objects.filter(
+            statut__in=self.active_delivery_statuses,
+        ).filter(
+            Q(zone_depart__bloc=bloc)
+            | Q(zone_arrivee__bloc=bloc)
+            | Q(livreur__blocs=bloc)
+        ).select_related(
+            "client__user",
+            "livreur__user",
+            "zone_depart",
+            "zone_arrivee",
+        ).distinct()
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        livraisons = self.get_active_deliveries()
+        context.update({
+            "title": "Espace Assistant Opérationnel",
+            "description": "Suivi des livraisons actives et résolution des alertes de votre bloc.",
+            "livraisons_actives": livraisons.order_by("-date_creation"),
+            "alertes_destinataire": livraisons.filter(
+                statut_destinataire="alerte_assistant",
+            ).order_by("-date_creation"),
+        })
+        return context
+
+    def get_template_names(self):
+        if self.request.headers.get("HX-Request") == "true":
+            return ["partials/admins/assistant_operationnel_livraisons.html"]
+        return [self.template_name]
+
+    def post(self, request, *args, **kwargs):
+        demande = get_object_or_404(
+            self.get_active_deliveries(),
+            pk=request.POST.get("demande_id"),
+        )
+        action = request.POST.get("action")
+
+        if action == "marquer_injoignable":
+            if demande.statut_destinataire != "alerte_assistant":
+                messages.error(
+                    request,
+                    "Seules les demandes en alerte peuvent être marquées injoignables.",
+                )
+                return redirect("admins_app:tableau-de-bord-assistant")
+            demande.statut_destinataire = "injoignable"
+            demande.save(update_fields=["statut_destinataire"])
+            messages.success(
+                request,
+                f"Le destinataire de la demande #{demande.pk} est marqué injoignable.",
+            )
+            return redirect("admins_app:tableau-de-bord-assistant")
+
+        if action == "enregistrer_position":
+            try:
+                latitude = Decimal(request.POST.get("latitude", "").strip())
+                longitude = Decimal(request.POST.get("longitude", "").strip())
+            except InvalidOperation:
+                latitude = longitude = None
+
+            if (
+                latitude is None
+                or longitude is None
+                or not latitude.is_finite()
+                or not longitude.is_finite()
+                or not -90 <= latitude <= 90
+                or not -180 <= longitude <= 180
+                or latitude.as_tuple().exponent < -6
+                or longitude.as_tuple().exponent < -6
+            ):
+                messages.error(
+                    request,
+                    "Coordonnées invalides. Saisissez une latitude entre -90 et 90 "
+                    "et une longitude entre -180 et 180, avec au plus 6 décimales.",
+                )
+                return redirect("admins_app:tableau-de-bord-assistant")
+
+            demande.latitude_destinataire_reelle = latitude
+            demande.longitude_destinataire_reelle = longitude
+            demande.position_destinataire_validee = True
+            demande.statut_destinataire = "position_recue"
+            demande.save(update_fields=[
+                "latitude_destinataire_reelle",
+                "longitude_destinataire_reelle",
+                "position_destinataire_validee",
+                "statut_destinataire",
+            ])
+            messages.success(
+                request,
+                f"La position du destinataire de la demande #{demande.pk} a été enregistrée.",
+            )
+            return redirect("admins_app:tableau-de-bord-assistant")
+
+        messages.error(request, "Action de résolution inconnue.")
+        return redirect("admins_app:tableau-de-bord-assistant")
+
+
+class AssistantSupportInboxView(AdminBlocPostDashboardView):
+    template_name = "admins_templates/assistant_support_inbox.html"
+    poste = "assistant"
+
+    def get_template_names(self):
+        if (
+            self.request.headers.get("HX-Request") == "true"
+            and self.request.headers.get("HX-Target")
+            == "assistant-support-conversations"
+        ):
+            return ["partials/admins/assistant_support_conversations.html"]
+        return [self.template_name]
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update({
+            "title": "Messages des clients",
+            "conversations": SupportConversation.objects.filter(
+                bloc=self.admin_bloc.bloc,
+                bloc__actif=True,
+            ).select_related(
+                "client__user",
+                "bloc",
+            ).prefetch_related(
+                Prefetch(
+                    "messages",
+                    queryset=SupportMessage.objects.order_by("-created_at")[:1],
+                    to_attr="recent_messages",
+                ),
+            ).order_by("-updated_at"),
         })
         return context

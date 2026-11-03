@@ -16,9 +16,14 @@
                         {% if livreur.disponible %}Disponible{% else %}Indisponible{% endif %}
                     </span>
                 </div>
-                <p class="text-sm text-base-content/70">
-                    {{ livreur.blocs.nom }} · {{ livreur.blocs.get_quartier_display }}
-                </p>
+                {% if livreur.blocs %}
+                    <a
+                        href="{% url 'clients_app:detail-bloc' livreur.blocs_id %}"
+                        class="link link-hover text-sm text-base-content/70"
+                    >
+                        {{ livreur.blocs.nom }} · {{ livreur.blocs.get_quartier_display }}
+                    </a>
+                {% endif %}
                 {% if livreur.zone_actuelle %}
                     <p class="text-sm text-base-content/70">Zone : {{ livreur.zone_actuelle.nom }}</p>
                 {% endif %}

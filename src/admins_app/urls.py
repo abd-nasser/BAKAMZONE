@@ -3,6 +3,8 @@ from django.urls import path
 from admins_app.views import (
     AdminBlocCreateView,
     AdminBlocPostDashboardView,
+    AssistantOperationnelDashboardView,
+    AssistantSupportInboxView,
     DemandeLivraisonListView,
     GestionnaireStockDashboardView,
     GestionnaireStockEntrepriseDetailView,
@@ -47,7 +49,12 @@ urlpatterns = [
     ),
     path(
         'tableau-de-bord/assistant/',
-        AdminBlocPostDashboardView.as_view(poste='assistant'),
+        AssistantOperationnelDashboardView.as_view(),
         name='tableau-de-bord-assistant',
+    ),
+    path(
+        'tableau-de-bord/assistant/messages/',
+        AssistantSupportInboxView.as_view(),
+        name='tableau-de-bord-assistant-messages',
     ),
 ]

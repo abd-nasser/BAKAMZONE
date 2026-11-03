@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}{{ bloc.nom }} | BAKAMZONE{% endblock %}
+
+{% block content %}
+<main class="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
+    <header class="rounded-3xl bg-gradient-to-br from-[#047857] to-[#059669] p-6 text-white shadow-xl sm:p-9">
+        <a href="{% url 'clients_app:tableau-de-bord' %}" class="btn btn-sm btn-ghost mb-4 text-white">
+            ← Retour à mon espace
+        </a>
+        <div class="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+                <p class="text-sm font-semibold uppercase tracking-wider text-white/75">Bloc de proximité</p>
+                <h1 class="mt-2 text-3xl font-black sm:text-4xl">{{ bloc.nom }}</h1>
+                <p class="mt-2 text-white/85">
+                    {{ bloc.get_quartier_display }} · {{ bloc.get_ville_display }}
+                </p>
+                {% if bloc.adresse %}
+                    <p class="mt-2 text-sm text-white/80">{{ bloc.adresse }}</p>
+                {% endif %}
+            </div>
+            {% if assistant_disponible %}
+                <form method="post" action="{% url 'clients_app:demarrer-chat-assistant' bloc.pk %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn border-0 bg-white font-bold text-[#047857] hover:bg-emerald-50">
+                        💬 Contacter l’assistant
+                    </button>
+                </form>
+            {% else %}
+                <p class="max-w-sm rounded-2xl bg-white/10 p-4 text-sm text-white/85">
+                    L’assistant de ce bloc n’est pas disponible pour le moment.
+                </p>
+            {% endif %}
+        </div>
+        <div class="mt-6 flex flex-wrap gap-3 text-sm text-white/85">
+            {% if bloc.code %}<span class="rounded-full bg-white/10 px-3 py-1">{{ bloc.code }}</span>{% endif %}
+            {% if bloc.telephone %}<a href="tel:{{ bloc.telephone }}" class="rounded-full bg-white/10 px-3 py-1">{{ bloc.telephone }}</a>{% endif %}
+            <span class="rounded-full bg-white/10 px-3 py-1">Couverture : {{ bloc.rayon_couverture_km }} km</span>
+        </div>
+    </header>
+
+    <section class="space-y-4" aria-labelledby="zones-heading">
+        <div>
+            <p class="text-sm font-bold uppercase tracking-wider text-[#F97316]">Couverture locale</p>
+            <h2 id="zones-heading" class="mt-1 text-2xl font-black">Zones rattachées</h2>
+        </div>
+        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {% for zone in zones %}
+                <article class="rounded-2xl border border-base-300 bg-base-100 p-5 shadow-sm">
+                    <h3 class="font-bold">{{ zone.nom }}</h3>
+                    {% if zone.code %}<p class="mt-1 text-sm text-base-content/60">{{ zone.code }}</p>{% endif %}
+                </article>
+            {% empty %}
+                <p class="col-span-full rounded-2xl border border-dashed border-base-300 p-6 text-center text-base-content/60">
+                    Aucune zone n’est encore rattachée à ce bloc.
+                </p>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="space-y-4" aria-labelledby="livreurs-heading">
+        <div>
+            <p class="text-sm font-bold uppercase tracking-wider text-[#059669]">Équipe locale</p>
+            <h2 id="livreurs-heading" class="mt-1 text-2xl font-black">Livreurs du bloc</h2>
+        </div>
+        <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {% for livreur in livreurs %}
+                <article class="card border border-base-300 bg-base-100 shadow-sm">
+                    <div class="card-body">
+                        <div class="flex items-start justify-between gap-3">
+                            <div>
+                                <h3 class="card-title">{{ livreur.user.get_full_name }}</h3>
+                                <p class="text-sm text-base-content/60">{{ livreur.get_type_vehicule_display }}</p>
+                            </div>
+                            <span class="badge {% if livreur.disponible %}badge-success{% else %}badge-ghost{% endif %}">
+                                {% if livreur.disponible %}Disponible{% else %}Indisponible{% endif %}
+                            </span>
+                        </div>
+                        {% if livreur.zone_actuelle %}
+                            <p class="text-sm text-base-content/70">Zone actuelle : {{ livreur.zone_actuelle.nom }}</p>
+                        {% endif %}
+                        <div class="mt-2 flex items-center gap-2 text-sm text-base-content/70">
+                            <span>★ {{ livreur.note_moyenne }}</span>
+                            <span>·</span>
+                            <span>{{ livreur.nb_livraisons }} livraison(s)</span>
+                        </div>
+                        <div class="card-actions mt-3">
+                            <a href="{% url 'clients_app:profil-livreur' livreur.pk %}" class="btn btn-outline btn-success w-full rounded-xl">
+                                Voir le profil
+                            </a>
+                        </div>
+                    </div>
+                </article>
+            {% empty %}
+                <p class="col-span-full rounded-2xl border border-dashed border-base-300 p-6 text-center text-base-content/60">
+                    Aucun livreur n’est actuellement rattaché à ce bloc.
+                </p>
+            {% endfor %}
+        </div>
+    </section>
+</main>
+{% endblock %}

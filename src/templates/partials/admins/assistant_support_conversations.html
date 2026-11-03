@@ -1,0 +1,35 @@
+<section
+    id="assistant-support-conversations"
+    hx-get="{% url 'admins_app:tableau-de-bord-assistant-messages' %}"
+    hx-trigger="every 15s"
+    hx-target="this"
+    hx-swap="outerHTML"
+    class="space-y-3"
+    aria-label="Conversations du bloc"
+>
+    {% for conversation in conversations %}
+        <article class="flex flex-col gap-4 rounded-2xl border border-base-300 bg-base-100 p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <h2 class="font-bold">{{ conversation.client.user.get_full_name }}</h2>
+                <p class="text-sm text-base-content/60">
+                    Dernière activité : {{ conversation.updated_at|date:"d/m/Y H:i" }}
+                </p>
+                {% if conversation.recent_messages %}
+                    <p class="mt-2 text-sm text-base-content/70">
+                        {{ conversation.recent_messages.0.content|truncatechars:120 }}
+                    </p>
+                {% endif %}
+            </div>
+            <a
+                href="{% url 'clients_app:chat-assistant' conversation.pk %}"
+                class="btn rounded-xl bg-[#059669] text-white hover:bg-[#047857]"
+            >
+                Ouvrir la conversation
+            </a>
+        </article>
+    {% empty %}
+        <p class="rounded-2xl border border-dashed border-base-300 p-8 text-center text-base-content/60">
+            Aucune conversation pour le moment.
+        </p>
+    {% endfor %}
+</section>

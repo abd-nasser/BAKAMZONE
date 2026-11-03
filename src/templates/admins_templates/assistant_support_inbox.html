@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block title %}Messages des clients | BAKAMZONE{% endblock %}
+
+{% block content %}
+<main class="mx-auto max-w-5xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
+    <header class="rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-950 p-6 text-white shadow-xl sm:p-9">
+        <a href="{% url 'admins_app:tableau-de-bord-assistant' %}" class="btn btn-sm btn-ghost mb-3 text-white">
+            ← Retour au tableau de bord
+        </a>
+        <p class="text-sm font-semibold uppercase tracking-wider text-white/70">Support client</p>
+        <h1 class="mt-1 text-3xl font-black">Messages des clients</h1>
+        <p class="mt-2 text-white/80">{{ bloc.nom }}</p>
+    </header>
+
+    {% include "partials/admins/assistant_support_conversations.html" %}
+</main>
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}Assistant opérationnel | BAKAMZONE{% endblock %}
+
+{% block content %}
+<main class="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
+    <header class="rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-950 p-6 text-white shadow-xl sm:p-9">
+        <p class="text-sm font-semibold uppercase tracking-wider text-white/70">
+            {{ admin_bloc.get_poste_display }}
+        </p>
+        <h1 class="mt-2 text-3xl font-black">Espace Assistant Opérationnel</h1>
+        <p class="mt-2 text-white/80">{{ bloc.nom }} — {{ description }}</p>
+        <a
+            href="{% url 'admins_app:tableau-de-bord-assistant-messages' %}"
+            class="btn mt-5 border-0 bg-white text-slate-900 hover:bg-emerald-50"
+        >
+            💬 Messages des clients
+        </a>
+    </header>
+
+    {% include "partials/admins/assistant_operationnel_livraisons.html" %}
+</main>
+{% endblock %}

@@ -309,7 +309,18 @@
                                 <span class="badge badge-sm bg-emerald-50 text-[#059669] font-bold border-none">
                                     {{ bloc.code|default:"BLK" }}
                                 </span>
-                                <h3 class="text-xl font-bold mt-2">{{ bloc.nom }}</h3>
+                                <h3 class="text-xl font-bold mt-2">
+                                    {% if request.user.is_authenticated and request.user.role == 'client' %}
+                                        <a
+                                            href="{% url 'clients_app:detail-bloc' bloc.pk %}"
+                                            class="hover:text-[#059669]"
+                                        >
+                                            {{ bloc.nom }}
+                                        </a>
+                                    {% else %}
+                                        {{ bloc.nom }}
+                                    {% endif %}
+                                </h3>
                                 <p class="text-xs text-base-content/60 font-medium">
                                     📍 {{ bloc.get_quartier_display }}, {{ bloc.get_ville_display }}
                                 </p>
@@ -335,6 +346,14 @@
                                 <span class="font-bold text-neutral">{{ bloc.capacite_motos }} motos</span>
                             </div>
                         </div>
+                        {% if request.user.is_authenticated and request.user.role == 'client' %}
+                            <a
+                                href="{% url 'clients_app:detail-bloc' bloc.pk %}"
+                                class="btn btn-sm mt-4 w-full rounded-xl bg-[#059669] text-white hover:bg-[#047857]"
+                            >
+                                Voir le détail
+                            </a>
+                        {% endif %}
                     </div>
                 {% endfor %}
             </div>
