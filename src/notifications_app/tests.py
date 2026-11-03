@@ -9,11 +9,15 @@ from django.urls import reverse
 from admins_app.models import AdminBloc
 from blocs_app.models import Blocs
 from clients_app.models import Client, SupportConversation, SupportMessage
+from demande_livraison_app.models import DemandeLivraison
+from livreurs_app.models import Livreur
 from notifications_app.models import WebPushSubscription
 from notifications_app.tasks import (
     envoyer_notification_webpush_task,
+    notifier_acceptation_demande_livraison_task,
     notifier_nouveau_message_support_task,
 )
+from zones_app.models import Zone
 
 User = get_user_model()
 
@@ -289,3 +293,45 @@ class WebPushTasksTests(TestCase):
         call_kwargs = mock_push_delay.call_args.kwargs
         self.assertEqual(call_kwargs["user_id"], self.client_user.pk)
         self.assertIn("Oui nous sommes prêts", call_kwargs["body"])
+
+    @patch("notifications_app.tasks.envoyer_notification_webpush_task.delay")
+    def test_notifier_acceptation_demande_livraison(self, mock_push_delay):
+        zone = Zone.objects.create(
+            nom="Zone de livraison",
+            code="ZONE-PUSH",
+            bloc=self.bloc,
+        )
+        livreur_user = User.objects.create_user(
+            username="livreur_push",
+            telephone="+22670000005",
+            password="test-password",
+            first_name="Moussa",
+            last_name="Ouédraogo",
+            role="livreur",
+        )
+        livreur = Livreur.objects.create(
+            user=livreur_user,
+            type_vehicule="moto",
+            blocs=self.bloc,
+        )
+        demande = DemandeLivraison.objects.create(
+            client=self.client_profile,
+            livreur=livreur,
+            zone_depart=zone,
+            zone_arrivee=zone,
+            latitude_depart="12.345678",
+            longitude_depart="-1.234567",
+            prix=1000,
+            whatsapp_destinataire="+22670000006",
+            statut="acceptee",
+        )
+
+        result = notifier_acceptation_demande_livraison_task(demande.pk)
+
+        self.assertEqual(result, "notified_client")
+        mock_push_delay.assert_called_once_with(
+            user_id=self.client_user.pk,
+            title="Votre demande de livraison a été acceptée",
+            body=f"Moussa Ouédraogo a accepté votre demande de livraison #{demande.pk}.",
+            target_url=reverse("clients_app:tableau-de-bord"),
+        )

@@ -12,6 +12,7 @@ from bakam_zone.tasks import envoyer_notification_smartdrop_destinataire_task
 from demande_livraison_app.models import DemandeLivraison
 from livreurs_app.forms import InscriptionLivreurForm
 from livreurs_app.models import Livreur
+from notifications_app.tasks import notifier_acceptation_demande_livraison_task
 
 
 class SuperuserRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
@@ -151,7 +152,7 @@ class LivreurProfilViewByLivreur(LivreurRequiredMixin, TemplateView):
 class AccepterDemandeLivraisonView(LivreurRequiredMixin, View):
     """
     Action pour le livreur d'accepter une demande de livraison.
-    Déclenche l'envoi de la notification WhatsApp Smart-Drop au destinataire.
+    Déclenche l'envoi des notifications push au client et WhatsApp Smart-Drop au destinataire.
     """
     def post(self, request, pk, *args, **kwargs):
         livreur = request.user.livreur_profil
@@ -177,6 +178,16 @@ class AccepterDemandeLivraisonView(LivreurRequiredMixin, View):
 
         demande = DemandeLivraison.objects.get(pk=pk)
 
+        notification_push_programmee = False
+        try:
+            notifier_acceptation_demande_livraison_task.delay(demande.pk)
+            notification_push_programmee = True
+        except CeleryOperationalError:
+            messages.warning(
+                request,
+                f"Course #{demande.pk} acceptée, mais la notification push au client n'a pas pu être programmée.",
+            )
+
         # Déclenchement Celery du message WhatsApp avec lien PWA éphémère
         base_url = request.build_absolute_uri('/')[:-1]
         try:
@@ -193,7 +204,13 @@ class AccepterDemandeLivraisonView(LivreurRequiredMixin, View):
 
         messages.success(
             request,
-            f"Course #{demande.pk} acceptée. La notification WhatsApp de validation de position a été programmée.",
+            (
+                f"Course #{demande.pk} acceptée. Les notifications push au client et WhatsApp "
+                "de validation de position ont été programmées."
+                if notification_push_programmee
+                else f"Course #{demande.pk} acceptée. La notification WhatsApp de validation "
+                "de position a été programmée."
+            ),
         )
         return redirect('livreurs_app:tableau-de-bord')
 
