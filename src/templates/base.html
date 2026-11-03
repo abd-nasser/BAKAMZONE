@@ -14,6 +14,11 @@
 
     <meta name="theme-color" content="#059669">
     <meta name="description" content="BAKAMZONE organise la livraison de proximité au Burkina Faso grâce à ses blocs locaux et à sa flotte intégrée.">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <link rel="manifest" href="{% static 'manifest.json' %}">
+    <link rel="icon" href="{% static 'icons/bakamzone.svg' %}" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="{% static 'icons/icon-180x180.png' %}">
 
     <link rel="stylesheet" href="{% static 'css/dist/styles.css' %}">
     <script defer src="{% static 'vendor/js/htmx.min.js' %}"></script>
@@ -69,6 +74,13 @@
                         {% if request.user.role == 'livreur' %}
                             <a href="{% url 'livreurs_app:tableau-de-bord' %}" class="btn bg-[#059669] hover:bg-[#047857] text-white btn-sm rounded-xl border-none">🛵 Mon Cockpit Livreur</a>
                         {% endif %}
+                        <button id="pwa-push-button"
+                                type="button"
+                                data-csrf-token="{{ csrf_token }}"
+                                class="btn btn-outline btn-success btn-sm rounded-xl">
+                            Activer les notifications
+                        </button>
+                        <span id="pwa-push-status" class="max-w-48 text-xs" role="status" aria-live="polite"></span>
                         <a href="{% url 'auth_app:deconnexion' %}" class="btn btn-outline btn-error btn-sm rounded-xl">Déconnexion</a>
                     {% else %}
                         <a href="{% url 'clients_app:inscription-client' %}" class="btn btn-outline btn-sm rounded-xl border-[#059669] text-[#059669] hover:bg-[#059669] hover:text-white">
@@ -153,6 +165,7 @@
     </footer>
 
     {% block extra_scripts %}{% endblock %}
+    <script defer src="{% static 'js/push-notifications.js' %}"></script>
 </body>
 </html>
 

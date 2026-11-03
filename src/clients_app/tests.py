@@ -1,5 +1,6 @@
 from datetime import timedelta
 from decimal import Decimal
+from unittest.mock import patch
 
 from django.test import TestCase
 from django.urls import reverse
@@ -521,7 +522,8 @@ class ClientBlocDetailAndSupportChatTests(TestCase):
         )
         self.assertEqual(response.status_code, 403)
 
-    def test_client_can_start_and_exchange_messages_with_block_assistant(self):
+    @patch("notifications_app.tasks.notifier_nouveau_message_support_task.delay")
+    def test_client_can_start_and_exchange_messages_with_block_assistant(self, mock_push_delay):
         start_url = reverse(
             "clients_app:demarrer-chat-assistant",
             args=[self.bloc.pk],
@@ -580,6 +582,7 @@ class ClientBlocDetailAndSupportChatTests(TestCase):
         )
         self.assertRedirects(response, chat_url)
         self.assertEqual(conversation.messages.count(), 3)
+        self.assertEqual(mock_push_delay.call_count, 3)
 
     def test_only_the_client_and_active_assistant_of_the_block_can_open_chat(self):
         conversation = SupportConversation.objects.create(

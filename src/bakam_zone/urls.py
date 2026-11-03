@@ -4,6 +4,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 from demande_livraison_app.views import DestinataireGeoView
+from notifications_app.views import ServiceWorkerView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -18,6 +19,8 @@ urlpatterns = [
     path('entreprises/', include('entreprise_app.urls', namespace='entreprise_app')),
     path('articles/', include('articles_app.urls', namespace='articles_app')),
     path('demandes/', include('demande_livraison_app.urls', namespace='demande_livraison_app')),
+    path('notifications/', include('notifications_app.urls', namespace='notifications_app')),
+    path('sw.js', ServiceWorkerView.as_view(), name='service-worker'),
     # Ephemeral PWA endpoint public pour la validation de position GPS par le destinataire (WhatsApp Smart-Drop)
     path('geo/verify/<uuid:token_pwa_destinataire>/', DestinataireGeoView.as_view(), name='destinataire-geo'),
 ]

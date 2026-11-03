@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     'zones_app',
     'admins_app',
     'avis_app',
+    'notifications_app',
 ]
 if DEBUG:
     # Add django_browser_reload only in DEBUG mode
@@ -197,6 +198,11 @@ WHATSAPP_PHONE_NUMBER_ID = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "")
 WHATSAPP_ACCESS_TOKEN = os.getenv("WHATSAPP_ACCESS_TOKEN", "")
 WHATSAPP_API_VERSION = os.getenv("WHATSAPP_API_VERSION", "v22.0")
 WHATSAPP_API_TIMEOUT = int(os.getenv("WHATSAPP_API_TIMEOUT", "10"))
+
+# Web Push (VAPID) pour PWA Mobile
+VAPID_PUBLIC_KEY = os.getenv("VAPID_PUBLIC_KEY", "")
+VAPID_PRIVATE_KEY = os.getenv("VAPID_PRIVATE_KEY", "")
+VAPID_ADMIN_EMAIL = os.getenv("VAPID_ADMIN_EMAIL", "admin@bakamzone.com")
 
 
 #LIGDICASH configurations

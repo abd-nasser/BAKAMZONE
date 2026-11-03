@@ -1,3 +1,5 @@
+import logging
+
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.core.exceptions import PermissionDenied
@@ -7,6 +9,7 @@ from django.urls import reverse_lazy
 from django.utils import timezone
 from django.views import View
 from django.views.generic import CreateView, DetailView, TemplateView
+from kombu.exceptions import OperationalError as CeleryOperationalError
 
 from admins_app.models import AdminBloc
 from articles_app.models import Article, StockBloc
@@ -17,6 +20,8 @@ from demande_livraison_app.forms import DemandeLivraisonForm
 from demande_livraison_app.pricing import obtenir_tarifs_livraison
 from livreurs_app.models import Livreur
 from zones_app.models import Zone
+
+logger = logging.getLogger(__name__)
 
 
 class ClientRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
@@ -362,6 +367,17 @@ class SupportChatView(LoginRequiredMixin, DetailView):
             message.sender = request.user
             message.save()
             self.object.save(update_fields=["updated_at"])
+
+            from notifications_app.tasks import notifier_nouveau_message_support_task
+            try:
+                notifier_nouveau_message_support_task.delay(message.pk)
+            except CeleryOperationalError:
+                logger.warning(
+                    "Le message #%s est enregistré, mais la notification Push "
+                    "n'a pas pu être mise en file Celery.",
+                    message.pk,
+                    exc_info=True,
+                )
             if request.headers.get("HX-Request") == "true":
                 return render(
                     request,

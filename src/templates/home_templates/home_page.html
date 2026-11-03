@@ -107,6 +107,13 @@
                             </li>
                         </ul>
                     </div>
+                    <button id="pwa-push-button"
+                            type="button"
+                            data-csrf-token="{{ csrf_token }}"
+                            class="btn btn-outline btn-success btn-sm rounded-xl">
+                        Activer les notifications
+                    </button>
+                    <span id="pwa-push-status" class="max-w-48 text-xs" role="status" aria-live="polite"></span>
                 {% else %}
                     <!-- Utilisateur Non Connecté : Bouton Connexion qui ouvre le Modal -->
                     <a href="{% url 'clients_app:inscription-client' %}"
