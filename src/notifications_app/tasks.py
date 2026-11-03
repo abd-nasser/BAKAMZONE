@@ -4,6 +4,8 @@ from celery import shared_task
 from django.conf import settings
 from django.urls import reverse
 
+from demande_livraison_app.models import DemandeLivraison
+
 logger = logging.getLogger(__name__)
 
 
@@ -164,3 +166,29 @@ def notifier_nouveau_message_support_task(self, message_id: int) -> str:
             target_url=chat_url,
         )
         return "notified_client"
+
+
+@shared_task
+def notifier_acceptation_demande_livraison_task(demande_id: int) -> str:
+    """Notifie le client lorsqu'un livreur accepte sa demande de livraison."""
+    try:
+        demande = DemandeLivraison.objects.select_related(
+            "client__user",
+            "livreur__user",
+        ).get(pk=demande_id)
+    except DemandeLivraison.DoesNotExist:
+        logger.error(
+            "Demande de livraison #%s introuvable pour notification push.",
+            demande_id,
+        )
+        return "demande_not_found"
+
+    livreur_user = demande.livreur.user
+    nom_livreur = livreur_user.get_full_name() or livreur_user.username
+    envoyer_notification_webpush_task.delay(
+        user_id=demande.client.user_id,
+        title="Votre demande de livraison a été acceptée",
+        body=f"{nom_livreur} a accepté votre demande de livraison #{demande.pk}.",
+        target_url=reverse("clients_app:tableau-de-bord"),
+    )
+    return "notified_client"

@@ -260,7 +260,12 @@ class LivreurDeliveryWorkflowTests(TestCase):
         )
 
     @patch('livreurs_app.views.envoyer_notification_smartdrop_destinataire_task.delay')
-    def test_accepting_same_block_request_sends_smartdrop_task(self, send_notification):
+    @patch('livreurs_app.views.notifier_acceptation_demande_livraison_task.delay')
+    def test_accepting_same_block_request_sends_notifications(
+        self,
+        send_push_notification,
+        send_smartdrop_notification,
+    ):
         response = self.client.post(
             reverse('livreurs_app:accepter-demande', args=[self.demande.pk]),
         )
@@ -270,13 +275,19 @@ class LivreurDeliveryWorkflowTests(TestCase):
         self.assertEqual(self.demande.livreur, self.livreur)
         self.assertEqual(self.demande.statut, 'acceptee')
         self.assertIsNotNone(self.demande.date_acceptation)
-        send_notification.assert_called_once_with(
+        send_smartdrop_notification.assert_called_once_with(
             self.demande.pk,
             base_url='http://testserver',
         )
+        send_push_notification.assert_called_once_with(self.demande.pk)
 
     @patch('livreurs_app.views.envoyer_notification_smartdrop_destinataire_task.delay')
-    def test_cannot_accept_request_from_another_block(self, send_notification):
+    @patch('livreurs_app.views.notifier_acceptation_demande_livraison_task.delay')
+    def test_cannot_accept_request_from_another_block(
+        self,
+        send_push_notification,
+        send_smartdrop_notification,
+    ):
         other_block = Blocs.objects.create(nom='Autre bloc')
         other_zone = Zone.objects.create(nom='Autre zone', bloc=other_block)
         self.demande.zone_depart = other_zone
@@ -290,7 +301,30 @@ class LivreurDeliveryWorkflowTests(TestCase):
         self.demande.refresh_from_db()
         self.assertEqual(self.demande.statut, 'en_attente')
         self.assertIsNone(self.demande.livreur)
-        send_notification.assert_not_called()
+        send_push_notification.assert_not_called()
+        send_smartdrop_notification.assert_not_called()
+
+    @patch('livreurs_app.views.envoyer_notification_smartdrop_destinataire_task.delay')
+    @patch(
+        'livreurs_app.views.notifier_acceptation_demande_livraison_task.delay',
+        side_effect=CeleryOperationalError('broker unavailable'),
+    )
+    def test_push_queue_failure_does_not_prevent_smartdrop_notification(
+        self,
+        send_push_notification,
+        send_smartdrop_notification,
+    ):
+        response = self.client.post(
+            reverse('livreurs_app:accepter-demande', args=[self.demande.pk]),
+            follow=True,
+        )
+
+        self.assertContains(response, 'notification push au client')
+        self.assertEqual(response.status_code, 200)
+        self.demande.refresh_from_db()
+        self.assertEqual(self.demande.statut, 'acceptee')
+        send_push_notification.assert_called_once_with(self.demande.pk)
+        send_smartdrop_notification.assert_called_once()
 
     @patch(
         'livreurs_app.views.envoyer_notification_smartdrop_destinataire_task.delay',

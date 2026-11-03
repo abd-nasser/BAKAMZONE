@@ -1,6 +1,6 @@
 # Architecture du Système de Notifications PWA — BAKAMZONE
 
-Ce document détaille l'architecture complète, le fonctionnement et la mise en œuvre des notifications Push sur mobile pour la PWA BAKAMZONE (en particulier pour la messagerie entre un client et l'assistant d'un bloc).
+Ce document détaille l'architecture, le fonctionnement et la mise en œuvre des notifications Push sur mobile pour la PWA BAKAMZONE, notamment pour la messagerie client-assistant et l'acceptation d'une demande de livraison par un livreur.
 
 ---
 
@@ -100,7 +100,9 @@ Stocké dans une application Django dédiée (ex: `notifications_app` ou rattach
 
 ---
 
-### B. Intégration dans le flux Support Chat
+### B. Déclencheurs applicatifs
+
+#### 1. Messagerie Support Chat
 
 Dans [`src/clients_app/views.py`](file:///D:/SAAS_PROJECT/BAKAMZONE/src/clients_app/views.py), au sein de la méthode `post()` de `SupportChatView` :
 
@@ -123,6 +125,19 @@ Dans [`src/clients_app/views.py`](file:///D:/SAAS_PROJECT/BAKAMZONE/src/clients_
    ```
    `destinataire_user_id`, `apercu_texte` et `chat_url` représentent les valeurs calculées par la tâche à partir du message.
 5. Si le broker Celery est indisponible pendant l'envoi du message, le message reste enregistré et l'échec de mise en file est journalisé.
+
+#### 2. Acceptation d'une demande de livraison par un livreur
+
+Dans `AccepterDemandeLivraisonView` (`src/livreurs_app/views.py`), après l'enregistrement de
+l'acceptation, la tâche `notifier_acceptation_demande_livraison_task` est mise en file avec
+l'identifiant de la demande. Elle récupère le client et le livreur associés, puis programme
+`envoyer_notification_webpush_task` pour le compte utilisateur du client. La notification indique
+que sa demande a été acceptée, donne le nom du livreur et renvoie vers le tableau de bord client.
+
+La tâche Smart-Drop existante continue d'envoyer le lien de géolocalisation au destinataire par
+WhatsApp. Si la mise en file de la notification push échoue parce que le broker Celery est
+indisponible, le livreur en est informé et la programmation du message WhatsApp se poursuit.
+L'envoi push nécessite un abonnement actif du client et une configuration VAPID/Celery valide.
 
 Routes actuelles : `GET /sw.js`, `POST /notifications/pwa/subscribe/`,
 `POST /notifications/pwa/unsubscribe/` et `GET /notifications/pwa/vapid-key/`.
@@ -150,6 +165,7 @@ L'inscription et la suppression exigent une session authentifiée et un jeton CS
 - [x] Créer la tâche Celery d'envoi et supprimer les abonnements qui répondent HTTP 404 ou 410.
 - [x] Déclarer le manifeste, les icônes, le service worker racine et le prompt d'activation dans `base.html`.
 - [x] Déclencher les notifications de messagerie client/assistant.
+- [x] Notifier le client par push quand un livreur accepte sa demande.
 - [ ] Configurer les clés VAPID, Redis/Celery et HTTPS puis valider un envoi sur un appareil réel.
 
 L'installation de `pywebpush` n'a pas pu être faite dans l'environnement de développement
