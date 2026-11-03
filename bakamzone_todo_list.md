@@ -30,3 +30,15 @@
 - [x] **Modèle Django de Souscription WebPush**: Modèle et migration des abonnements (`endpoint`, `p256dh`, `auth`, `user`), avec API authentifiée d'inscription/suppression et endpoint public de clé VAPID.
 - [x] **Tâche Celery & Déclenchement Asynchrone**: Envoi Web Push VAPID depuis le flux de messagerie, suppression des abonnements HTTP 410/404 et signalement des erreurs de configuration ou d'envoi.
 - [x] **Validation**: 20 tests ciblés de notifications et de messagerie réussis ; `manage.py check`, `makemigrations --check --dry-run`, vérification syntaxique JavaScript et `git diff --check` réussis. L'envoi réel reste à vérifier avec les clés VAPID, un broker Celery et un navigateur/appareil HTTPS configurés.
+
+## 7. Suivi du livreur en temps réel (Django Channels & WebSocket)
+- [x] **Fondations déjà présentes**: coordonnées courantes `Livreur.latitude` / `longitude` et modèle historique `PositionLivreur` avec migration.
+- [ ] **Cadrage métier et vie privée**: décider du début/fin du suivi, confirmer l'accès du client propriétaire et du superviseur de flotte actif du bloc concerné, et fixer la fréquence et la durée de conservation des positions.
+- [ ] **Cartes client et superviseur**: choisir le fournisseur cartographique et définir l'affichage du marqueur, de l'heure de dernière position et des états hors ligne/obsolète pour le client et le dashboard superviseur.
+- [ ] **Dépendances et infrastructure**: ajouter des versions compatibles de Django Channels et `channels-redis`, configurer Redis pour le channel layer et choisir un serveur ASGI.
+- [ ] **Routage et permissions WebSocket**: combiner HTTP/WebSocket dans `bakam_zone/asgi.py`, authentifier les connexions, limiter chaque client à ses demandes, et chaque superviseur `role="bloc_admin"` / `poste="superviseur_flotte"` actif aux courses de son bloc.
+- [ ] **Émission de position côté livreur**: demander la permission GPS et envoyer les positions uniquement pendant une course active attribuée au livreur.
+- [ ] **Consommateur et diffusion**: valider les messages, mettre à jour la position courante, conserver l'historique selon la politique décidée et diffuser uniquement au groupe de la course.
+- [ ] **Interfaces de suivi client et superviseur**: afficher les mises à jour en direct, l'heure, la perte de connexion et une position obsolète sans la présenter comme actuelle.
+- [ ] **Tests et validation terrain**: couvrir les accès client autorisé, superviseur du bon bloc et refus d'un autre bloc, données invalides, courses terminées, coupures, reconnexions et tester sur des téléphones derrière HTTPS/WSS.
+- Référence d'architecture, parcours, sécurité et état initial: [`suivis_livreur_temp_reel.md`](./suivis_livreur_temp_reel.md).
