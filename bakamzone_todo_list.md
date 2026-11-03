@@ -24,3 +24,9 @@
 - [x] **Persistent Bloc Support Chat**: Clients can open one conversation per bloc with its active operational assistant; messages are stored and refreshed through HTMX.
 - [x] **Assistant Support Inbox**: Active assistants can list conversations for their own bloc and reply; conversation access is restricted to that client and the bloc's active assistant.
 - [x] **Validation**: Targeted client, assistant, and homepage tests pass; Django system checks and migration checks pass. The full suite still reports three unrelated `entreprise_app` URL reversal errors for `entreprise_app:detail`.
+
+## 6. Notifications Push PWA & Messagerie Support
+- [x] **Manifest PWA & Service Worker**: `manifest.json`, icônes PNG, service worker racine (`/sw.js`) avec gestion des événements `push` et `notificationclick`, et activation explicite des notifications depuis le template maître.
+- [x] **Modèle Django de Souscription WebPush**: Modèle et migration des abonnements (`endpoint`, `p256dh`, `auth`, `user`), avec API authentifiée d'inscription/suppression et endpoint public de clé VAPID.
+- [x] **Tâche Celery & Déclenchement Asynchrone**: Envoi Web Push VAPID depuis le flux de messagerie, suppression des abonnements HTTP 410/404 et signalement des erreurs de configuration ou d'envoi.
+- [x] **Validation**: 20 tests ciblés de notifications et de messagerie réussis ; `manage.py check`, `makemigrations --check --dry-run`, vérification syntaxique JavaScript et `git diff --check` réussis. L'envoi réel reste à vérifier avec les clés VAPID, un broker Celery et un navigateur/appareil HTTPS configurés.

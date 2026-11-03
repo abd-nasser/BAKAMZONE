@@ -290,3 +290,13 @@ La roadmap de la section 4 correspond à l'état antérieur à l'historique ci-d
 - Ajout de la boîte de réception au tableau de bord assistant ; les conversations sont limitées au bloc de l'assistant connecté et l'accès au fil est réservé au client concerné et à un assistant actif de ce bloc.
 - Ajout de la migration `clients_app.0002_supportconversation_supportmessage_and_more`.
 - Vérification : tests ciblés du détail, du chat, de l'assistant et de la page d'accueil réussis ; `manage.py check`, `makemigrations --check --dry-run` et `git diff --check` sans erreur. La suite complète a révélé trois erreurs préexistantes de résolution de l'URL `entreprise_app:detail`.
+
+## 15. Notifications Web Push pour la messagerie PWA — 3 novembre 2026
+
+- Ajout du manifeste `src/static/manifest.json`, des icônes PWA (192×192, 512×512) et de l'icône Apple (180×180), puis intégration du manifeste et du bouton d'activation dans `src/templates/base.html`.
+- Le bouton visible pour les utilisateurs connectés demande explicitement la permission, récupère la clé publique VAPID et enregistre la souscription avec CSRF. Les routes sont `POST /notifications/pwa/subscribe/`, `POST /notifications/pwa/unsubscribe/` et `GET /notifications/pwa/vapid-key/`.
+- Le service worker est servi à la racine par `GET /sw.js` avec `Service-Worker-Allowed: /`. Il affiche les événements `push` et, au clic, ouvre la conversation dans la même origine.
+- La tâche `notifier_nouveau_message_support_task` détermine si le destinataire est l'assistant actif du bloc ou le client, puis met en file l'envoi Web Push. `envoyer_notification_webpush_task` envoie via `pywebpush`, purge les souscriptions HTTP 404/410, retente les erreurs temporaires et ne compte plus une simulation comme un envoi réussi.
+- Les paramètres `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` et `VAPID_ADMIN_EMAIL` sont lus depuis l'environnement ; `pywebpush==2.5.0` est ajouté à `requirements.txt`.
+- Vérification locale : 20 tests ciblés (`notifications_app.tests` et `clients_app.tests.ClientBlocDetailAndSupportChatTests`) réussis ; `manage.py check`, `makemigrations --check --dry-run`, `node --check` pour les deux fichiers JavaScript et `git diff --check` réussis.
+- Limite de l'environnement : l'interpréteur local est une build free-threaded Python 3.13, qui ne permet pas l'installation de CFFI/Cryptography requise par `pywebpush`. Le test de la tâche utilise un fournisseur simulé. Avant un envoi réel, installer les dépendances dans un CPython standard, configurer les clés VAPID et démarrer Redis/Celery ; le site doit être accessible en HTTPS.
