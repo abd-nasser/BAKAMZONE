@@ -23,6 +23,11 @@
         </div>
 
         <div class="card-body p-6 sm:p-8 space-y-6">
+            {% if notification_warning %}
+                <div class="alert alert-warning text-xs rounded-xl">
+                    <span>{{ notification_warning }}</span>
+                </div>
+            {% endif %}
 
             <!-- Information de la course -->
             <div class="rounded-2xl border border-base-200 bg-base-200/50 p-4 space-y-2 text-xs sm:text-sm">

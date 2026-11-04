@@ -3,6 +3,7 @@ from decimal import Decimal, InvalidOperation
 
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib import messages
+from django.db import transaction
 from django.db.models import Count, Prefetch, Q
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
@@ -17,6 +18,7 @@ from clients_app.models import SupportConversation, SupportMessage
 
 from demande_livraison_app.models import DemandeLivraison
 from livreurs_app.models import Livreur
+from notifications_app.services import programmer_notification_position_destinataire
 
 
 class SuperuserRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
@@ -434,16 +436,42 @@ class AssistantOperationnelDashboardView(AdminBlocPostDashboardView):
                 )
                 return redirect("admins_app:tableau-de-bord-assistant")
 
-            demande.latitude_destinataire_reelle = latitude
-            demande.longitude_destinataire_reelle = longitude
-            demande.position_destinataire_validee = True
-            demande.statut_destinataire = "position_recue"
-            demande.save(update_fields=[
-                "latitude_destinataire_reelle",
-                "longitude_destinataire_reelle",
-                "position_destinataire_validee",
-                "statut_destinataire",
-            ])
+            with transaction.atomic():
+                # Reprendre le verrou sur la ligne pour ne notifier que la première validation.
+                demande = get_object_or_404(
+                    DemandeLivraison.objects.select_for_update(of=("self",))
+                    .filter(
+                        pk=demande.pk,
+                        statut__in=self.active_delivery_statuses,
+                    )
+                    .filter(
+                        Q(zone_depart__bloc=self.admin_bloc.bloc)
+                        | Q(zone_arrivee__bloc=self.admin_bloc.bloc)
+                        | Q(livreur__blocs=self.admin_bloc.bloc)
+                    ),
+                )
+                premiere_validation = not demande.position_destinataire_validee
+                demande.latitude_destinataire_reelle = latitude
+                demande.longitude_destinataire_reelle = longitude
+                demande.position_destinataire_validee = True
+                demande.statut_destinataire = "position_recue"
+                demande.save(update_fields=[
+                    "latitude_destinataire_reelle",
+                    "longitude_destinataire_reelle",
+                    "position_destinataire_validee",
+                    "statut_destinataire",
+                ])
+
+            if (
+                premiere_validation
+                and demande.livreur_id
+                and not programmer_notification_position_destinataire(demande)
+            ):
+                messages.warning(
+                    request,
+                    f"La position de la demande #{demande.pk} est enregistrée, "
+                    "mais la notification du client n'a pas pu être programmée.",
+                )
             messages.success(
                 request,
                 f"La position du destinataire de la demande #{demande.pk} a été enregistrée.",

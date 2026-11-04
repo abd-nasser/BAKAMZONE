@@ -29,6 +29,11 @@ class Livreur(models.Model):
     zone_actuelle = models.ForeignKey(Zone, on_delete=models.SET_NULL, null=True, blank=True, related_name='livreurs_presents')
     latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    position_suivi_mise_a_jour = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Heure de la dernière position acceptée pendant une course active.",
+    )
 
     note_moyenne = models.DecimalField(max_digits=3, decimal_places=2, default=0)
     favoris_de = models.ManyToManyField('clients_app.client', related_name='livreurs_favoris', blank=True)

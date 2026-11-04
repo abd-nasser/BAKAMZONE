@@ -259,6 +259,23 @@ class LivreurDeliveryWorkflowTests(TestCase):
             reverse('livreurs_app:accepter-demande', args=[self.demande.pk]),
         )
 
+    def test_active_course_offers_opt_in_gps_tracking_when_recipient_location_is_ready(self):
+        self.demande.livreur = self.livreur
+        self.demande.statut = 'en_cours'
+        self.demande.position_destinataire_validee = True
+        self.demande.latitude_destinataire_reelle = Decimal('12.345678')
+        self.demande.longitude_destinataire_reelle = Decimal('-1.234567')
+        self.demande.save()
+
+        response = self.client.get(reverse('livreurs_app:tableau-de-bord'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Démarrer le partage GPS')
+        self.assertContains(
+            response,
+            f'data-websocket-path="/ws/livraisons/{self.demande.pk}/suivi/"',
+        )
+
     @patch('livreurs_app.views.envoyer_notification_smartdrop_destinataire_task.delay')
     @patch('livreurs_app.views.notifier_acceptation_demande_livraison_task.delay')
     def test_accepting_same_block_request_sends_notifications(

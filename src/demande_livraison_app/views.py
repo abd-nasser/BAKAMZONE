@@ -1,6 +1,7 @@
 from decimal import Decimal, InvalidOperation
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.db import transaction
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
@@ -14,6 +15,7 @@ from demande_livraison_app.pricing import (
     calculer_tarif_livraison,
     obtenir_tarifs_livraison,
 )
+from notifications_app.services import programmer_notification_position_destinataire
 from zones_app.models import Zone
 
 
@@ -108,15 +110,18 @@ class DestinataireGeoView(View):
         )
 
     def post(self, request, token_pwa_destinataire, *args, **kwargs):
-        demande = get_object_or_404(
-            DemandeLivraison.objects.select_related('livreur__user', 'client__user', 'zone_arrivee'),
-            token_pwa_destinataire=token_pwa_destinataire,
-        )
-
         latitude = request.POST.get('latitude') or request.POST.get('latitude_destinataire_reelle')
         longitude = request.POST.get('longitude') or request.POST.get('longitude_destinataire_reelle')
 
         if not latitude or not longitude:
+            demande = get_object_or_404(
+                DemandeLivraison.objects.select_related(
+                    'livreur__user',
+                    'client__user',
+                    'zone_arrivee',
+                ),
+                token_pwa_destinataire=token_pwa_destinataire,
+            )
             return render(
                 request,
                 self.template_name,
@@ -128,24 +133,24 @@ class DestinataireGeoView(View):
             )
 
         try:
-            demande.latitude_destinataire_reelle = Decimal(str(latitude).strip())
-            demande.longitude_destinataire_reelle = Decimal(str(longitude).strip())
+            latitude = Decimal(str(latitude).strip())
+            longitude = Decimal(str(longitude).strip())
             if (
-                not demande.latitude_destinataire_reelle.is_finite()
-                or not demande.longitude_destinataire_reelle.is_finite()
-                or not -90 <= demande.latitude_destinataire_reelle <= 90
-                or not -180 <= demande.longitude_destinataire_reelle <= 180
+                not latitude.is_finite()
+                or not longitude.is_finite()
+                or not -90 <= latitude <= 90
+                or not -180 <= longitude <= 180
             ):
                 raise ValueError("Coordonnées GPS hors limites.")
-            demande.position_destinataire_validee = True
-            demande.statut_destinataire = 'position_recue'
-            demande.save(update_fields=[
-                'latitude_destinataire_reelle',
-                'longitude_destinataire_reelle',
-                'position_destinataire_validee',
-                'statut_destinataire',
-            ])
         except (InvalidOperation, ValueError, TypeError):
+            demande = get_object_or_404(
+                DemandeLivraison.objects.select_related(
+                    'livreur__user',
+                    'client__user',
+                    'zone_arrivee',
+                ),
+                token_pwa_destinataire=token_pwa_destinataire,
+            )
             return render(
                 request,
                 self.template_name,
@@ -156,11 +161,50 @@ class DestinataireGeoView(View):
                 },
             )
 
+        with transaction.atomic():
+            # Le verrou garantit que deux soumissions concurrentes ne déclenchent
+            # qu'une notification lors de la première validation.
+            demande = get_object_or_404(
+                DemandeLivraison.objects.select_for_update(),
+                token_pwa_destinataire=token_pwa_destinataire,
+            )
+            premiere_validation = not demande.position_destinataire_validee
+            demande.latitude_destinataire_reelle = latitude
+            demande.longitude_destinataire_reelle = longitude
+            demande.position_destinataire_validee = True
+            demande.statut_destinataire = 'position_recue'
+            demande.save(update_fields=[
+                'latitude_destinataire_reelle',
+                'longitude_destinataire_reelle',
+                'position_destinataire_validee',
+                'statut_destinataire',
+            ])
+
+        notification_warning = ''
+        # La PWA peut être réutilisée pour corriger les coordonnées, mais la Web Push
+        # n'est déclenchée qu'au premier passage à l'état validé.
+        if (
+            premiere_validation
+            and demande.livreur_id
+            and demande.statut in ('acceptee', 'en_cours')
+        ):
+            notification_programmee = (
+                programmer_notification_position_destinataire(demande)
+            )
+            if not notification_programmee:
+                notification_warning = (
+                    "Votre position a été enregistrée, mais la notification du client "
+                    "n'a pas pu être programmée."
+                )
+
         if request.headers.get('HX-Request') == 'true':
             return render(
                 request,
                 'partials/demande_livraison/destinataire_geo_success.html',
-                {'demande': demande},
+                {
+                    'demande': demande,
+                    'notification_warning': notification_warning,
+                },
             )
 
         return render(
@@ -171,5 +215,6 @@ class DestinataireGeoView(View):
                 'deja_valide': True,
                 'success': True,
                 'token': token_pwa_destinataire,
+                'notification_warning': notification_warning,
             },
         )

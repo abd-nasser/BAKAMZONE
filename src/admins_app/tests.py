@@ -1,4 +1,5 @@
 from decimal import Decimal
+from unittest.mock import patch
 
 from django.test import TestCase
 from django.urls import reverse
@@ -569,6 +570,42 @@ class AssistantOperationnelDashboardTests(TestCase):
             self.alert.longitude_destinataire_reelle,
             Decimal("-1.123456"),
         )
+
+    @patch(
+        "admins_app.views.programmer_notification_position_destinataire",
+        return_value=True,
+    )
+    def test_manual_position_notifies_client_only_on_first_validation(
+        self,
+        notify_client,
+    ):
+        """La saisie manuelle suit la même règle de notification unique que la PWA."""
+        courier_user = User.objects.create(
+            telephone="70000704",
+            first_name="Moussa",
+            last_name="Livreur",
+            role="livreur",
+        )
+        courier = Livreur.objects.create(
+            user=courier_user,
+            type_vehicule="moto",
+            blocs=self.bloc,
+        )
+        self.alert.livreur = courier
+        self.alert.save(update_fields=["livreur"])
+        payload = {
+            "demande_id": self.alert.pk,
+            "action": "enregistrer_position",
+            "latitude": "12.123456",
+            "longitude": "-1.123456",
+        }
+
+        self.client.post(self.url, payload)
+        self.client.post(self.url, payload)
+
+        notify_client.assert_called_once()
+        self.alert.refresh_from_db()
+        self.assertTrue(self.alert.position_destinataire_validee)
 
     def test_assistant_can_flag_alert_as_unreachable(self):
         response = self.client.post(self.url, {

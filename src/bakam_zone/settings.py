@@ -34,6 +34,8 @@ ALLOWED_HOSTS = ['*']
 # Application definition
 
 INSTALLED_APPS = [
+    # Fournit le serveur ASGI Daphne utilisable en développement et en déploiement.
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -96,6 +98,8 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'bakam_zone.wsgi.application'
+# Pointe Channels vers l'application ASGI qui sert HTTP et WebSocket.
+ASGI_APPLICATION = 'bakam_zone.asgi.application'
 
 
 # Database
@@ -171,6 +175,30 @@ REDIS_HOST = '127.0.0.1' if DEBUG else 'redis'
 
 CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', f'redis://{REDIS_HOST}:6379/0')
 CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND', f'redis://{REDIS_HOST}:6379/1')
+
+# Redis transporte les événements Channels ; la base 2 reste distincte des bases Celery.
+CHANNEL_REDIS_URL = os.environ.get(
+    'CHANNEL_REDIS_URL',
+    f'redis://{REDIS_HOST}:6379/2',
+)
+# Le channel layer Redis permet de partager les groupes WebSocket entre processus Daphne.
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            'hosts': [CHANNEL_REDIS_URL],
+        },
+    },
+}
+# Origines navigateur admises ; en production, cette liste doit contenir les domaines réels.
+WEBSOCKET_ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get(
+        'WEBSOCKET_ALLOWED_ORIGINS',
+        'http://localhost:8000,http://127.0.0.1:8000',
+    ).split(',')
+    if origin.strip()
+]
 
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'

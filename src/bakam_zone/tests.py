@@ -1,9 +1,51 @@
 from unittest.mock import patch
 
+# Permet d'attendre les opérations async Channels depuis les tests synchrones Django.
+from asgiref.sync import async_to_sync
+# Accède à la couche de diffusion configurée sans démarrer de serveur Redis.
+from channels.layers import get_channel_layer
+# Vérifie la structure de routage de l'application ASGI.
+from channels.routing import ProtocolTypeRouter
+# Simule une connexion WebSocket pour tester le contrôle d'origine.
+from channels.testing import WebsocketCommunicator
+# Type concret du backend Redis attendu en configuration normale.
+from channels_redis.core import RedisChannelLayer
 from django.core.exceptions import ImproperlyConfigured
 from django.test import SimpleTestCase, override_settings
 
+# Application ASGI du projet et tâches existantes testées dans ce module.
+from bakam_zone.asgi import application
 from bakam_zone.tasks import send_email_task, send_whatsapp_notification_task
+
+
+class ChannelsConfigurationTests(SimpleTestCase):
+    """Vérifie que les paramètres Channels et l'application ASGI sont bien câblés."""
+
+    def test_channel_layer_uses_redis_backend(self):
+        """En dehors des tests isolés, le channel layer doit être celui de Redis."""
+        channel_layer = get_channel_layer()
+
+        self.assertIsInstance(channel_layer, RedisChannelLayer)
+
+    def test_asgi_application_routes_http_and_websocket(self):
+        """L'application ASGI doit conserver la branche HTTP et ajouter WebSocket."""
+        self.assertIsInstance(application, ProtocolTypeRouter)
+        self.assertEqual(
+            set(application.application_mapping),
+            {"http", "websocket"},
+        )
+
+    def test_websocket_rejects_untrusted_origins(self):
+        """Une origine qui n'est pas dans la liste configurée ne peut pas se connecter."""
+        communicator = WebsocketCommunicator(
+            application,
+            "/ws/track/",
+            headers=[(b"origin", b"https://untrusted.example")],
+        )
+
+        connected, _ = async_to_sync(communicator.connect)()
+
+        self.assertFalse(connected)
 
 
 class SendEmailTaskTests(SimpleTestCase):

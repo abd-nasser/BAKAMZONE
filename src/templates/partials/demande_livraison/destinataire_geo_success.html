@@ -12,6 +12,11 @@
     </div>
 
     <div class="card-body p-6 sm:p-8 space-y-6 text-center">
+        {% if notification_warning %}
+            <div class="alert alert-warning text-xs rounded-xl">
+                <span>{{ notification_warning }}</span>
+            </div>
+        {% endif %}
         <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-3xl text-emerald-600 dark:bg-emerald-950">
             🛵
         </div>
@@ -20,8 +25,9 @@
                 Coordonnées GPS transmises au livreur
             </h2>
             <p class="mt-2 text-xs sm:text-sm text-base-content/70">
-                Votre livreur <strong>{{ demande.livreur.user.get_full_name }}</strong> a reçu vos coordonnées exactes.
-                Il se dirige directement vers votre position.
+                Votre position est disponible pour le livreur
+                {% if demande.livreur %}<strong>{{ demande.livreur.user.get_full_name }}</strong>{% endif %}.
+                Le suivi GPS pourra démarrer depuis son tableau de bord.
             </p>
         </div>
 

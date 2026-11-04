@@ -249,6 +249,38 @@
                                 {% endif %}
                             </div>
 
+                            {% if ca.position_destinataire_validee %}
+                                <div
+                                    class="rounded-2xl border border-sky-200 bg-sky-50 p-4 text-sky-900 dark:border-sky-800 dark:bg-sky-950/30 dark:text-sky-100 space-y-3"
+                                    data-gps-tracking
+                                    data-websocket-path="/ws/livraisons/{{ ca.pk }}/suivi/"
+                                >
+                                    <p class="text-xs font-semibold">
+                                        Le destinataire a partagé sa position. Le suivi GPS démarre seulement lorsque vous l'autorisez.
+                                    </p>
+                                    <p class="text-xs" data-gps-status aria-live="polite">
+                                        Suivi GPS arrêté.
+                                    </p>
+                                    <div class="flex gap-2">
+                                        <button
+                                            type="button"
+                                            class="btn btn-sm btn-info flex-1 text-white"
+                                            data-gps-start
+                                        >
+                                            Démarrer le partage GPS
+                                        </button>
+                                        <button
+                                            type="button"
+                                            class="btn btn-sm btn-outline"
+                                            data-gps-stop
+                                            hidden
+                                        >
+                                            Arrêter
+                                        </button>
+                                    </div>
+                                </div>
+                            {% endif %}
+
                             <!-- Actions de transition d'état -->
                             <div class="pt-2 border-t border-base-200 flex items-center gap-3">
                                 {% if ca.statut == 'acceptee' %}
@@ -321,4 +353,117 @@
     </section>
 
 </main>
+<script>
+(() => {
+    // Keep the browser cadence aligned with the server-side throttling interval.
+    const positionIntervalMs = 15000;
+
+    // Each active course gets its own socket and explicit start/stop controls.
+    document.querySelectorAll('[data-gps-tracking]').forEach((panel) => {
+        const startButton = panel.querySelector('[data-gps-start]');
+        const stopButton = panel.querySelector('[data-gps-stop]');
+        const status = panel.querySelector('[data-gps-status]');
+        let socket = null;
+        let watchId = null;
+        let lastSentAt = 0;
+        let stoppedByCourier = false;
+
+        // Clear the browser watcher so GPS collection stops when the socket closes.
+        const stopWatching = () => {
+            if (watchId !== null) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+            }
+        };
+
+        // Restore the controls after an explicit stop or a lost WebSocket.
+        const showStoppedState = () => {
+            stopWatching();
+            startButton.hidden = false;
+            startButton.disabled = false;
+            stopButton.hidden = true;
+        };
+
+        // Start the socket first; geolocation begins only after the courier asks for it.
+        startButton.addEventListener('click', () => {
+            if (!navigator.geolocation) {
+                status.textContent = "La géolocalisation n'est pas disponible sur cet appareil.";
+                return;
+            }
+
+            stoppedByCourier = false;
+            lastSentAt = 0;
+            startButton.disabled = true;
+            status.textContent = "Connexion au suivi...";
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            // Same-origin cookies let Django's session middleware authenticate this socket.
+            const url = `${protocol}//${window.location.host}${panel.dataset.websocketPath}`;
+            socket = new WebSocket(url);
+
+            socket.addEventListener('open', () => {
+                status.textContent = "Autorisez la localisation lorsque le navigateur le demande.";
+                stopButton.hidden = false;
+                watchId = navigator.geolocation.watchPosition(
+                    (position) => {
+                        const now = Date.now();
+                        if (now - lastSentAt < positionIntervalMs || socket.readyState !== WebSocket.OPEN) {
+                            return;
+                        }
+
+                        socket.send(JSON.stringify({
+                            type: 'position',
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude,
+                        }));
+                        // The server timestamps receipt; the browser timestamp is display-only.
+                        lastSentAt = now;
+                        status.textContent = `Position envoyée à ${new Date(now).toLocaleTimeString()}.`;
+                    },
+                    (error) => {
+                        const messages = {
+                            1: "Autorisation GPS refusée. Le suivi n'a pas démarré.",
+                            2: "Position GPS indisponible. Vérifiez le GPS de l'appareil.",
+                            3: "Délai GPS dépassé. Réessayez le suivi.",
+                        };
+                        stoppedByCourier = true;
+                        status.textContent = messages[error.code] || "Impossible de récupérer la position GPS.";
+                        socket.close();
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        maximumAge: 0,
+                        timeout: 15000,
+                    },
+                );
+            });
+
+            socket.addEventListener('error', () => {
+                status.textContent = "Connexion au suivi impossible. Vérifiez le réseau et réessayez.";
+            });
+
+            socket.addEventListener('close', () => {
+                showStoppedState();
+                if (!stoppedByCourier) {
+                    status.textContent = "Suivi interrompu ou course devenue inactive.";
+                }
+            });
+        });
+
+        // Stop both the GPS watcher and the open connection on the courier's request.
+        stopButton.addEventListener('click', () => {
+            stoppedByCourier = true;
+            stopWatching();
+            if (socket && socket.readyState < WebSocket.CLOSING) {
+                startButton.disabled = true;
+                stopButton.hidden = true;
+                status.textContent = "Arrêt du suivi GPS...";
+                socket.close();
+            } else {
+                showStoppedState();
+                status.textContent = "Suivi GPS arrêté.";
+            }
+        });
+    });
+})();
+</script>
 {% endblock %}
