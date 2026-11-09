@@ -3,32 +3,6 @@
 
 {% block title %}BAKAMZONE — Cockpit Super Administrateur{% endblock %}
 
-{% block navbar %}
-<header class="sticky top-0 z-40 backdrop-blur-md bg-base-100/90 border-b border-base-200">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex items-center justify-between h-16 sm:h-20">
-            <a href="{% url 'home_app:home' %}" class="flex items-center gap-2">
-                <span class="text-2xl font-black tracking-tight">
-                    <span class="text-[#059669]">BAKAM</span><span class="text-[#F97316]">ZONE</span>
-                </span>
-                <span class="badge badge-error text-white font-bold text-xs uppercase ml-2">Cockpit Superuser</span>
-            </a>
-            <div class="flex items-center gap-3">
-                <button id="pwa-push-button"
-                        type="button"
-                        data-csrf-token="{{ csrf_token }}"
-                        class="btn btn-outline btn-success btn-sm rounded-xl">
-                    Activer les notifications
-                </button>
-                <span id="pwa-push-status" class="max-w-48 text-xs" role="status" aria-live="polite"></span>
-                <a href="{% url 'home_app:home' %}" class="btn btn-ghost btn-sm rounded-xl">← Retour Accueil</a>
-                <a href="{% url 'auth_app:deconnexion' %}" class="btn btn-outline btn-error btn-sm rounded-xl">Déconnexion</a>
-            </div>
-        </div>
-    </div>
-</header>
-{% endblock %}
-
 {% block content %}
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <div class="mb-8">

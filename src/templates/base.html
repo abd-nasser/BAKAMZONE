@@ -1,9 +1,10 @@
 {% load static %}
-{% load tailwind_tags  %}
+{% load tailwind_tags %}
 <!DOCTYPE html>
 <html lang="fr" 
       x-data="{ 
-          darkMode: localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches) 
+          darkMode: localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches),
+          mobileMenuOpen: false
       }"
       :data-theme="darkMode ? 'dark' : 'light'"
       class="scroll-smooth">
@@ -25,21 +26,22 @@
     <script src="{% static 'vendor/js/gsap.min.js' %}" defer></script>
     <script src="{% static 'vendor/js/ScrollTrigger.min.js' %}" defer></script>
     <script src="{% static 'vendor/js/lenis.min.js' %}" defer></script>
-    <script  src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
     {% tailwind_css %}
     {% block extra_head %}{% endblock %}
 </head>
-<body class="min-h-screen bg-base-100 text-base-content flex flex-col font-sans antialiased selection:bg-secondary selection:text-white"
+<body class="min-h-screen bg-base-100 text-base-content flex flex-col font-sans antialiased selection:bg-secondary selection:text-white overflow-x-hidden"
       hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
 
-    <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2 max-w-sm w-full px-4">
+    <!-- Toast Messages -->
+    <div id="toast-container" class="fixed top-4 right-0 sm:right-4 left-0 sm:left-auto mx-auto sm:mx-0 z-50 space-y-2 max-w-sm w-full px-4 pointer-events-none">
         {% if messages %}
             {% for message in messages %}
                 <div x-data="{ show: true }"
                      x-show="show"
                      x-init="setTimeout(() => show = false, 5000)"
                      x-transition
-                     class="alert {% if message.tags == 'error' %}alert-error{% else %}alert-success{% endif %} shadow-xl text-sm rounded-2xl flex justify-between items-center">
+                     class="alert {% if message.tags == 'error' %}alert-error{% else %}alert-success{% endif %} shadow-xl text-sm rounded-2xl flex justify-between items-center pointer-events-auto">
                     <span>{{ message }}</span>
                     <button @click="show = false" class="btn btn-xs btn-circle btn-ghost">✕</button>
                 </div>
@@ -47,67 +49,340 @@
         {% endif %}
     </div>
 
+    <!-- Navigation Bar Universelle & Responsive -->
     {% block navbar %}
     <header class="sticky top-0 z-40 border-b border-base-200 bg-base-100/90 backdrop-blur-md">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-16 sm:h-20">
-                <a href="{% url 'home_app:home' %}" class="flex items-center gap-2">
-                    <span class="w-10 h-10 rounded-xl bg-gradient-to-br from-[#059669] to-[#047857] flex items-center justify-center text-white font-black shadow-md">BZ</span>
-                    <span class="text-2xl font-black tracking-tight">
+            <div class="flex items-center justify-between h-16 sm:h-20 gap-2">
+                <!-- Logo & Identité -->
+                <a href="{% url 'home_app:home' %}" class="flex items-center gap-2 group shrink-0">
+                    <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-[#059669] to-[#047857] flex items-center justify-center text-white font-black shadow-md group-hover:scale-105 transition-transform">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                    </div>
+                    <span class="text-xl sm:text-2xl font-black tracking-tight">
                         <span class="text-[#059669]">BAKAM</span><span class="text-[#F97316]">ZONE</span>
                     </span>
                 </a>
 
-                <nav class="flex items-center gap-2 sm:gap-3" aria-label="Navigation principale">
+                <!-- Liens Desktop (écrans larges >= lg) -->
+                <nav class="hidden lg:flex items-center gap-1 xl:gap-2" aria-label="Navigation principale">
                     <a href="{% url 'home_app:home' %}" class="btn btn-ghost btn-sm rounded-xl">Accueil</a>
                     {% if request.user.is_authenticated %}
-                        <span class="hidden sm:inline text-sm font-semibold text-base-content/70">
-                            {{ request.user.get_full_name|default:request.user.telephone }}
-                        </span>
-                        {% if request.user.role == 'entreprise' %}
-                            <a href="{% url 'entreprise_app:choix-palier' %}" class="btn btn-outline btn-success btn-sm rounded-xl">Mon abonnement</a>
-                        {% endif %}
-                        {% if request.user.role == 'client' %}
-                            <a href="{% url 'clients_app:tableau-de-bord' %}" class="btn btn-ghost btn-sm rounded-xl">Mon espace</a>
-                            <a href="{% url 'demande_livraison_app:creer-demande' %}" class="btn bg-[#059669] hover:bg-[#047857] text-white btn-sm rounded-xl border-none">⚡ Nouvelle livraison</a>
-                        {% endif %}
-                        {% if request.user.role == 'livreur' %}
-                            <a href="{% url 'livreurs_app:tableau-de-bord' %}" class="btn bg-[#059669] hover:bg-[#047857] text-white btn-sm rounded-xl border-none">🛵 Mon Cockpit Livreur</a>
-                        {% endif %}
-                        <button id="pwa-push-button"
-                                type="button"
-                                data-csrf-token="{{ csrf_token }}"
-                                class="btn btn-outline btn-success btn-sm rounded-xl">
-                            Activer les notifications
-                        </button>
-                        <span id="pwa-push-status" class="max-w-48 text-xs" role="status" aria-live="polite"></span>
-                        <a href="{% url 'auth_app:deconnexion' %}" class="btn btn-outline btn-error btn-sm rounded-xl">Déconnexion</a>
-                    {% else %}
-                        <a href="{% url 'clients_app:inscription-client' %}" class="btn btn-outline btn-sm rounded-xl border-[#059669] text-[#059669] hover:bg-[#059669] hover:text-white">
-                            Créer un compte client
-                        </a>
-                        <a href="{% url 'entreprise_app:inscription' %}" class="btn btn-ghost btn-sm rounded-xl">
-                            Inscrire une entreprise
-                        </a>
-                        {% if request.resolver_match.url_name == 'inscription-client' %}
-                            <button type="button" onclick="document.getElementById('login_modal').showModal()" class="btn bg-[#059669] hover:bg-[#047857] text-white border-none btn-sm rounded-xl">
-                                Connexion
-                            </button>
+                        {% if request.user.is_superuser %}
+                            <a href="{% url 'superuser_app:dashboard' %}" class="btn btn-outline btn-error btn-sm rounded-xl gap-1">
+                                <span>⚡</span> Cockpit Superuser
+                            </a>
+                        {% elif request.user.role == 'client' %}
+                            <a href="{% url 'clients_app:tableau-de-bord' %}" class="btn btn-ghost btn-sm rounded-xl">🛍️ Mon espace</a>
+                            <a href="{% url 'demande_livraison_app:creer-demande' %}" class="btn bg-[#059669] hover:bg-[#047857] text-white btn-sm rounded-xl border-none shadow-sm gap-1">
+                                <span>⚡</span> Nouvelle livraison
+                            </a>
+                        {% elif request.user.role == 'livreur' %}
+                            <a href="{% url 'livreurs_app:tableau-de-bord' %}" class="btn bg-[#059669] hover:bg-[#047857] text-white btn-sm rounded-xl border-none shadow-sm gap-1">
+                                <span>🛵</span> Mon Cockpit Livreur
+                            </a>
+                        {% elif request.user.role == 'entreprise' %}
+                            <a href="{% url 'entreprise_app:entreprise-detail' %}" class="btn btn-ghost btn-sm rounded-xl">📊 Mon entreprise</a>
+                            <a href="{% url 'entreprise_app:choix-palier' %}" class="btn btn-outline btn-success btn-sm rounded-xl">📦 Mon abonnement</a>
+                        {% elif request.user.role == 'bloc_admin' and request.user.admin_bloc_profil %}
+                            {% if request.user.admin_bloc_profil.poste == 'gestionnaire_stock' %}
+                                <a href="{% url 'admins_app:tableau-de-bord-stock' %}" class="btn bg-[#059669] hover:bg-[#047857] text-white btn-sm rounded-xl border-none">📦 Gestion Stock</a>
+                            {% elif request.user.admin_bloc_profil.poste == 'superviseur_flotte' %}
+                                <a href="{% url 'admins_app:tableau-de-bord-flotte' %}" class="btn bg-[#059669] hover:bg-[#047857] text-white btn-sm rounded-xl border-none">🛵 Supervision Flotte</a>
+                            {% elif request.user.admin_bloc_profil.poste == 'assistant' %}
+                                <a href="{% url 'admins_app:tableau-de-bord-assistant' %}" class="btn bg-[#059669] hover:bg-[#047857] text-white btn-sm rounded-xl border-none">💬 Support Assistant</a>
+                            {% else %}
+                                <a href="{% url 'admins_app:tableau-de-bord-responsable' %}" class="btn bg-[#059669] hover:bg-[#047857] text-white btn-sm rounded-xl border-none">🏢 Direction Bloc</a>
+                            {% endif %}
                         {% endif %}
                     {% endif %}
                 </nav>
+
+                <!-- Contrôles Desktop (Theme + Notifications + Profil / Connexion) -->
+                <div class="hidden lg:flex items-center gap-2 xl:gap-3">
+                    <!-- Bascule Thème Clair / Sombre -->
+                    <button @click="darkMode = !darkMode; localStorage.setItem('theme', darkMode ? 'dark' : 'light')"
+                            type="button"
+                            class="btn btn-ghost btn-circle btn-sm text-base-content/80 hover:bg-base-200"
+                            title="Changer de thème">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                        </svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 hidden dark:block text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                    </button>
+
+                    {% if request.user.is_authenticated %}
+                        <!-- PWA Push Notifications -->
+                        <div class="relative flex items-center">
+                            <button id="pwa-push-button"
+                                    type="button"
+                                    data-csrf-token="{{ csrf_token }}"
+                                    class="btn btn-outline btn-success btn-sm rounded-xl text-xs gap-1.5 pwa-push-button"
+                                    title="Activer les notifications Push">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                                </svg>
+                                <span class="hidden xl:inline">Notifications</span>
+                            </button>
+                            <span id="pwa-push-status" class="sr-only pwa-push-status" role="status" aria-live="polite"></span>
+                        </div>
+
+                        <!-- Dropdown Profil Utilisateur -->
+                        <div class="dropdown dropdown-end">
+                            <label tabindex="0" class="btn btn-ghost rounded-2xl gap-2 pl-2 pr-3 py-1 flex items-center border border-base-300 cursor-pointer hover:bg-base-200">
+                                <div class="avatar placeholder">
+                                    <div class="bg-[#059669] text-white rounded-xl w-8 h-8 font-bold text-xs flex items-center justify-center">
+                                        {{ request.user.first_name|default:request.user.telephone|slice:":2"|upper }}
+                                    </div>
+                                </div>
+                                <div class="text-left hidden xl:block">
+                                    <p class="text-xs font-bold leading-tight">{{ request.user.get_full_name|default:request.user.telephone }}</p>
+                                    <span class="badge badge-xs text-[10px]
+                                        {% if request.user.is_superuser %}badge-error text-white
+                                        {% elif request.user.role == 'bloc_admin' %}badge-warning
+                                        {% elif request.user.role == 'livreur' %}badge-info text-white
+                                        {% elif request.user.role == 'entreprise' or request.user.role == 'entreprise_admin' %}badge-secondary text-white
+                                        {% else %}badge-ghost{% endif %}">
+                                        {% if request.user.is_superuser %}Superuser
+                                        {% elif request.user.role == 'bloc_admin' %}Admin Bloc
+                                        {% elif request.user.role == 'livreur' %}Livreur
+                                        {% elif request.user.role == 'entreprise_admin' %}Admin Entreprise
+                                        {% elif request.user.role == 'entreprise' %}Entreprise
+                                        {% else %}Client{% endif %}
+                                    </span>
+                                </div>
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-base-content/50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </label>
+                            <ul tabindex="0" class="dropdown-content menu p-2 shadow-2xl bg-base-100 rounded-2xl w-64 border border-base-200 mt-2 z-50">
+                                <li class="menu-title px-3 py-1 text-[11px] uppercase tracking-wider text-base-content/50">
+                                    Mon Compte ({{ request.user.telephone }})
+                                </li>
+                                {% if request.user.is_superuser %}
+                                    <li><a href="{% url 'superuser_app:dashboard' %}" class="font-bold text-[#059669] py-2.5">⚡ Cockpit Superuser</a></li>
+                                {% endif %}
+                                <li><a href="{% url 'home_app:home' %}" class="py-2.5">🏠 Accueil BAKAMZONE</a></li>
+                                {% if request.user.role == 'client' and not request.user.is_superuser %}
+                                    <li><a href="{% url 'clients_app:tableau-de-bord' %}" class="py-2.5">🛍️ Mon espace client</a></li>
+                                    <li><a href="{% url 'demande_livraison_app:creer-demande' %}" class="py-2.5 text-emerald-600 font-semibold">⚡ Commander une livraison</a></li>
+                                {% endif %}
+                                {% if request.user.role == 'livreur' and not request.user.is_superuser %}
+                                    <li><a href="{% url 'livreurs_app:tableau-de-bord' %}" class="py-2.5 text-emerald-600 font-semibold">🛵 Mon Cockpit Livreur</a></li>
+                                {% endif %}
+                                {% if request.user.role == 'entreprise' and not request.user.is_superuser %}
+                                    <li><a href="{% url 'entreprise_app:entreprise-detail' %}" class="py-2.5">📊 Tableau de bord entreprise</a></li>
+                                    <li><a href="{% url 'entreprise_app:choix-palier' %}" class="py-2.5">📦 Mon abonnement</a></li>
+                                {% endif %}
+                                {% if request.user.role == 'bloc_admin' and request.user.admin_bloc_profil and not request.user.is_superuser %}
+                                    {% if request.user.admin_bloc_profil.poste == 'gestionnaire_stock' %}
+                                        <li><a href="{% url 'admins_app:tableau-de-bord-stock' %}" class="py-2.5">📦 Gestion des Stocks</a></li>
+                                    {% elif request.user.admin_bloc_profil.poste == 'superviseur_flotte' %}
+                                        <li><a href="{% url 'admins_app:tableau-de-bord-flotte' %}" class="py-2.5">🛵 Supervision Flotte</a></li>
+                                    {% elif request.user.admin_bloc_profil.poste == 'assistant' %}
+                                        <li><a href="{% url 'admins_app:tableau-de-bord-assistant' %}" class="py-2.5">💬 Support Opérationnel</a></li>
+                                        <li><a href="{% url 'admins_app:tableau-de-bord-assistant-messages' %}" class="py-2.5">📬 Messages des clients</a></li>
+                                    {% else %}
+                                        <li><a href="{% url 'admins_app:tableau-de-bord-responsable' %}" class="py-2.5">🏢 Direction du Bloc</a></li>
+                                    {% endif %}
+                                {% endif %}
+                                <div class="divider my-1"></div>
+                                <li>
+                                    <a href="{% url 'auth_app:deconnexion' %}" class="text-error font-medium py-2.5">
+                                        🚪 Se déconnecter
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                    {% else %}
+                        <!-- Actions Visiteur Non Connecté (Desktop) -->
+                        <a href="{% url 'clients_app:inscription-client' %}" class="btn btn-outline btn-sm rounded-xl border-[#059669] text-[#059669] hover:bg-[#059669] hover:text-white font-semibold">
+                            Compte client
+                        </a>
+                        <a href="{% url 'entreprise_app:inscription' %}" class="btn btn-ghost btn-sm rounded-xl font-semibold">
+                            Entreprise
+                        </a>
+                        <button type="button"
+                                onclick="if (document.getElementById('login_modal')) { document.getElementById('login_modal').showModal(); } else { window.location.href = '{% url 'home_app:home' %}'; }"
+                                class="btn bg-[#059669] hover:bg-[#047857] text-white border-none btn-sm rounded-xl font-bold shadow-md">
+                            Connexion
+                        </button>
+                    {% endif %}
+                </div>
+
+                <!-- Contrôles Mobile (<= md) : Thème + Menu Hamburger -->
+                <div class="flex lg:hidden items-center gap-1 sm:gap-2">
+                    <!-- Bascule Thème Clair / Sombre -->
+                    <button @click="darkMode = !darkMode; localStorage.setItem('theme', darkMode ? 'dark' : 'light')"
+                            type="button"
+                            class="btn btn-ghost btn-circle btn-sm text-base-content/80 hover:bg-base-200"
+                            title="Changer de thème">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                        </svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 hidden dark:block text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                    </button>
+
+                    <!-- Bouton Hamburger -->
+                    <button @click="mobileMenuOpen = !mobileMenuOpen"
+                            type="button"
+                            class="btn btn-ghost btn-circle btn-sm text-base-content/80 hover:bg-base-200"
+                            :aria-expanded="mobileMenuOpen"
+                            aria-label="Menu de navigation">
+                        <svg x-show="!mobileMenuOpen" xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                        <svg x-show="mobileMenuOpen" x-cloak xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-[#F97316]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
             </div>
+        </div>
+
+        <!-- Menu Mobile Déroulant (PWA-First) -->
+        <div x-show="mobileMenuOpen"
+             x-cloak
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0 -translate-y-2"
+             x-transition:enter-end="opacity-100 translate-y-0"
+             x-transition:leave="transition ease-in duration-150"
+             x-transition:leave-start="opacity-100 translate-y-0"
+             x-transition:leave-end="opacity-0 -translate-y-2"
+             @click.away="mobileMenuOpen = false"
+             class="lg:hidden border-t border-base-200 bg-base-100/98 backdrop-blur-xl px-4 py-5 shadow-2xl max-h-[85vh] overflow-y-auto space-y-4">
+
+            {% if request.user.is_authenticated %}
+                <!-- Profil Utilisateur Mobile -->
+                <div class="flex items-center gap-3 p-3.5 rounded-2xl bg-base-200/60 border border-base-300">
+                    <div class="avatar placeholder">
+                        <div class="bg-[#059669] text-white rounded-xl w-10 h-10 font-bold text-sm flex items-center justify-center">
+                            {{ request.user.first_name|default:request.user.telephone|slice:":2"|upper }}
+                        </div>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <p class="font-bold text-sm text-base-content truncate">{{ request.user.get_full_name|default:request.user.telephone }}</p>
+                        <p class="text-xs text-base-content/60 truncate">{{ request.user.telephone }}</p>
+                    </div>
+                    <span class="badge badge-sm font-semibold shrink-0
+                        {% if request.user.is_superuser %}badge-error text-white
+                        {% elif request.user.role == 'bloc_admin' %}badge-warning
+                        {% elif request.user.role == 'livreur' %}badge-info text-white
+                        {% elif request.user.role == 'entreprise' or request.user.role == 'entreprise_admin' %}badge-secondary text-white
+                        {% else %}badge-ghost{% endif %}">
+                        {% if request.user.is_superuser %}Superuser
+                        {% elif request.user.role == 'bloc_admin' %}Admin Bloc
+                        {% elif request.user.role == 'livreur' %}Livreur
+                        {% elif request.user.role == 'entreprise_admin' %}Admin
+                        {% elif request.user.role == 'entreprise' %}Entreprise
+                        {% else %}Client{% endif %}
+                    </span>
+                </div>
+
+                <!-- Navigation Links Mobile -->
+                <nav class="flex flex-col space-y-1 text-sm font-medium">
+                    <a href="{% url 'home_app:home' %}" @click="mobileMenuOpen = false" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl hover:bg-base-200 transition-colors">
+                        <span class="text-lg">🏠</span> <span>Accueil BAKAMZONE</span>
+                    </a>
+                    {% if request.user.is_superuser %}
+                        <a href="{% url 'superuser_app:dashboard' %}" @click="mobileMenuOpen = false" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-error/10 text-error font-bold hover:bg-error/20 transition-colors">
+                            <span class="text-lg">⚡</span> <span>Cockpit Super Administrateur</span>
+                        </a>
+                    {% else %}
+                    {% if request.user.role == 'client' %}
+                        <a href="{% url 'clients_app:tableau-de-bord' %}" @click="mobileMenuOpen = false" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl hover:bg-base-200 transition-colors">
+                            <span class="text-lg">🛍️</span> <span>Mon espace client</span>
+                        </a>
+                        <a href="{% url 'demande_livraison_app:creer-demande' %}" @click="mobileMenuOpen = false" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-[#059669] text-white font-bold shadow-md hover:bg-[#047857] transition-all">
+                            <span class="text-lg">⚡</span> <span>Commander une livraison</span>
+                        </a>
+                    {% endif %}
+                    {% if request.user.role == 'livreur' %}
+                        <a href="{% url 'livreurs_app:tableau-de-bord' %}" @click="mobileMenuOpen = false" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-[#059669] text-white font-bold shadow-md hover:bg-[#047857] transition-all">
+                            <span class="text-lg">🛵</span> <span>Mon Cockpit Livreur</span>
+                        </a>
+                    {% endif %}
+                    {% if request.user.role == 'entreprise' %}
+                        <a href="{% url 'entreprise_app:entreprise-detail' %}" @click="mobileMenuOpen = false" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl hover:bg-base-200 transition-colors">
+                            <span class="text-lg">📊</span> <span>Tableau de bord entreprise</span>
+                        </a>
+                        <a href="{% url 'entreprise_app:choix-palier' %}" @click="mobileMenuOpen = false" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl hover:bg-base-200 transition-colors">
+                            <span class="text-lg">📦</span> <span>Mon abonnement</span>
+                        </a>
+                    {% endif %}
+                    {% if request.user.role == 'bloc_admin' and request.user.admin_bloc_profil %}
+                        {% if request.user.admin_bloc_profil.poste == 'gestionnaire_stock' %}
+                            <a href="{% url 'admins_app:tableau-de-bord-stock' %}" @click="mobileMenuOpen = false" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl hover:bg-base-200 transition-colors">
+                                <span class="text-lg">📦</span> <span>Gestion des Stocks</span>
+                            </a>
+                        {% elif request.user.admin_bloc_profil.poste == 'superviseur_flotte' %}
+                            <a href="{% url 'admins_app:tableau-de-bord-flotte' %}" @click="mobileMenuOpen = false" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl hover:bg-base-200 transition-colors">
+                                <span class="text-lg">🛵</span> <span>Supervision Flotte</span>
+                            </a>
+                        {% elif request.user.admin_bloc_profil.poste == 'assistant' %}
+                            <a href="{% url 'admins_app:tableau-de-bord-assistant' %}" @click="mobileMenuOpen = false" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl hover:bg-base-200 transition-colors">
+                                <span class="text-lg">💬</span> <span>Espace Assistant</span>
+                            </a>
+                            <a href="{% url 'admins_app:tableau-de-bord-assistant-messages' %}" @click="mobileMenuOpen = false" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl hover:bg-base-200 transition-colors">
+                                <span class="text-lg">📬</span> <span>Messages des clients</span>
+                            </a>
+                        {% else %}
+                            <a href="{% url 'admins_app:tableau-de-bord-responsable' %}" @click="mobileMenuOpen = false" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl hover:bg-base-200 transition-colors">
+                                <span class="text-lg">🏢</span> <span>Direction du Bloc</span>
+                            </a>
+                        {% endif %}
+                    {% endif %}
+                    {% endif %}
+                </nav>
+
+                <!-- Action Notifications Mobile & Déconnexion -->
+                <div class="pt-3 border-t border-base-200 space-y-2">
+                    <button type="button"
+                            data-csrf-token="{{ csrf_token }}"
+                            class="btn btn-outline btn-success btn-sm w-full rounded-xl gap-2 font-bold pwa-push-button">
+                        <span>🔔</span> <span>Activer les notifications push</span>
+                    </button>
+                    <span class="pwa-push-status block text-xs text-base-content/70" role="status" aria-live="polite"></span>
+                    <a href="{% url 'auth_app:deconnexion' %}" class="btn btn-outline btn-error btn-sm w-full rounded-xl gap-2 font-bold">
+                        <span>🚪</span> <span>Se déconnecter</span>
+                    </a>
+                </div>
+            {% else %}
+                <!-- Menu Visiteur Mobile -->
+                <div class="space-y-2.5">
+                    <button type="button"
+                            onclick="mobileMenuOpen = false; if (document.getElementById('login_modal')) { document.getElementById('login_modal').showModal(); } else { window.location.href = '{% url 'home_app:home' %}'; }"
+                            class="btn bg-[#059669] hover:bg-[#047857] text-white border-none w-full rounded-xl font-bold shadow-md h-12 gap-2 text-base">
+                        <span>🔑</span> Se connecter
+                    </button>
+                    <a href="{% url 'clients_app:inscription-client' %}" @click="mobileMenuOpen = false" class="btn btn-outline border-[#059669] text-[#059669] hover:bg-[#059669] hover:text-white w-full rounded-xl font-bold gap-2">
+                        <span>👤</span> Créer un compte client
+                    </a>
+                    <a href="{% url 'entreprise_app:inscription' %}" @click="mobileMenuOpen = false" class="btn btn-ghost w-full rounded-xl font-semibold text-base-content/80 hover:bg-base-200 gap-2">
+                        <span>🏢</span> Inscrire une entreprise
+                    </a>
+                </div>
+            {% endif %}
         </div>
     </header>
     {% endblock %}
 
-    <main class="flex-grow">
+    <!-- Contenu Principal -->
+    <main class="flex-grow w-full">
         {% block content %}{% endblock %}
     </main>
 
-    <footer class="bg-base-200 border-t border-base-300 py-12 text-sm">
+    <!-- Pied de Page Responsive -->
+    <footer class="bg-base-200 border-t border-base-300 py-10 sm:py-12 text-sm">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 mb-8">
                 
                 <div class="space-y-3">
                     <div class="flex items-center space-x-2">
@@ -166,25 +441,30 @@
 
     {% block extra_scripts %}{% endblock %}
     <script defer src="{% static 'js/push-notifications.js' %}"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof gsap !== 'undefined' && typeof ScrollTrigger !== 'undefined') {
+                gsap.registerPlugin(ScrollTrigger);
+            }
+
+            if (typeof Lenis !== 'undefined') {
+                const lenis = new Lenis();
+                function raf(time) {
+                    lenis.raf(time);
+                    requestAnimationFrame(raf);
+                }
+                requestAnimationFrame(raf);
+
+                if (typeof ScrollTrigger !== 'undefined') {
+                    lenis.on('scroll', ScrollTrigger.update);
+                    gsap.ticker.add((time) => {
+                        lenis.raf(time * 1000);
+                    });
+                    gsap.ticker.lagSmoothing(0);
+                }
+            }
+        });
+    </script>
 </body>
 </html>
-
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        gsap.registerPlugin(ScrollTrigger);
-
-        const lenis = new Lenis();
-        function raf(time) {
-            lenis.raf(time);
-            requestAnimationFrame(raf);
-        }
-        requestAnimationFrame(raf);
-
-        // Lenis + ScrollTrigger : synchroniser le scroll smooth avec GSAP
-        lenis.on('scroll', ScrollTrigger.update);
-        gsap.ticker.add((time) => {
-            lenis.raf(time * 1000);
-        });
-        gsap.ticker.lagSmoothing(0);
-    });
-</script>

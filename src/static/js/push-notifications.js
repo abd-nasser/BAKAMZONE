@@ -1,10 +1,12 @@
 (() => {
-  const button = document.getElementById("pwa-push-button");
-  const status = document.getElementById("pwa-push-status");
-  if (!button || !status) return;
+  const buttons = document.querySelectorAll("#pwa-push-button, .pwa-push-button");
+  const statuses = document.querySelectorAll("#pwa-push-status, .pwa-push-status");
+  if (buttons.length === 0) return;
 
   const report = (message) => {
-    status.textContent = message;
+    statuses.forEach((s) => {
+      s.textContent = message;
+    });
   };
 
   const decodeApplicationServerKey = (key) => {
@@ -13,13 +15,13 @@
     return Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
   };
 
-  const saveSubscription = async (subscription) => {
+  const saveSubscription = async (subscription, csrfToken) => {
     const response = await fetch("/notifications/pwa/subscribe/", {
       method: "POST",
       credentials: "same-origin",
       headers: {
         "Content-Type": "application/json",
-        "X-CSRFToken": button.dataset.csrfToken,
+        "X-CSRFToken": csrfToken,
       },
       body: JSON.stringify(subscription.toJSON()),
     });
@@ -30,7 +32,7 @@
     }
   };
 
-  const enableNotifications = async () => {
+  const enableNotifications = async (csrfToken) => {
     if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
       throw new Error("Les notifications Push ne sont pas prises en charge par ce navigateur.");
     }
@@ -67,21 +69,26 @@
       });
     }
 
-    await saveSubscription(subscription);
-    button.textContent = "Notifications activées";
+    await saveSubscription(subscription, csrfToken);
+    buttons.forEach((btn) => {
+      btn.textContent = "Notifications activées";
+    });
     report("Les notifications sont activées sur cet appareil.");
   };
 
-  button.addEventListener("click", async () => {
-    button.disabled = true;
-    report("Activation des notifications en cours…");
-    try {
-      await enableNotifications();
-    } catch (error) {
-      report(error.message || "Impossible d'activer les notifications.");
-    } finally {
-      button.disabled = false;
-    }
+  buttons.forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      buttons.forEach((b) => (b.disabled = true));
+      report("Activation des notifications en cours…");
+      try {
+        const token = btn.dataset.csrfToken || document.querySelector("[name=csrfmiddlewaretoken]")?.value;
+        await enableNotifications(token);
+      } catch (error) {
+        report(error.message || "Impossible d'activer les notifications.");
+      } finally {
+        buttons.forEach((b) => (b.disabled = false));
+      }
+    });
   });
 
   if ("serviceWorker" in navigator) {
