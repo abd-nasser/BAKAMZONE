@@ -37,7 +37,7 @@
                                 {{ demande.client.user.get_full_name }} · {{ demande.zone_depart.nom }} → {{ demande.zone_arrivee.nom }}
                             </p>
                         </div>
-                        <span class="badge badge-warning">{{ demande.get_statut_destinataire_display }}</span>
+                        <span class="badge badge-warning">{{ demande.get_statut_position_destinataire_display }}</span>
                     </div>
 
                     <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-base-200/60 p-3">
@@ -124,7 +124,7 @@
                                 Voir la position GPS
                             </a>
                         {% else %}
-                            <span class="badge badge-ghost w-fit">{{ demande.get_statut_destinataire_display }}</span>
+                            <span class="badge badge-ghost w-fit">{{ demande.get_statut_position_destinataire_display }}</span>
                         {% endif %}
                     </div>
                 </article>

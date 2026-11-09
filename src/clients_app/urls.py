@@ -3,6 +3,7 @@ from django.urls import path
 from clients_app.views import (
     ClientBlocDetailView,
     ClientDashboardView,
+    ClientDeliveryTrackingView,
     InscriptionClientView,
     LivreurProfilViewByClient,
     StartBlocSupportChatView,
@@ -15,6 +16,11 @@ app_name = 'clients_app'
 urlpatterns = [
     path('inscription/', InscriptionClientView.as_view(), name='inscription-client'),
     path('tableau-de-bord/', ClientDashboardView.as_view(), name='tableau-de-bord'),
+    path(
+        'livraisons/<int:pk>/suivi/',
+        ClientDeliveryTrackingView.as_view(),
+        name='suivi-livraison',
+    ),
     path(
         'blocs/<int:pk>/',
         ClientBlocDetailView.as_view(),

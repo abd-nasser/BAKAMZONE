@@ -12,11 +12,16 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 from pathlib import Path
 import os
+from celery.schedules import crontab
 from django.conf.locale.fr import formats
 formats.NUMBER_GROUPING = 3
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+OPENSTREETMAP_TILE_URL = os.environ.get(
+    "OPENSTREETMAP_TILE_URL",
+    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+)
 
 
 # Quick-start development settings - unsuitable for production
@@ -204,6 +209,13 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'UTC'
+# Requires a running Celery Beat process in addition to the Celery worker.
+CELERY_BEAT_SCHEDULE = {
+    'purger-historique-positions-livreur': {
+        'task': 'livreurs_app.tasks.purger_historique_positions_task',
+        'schedule': crontab(hour=2, minute=0),
+    },
+}
 
 # Robustesse & Sécurité VPS
 CELERY_TASK_ACKS_LATE = True

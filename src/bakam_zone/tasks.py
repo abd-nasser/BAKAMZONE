@@ -133,7 +133,7 @@ def envoyer_notification_smartdrop_destinataire_task(self, demande_id: int, base
     from demande_livraison_app.models import DemandeLivraison
 
     try:
-        demande = DemandeLivraison.objects.select_related('livreur__user').get(pk=demande_id)
+        demande = DemandeLivraison.objects.select_related('livreur__user', 'zone_depart','zone_arrivee' ).get(pk=demande_id)
     except DemandeLivraison.DoesNotExist:
         logger.error("DemandeLivraison #%s introuvable pour Smart-Drop.", demande_id)
         return False
@@ -170,7 +170,7 @@ def envoyer_notification_smartdrop_destinataire_task(self, demande_id: int, base
 def verifier_delai_reponse_destinataire_task(self, demande_id: int) -> str:
     """
     Vérifie après 3 minutes si le destinataire a validé sa position GPS.
-    Si non, bascule statut_destinataire vers 'alerte_assistant' pour escalade vers l'assistant du bloc.
+    Si non, bascule statut_position_destinataire vers 'alerte_assistant' pour escalade vers l'assistant du bloc.
     """
     from demande_livraison_app.models import DemandeLivraison
 
@@ -179,9 +179,9 @@ def verifier_delai_reponse_destinataire_task(self, demande_id: int) -> str:
     except DemandeLivraison.DoesNotExist:
         return "not_found"
 
-    if not demande.position_destinataire_validee and demande.statut_destinataire == 'en_attente':
-        demande.statut_destinataire = 'alerte_assistant'
-        demande.save(update_fields=['statut_destinataire'])
+    if not demande.position_destinataire_validee and demande.statut_position_destinataire == 'en_attente':
+        demande.statut_position_destinataire = 'alerte_assistant'
+        demande.save(update_fields=['statut_position_destinataire'])
         logger.warning(
             "Demande #%s : Délai de 3min dépassé sans position GPS du destinataire. Escalade en alerte assistant.",
             demande_id,

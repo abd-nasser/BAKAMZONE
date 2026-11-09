@@ -21,6 +21,7 @@
     <link rel="apple-touch-icon" href="{% static 'icons/icon-180x180.png' %}">
 
     <link rel="stylesheet" href="{% static 'css/dist/styles.css' %}">
+    <script defer src="{% static 'js/push-notifications.js' %}"></script>
     <script defer src="{% static 'vendor/js/htmx.min.js' %}"></script>
     <script src="{% static 'vendor/js/gsap.min.js' %}" defer></script>
     <script src="{% static 'vendor/js/ScrollTrigger.min.js' %}" defer></script>
@@ -165,7 +166,7 @@
     </footer>
 
     {% block extra_scripts %}{% endblock %}
-    <script defer src="{% static 'js/push-notifications.js' %}"></script>
+    
 </body>
 </html>
 

@@ -1,5 +1,6 @@
 import logging
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.core.exceptions import PermissionDenied
@@ -17,6 +18,7 @@ from blocs_app.models import Blocs
 from clients_app.forms import InscriptionClientForm, SupportMessageForm
 from clients_app.models import Client, SupportConversation, SupportMessage
 from demande_livraison_app.forms import DemandeLivraisonForm
+from demande_livraison_app.models import DemandeLivraison
 from demande_livraison_app.pricing import obtenir_tarifs_livraison
 from livreurs_app.models import Livreur
 from zones_app.models import Zone
@@ -63,6 +65,14 @@ class ClientDashboardView(LoginRequiredMixin, UserPassesTestMixin, TemplateView)
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         client = Client.objects.get(user=self.request.user)
+        active_deliveries = DemandeLivraison.objects.filter(
+            client=client,
+            statut__in=("acceptee", "en_cours"),
+        ).select_related(
+            "livreur__user",
+            "zone_depart",
+            "zone_arrivee",
+        ).order_by("-date_creation")
 
         livreur_query = self.request.GET.get("livreur_q", "").strip()
         livreur_vehicule = self.request.GET.get("livreur_vehicule", "")
@@ -150,6 +160,7 @@ class ClientDashboardView(LoginRequiredMixin, UserPassesTestMixin, TemplateView)
 
         context.update({
             "client": client,
+            "active_deliveries": active_deliveries,
             "livreurs": livreurs,
             "livreur_query": livreur_query,
             "livreur_vehicule": livreur_vehicule,
@@ -166,6 +177,61 @@ class ClientDashboardView(LoginRequiredMixin, UserPassesTestMixin, TemplateView)
                 "entreprise_id",
                 "entreprise__nom_entreprise",
             ).distinct().order_by("entreprise__nom_entreprise"),
+        })
+        return context
+
+
+class ClientDeliveryTrackingView(
+    LoginRequiredMixin,
+    UserPassesTestMixin,
+    DetailView,
+):
+    model = DemandeLivraison
+    template_name = "clients_templates/suivi_livraison.html"
+    context_object_name = "demande"
+    login_url = reverse_lazy("home_app:home")
+
+    def test_func(self):
+        return (
+            self.request.user.role == "client"
+            and Client.objects.filter(user=self.request.user).exists()
+        )
+
+    def get_queryset(self):
+        return DemandeLivraison.objects.filter(
+            client__user=self.request.user,
+        ).select_related(
+            "client__user",
+            "livreur__user",
+            "zone_depart",
+            "zone_arrivee",
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        demande = self.object
+        suivi_actif = (
+            demande.statut in ("acceptee", "en_cours")
+            and demande.livreur_id is not None
+            and demande.livreur.actif
+        )
+        suivi_disponible = (
+            suivi_actif
+            and demande.position_destinataire_validee
+            and demande.latitude_destinataire_reelle is not None
+            and demande.longitude_destinataire_reelle is not None
+        )
+        context.update({
+            "suivi_actif": suivi_actif,
+            "suivi_disponible": suivi_disponible,
+            "tracking_config": {
+                "tile_url": settings.OPENSTREETMAP_TILE_URL,
+                "deliveries": [{
+                    "id": demande.pk,
+                    "label": f"Livraison #{demande.pk}",
+                    "ws_path": f"/ws/livraisons/{demande.pk}/suivi/",
+                }] if suivi_disponible else [],
+            },
         })
         return context
 

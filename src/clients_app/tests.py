@@ -13,7 +13,11 @@ from blocs_app.models import Blocs
 from auth_app.models import User
 from clients_app.forms import InscriptionClientForm
 from clients_app.models import Client, SupportConversation, SupportMessage
-from clients_app.views import ClientBlocDetailView, LivreurProfilViewByClient
+from clients_app.views import (
+    ClientBlocDetailView,
+    ClientDeliveryTrackingView,
+    LivreurProfilViewByClient,
+)
 from demande_livraison_app.models import DemandeLivraison
 from entreprise_app.models import Entreprise
 from livreurs_app.models import Livreur
@@ -321,6 +325,47 @@ class ClientDashboardViewTests(TestCase):
             reverse("clients_app:profil-livreur", args=[livreur.pk])
         )
 
+        self.assertEqual(response.status_code, 404)
+
+    def test_client_can_track_only_their_own_active_delivery(self):
+        livreur = Livreur.objects.get(user__telephone="70000803")
+        zone_depart = Zone.objects.create(nom="Départ suivi", bloc=self.bloc)
+        zone_arrivee = Zone.objects.create(nom="Arrivée suivi", bloc=self.bloc)
+        demande = DemandeLivraison.objects.create(
+            client=self.client_profile,
+            livreur=livreur,
+            zone_depart=zone_depart,
+            zone_arrivee=zone_arrivee,
+            latitude_depart=Decimal("12.345678"),
+            longitude_depart=Decimal("-1.234567"),
+            prix=Decimal("1500"),
+            whatsapp_destinataire="+22670000003",
+            statut="en_cours",
+            position_destinataire_validee=True,
+            latitude_destinataire_reelle=Decimal("12.350000"),
+            longitude_destinataire_reelle=Decimal("-1.230000"),
+        )
+
+        response = self.client.get(
+            reverse("clients_app:suivi-livraison", args=[demande.pk])
+        )
+
+        self.assertIs(ClientDeliveryTrackingView.model, DemandeLivraison)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id="delivery-tracking-map"')
+        self.assertContains(response, f"/ws/livraisons/{demande.pk}/suivi/")
+
+        other_user = User.objects.create(
+            telephone="70000809",
+            first_name="Client",
+            last_name="Autre",
+            role="client",
+        )
+        Client.objects.create(user=other_user)
+        self.client.force_login(other_user)
+        response = self.client.get(
+            reverse("clients_app:suivi-livraison", args=[demande.pk])
+        )
         self.assertEqual(response.status_code, 404)
 
     def test_dashboard_requires_a_client_profile(self):

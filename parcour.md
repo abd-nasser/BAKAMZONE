@@ -310,3 +310,73 @@ La roadmap de la section 4 correspond à l'état antérieur à l'historique ci-d
 - Ajout de la section 7 à [`bakamzone_todo_list.md`](./bakamzone_todo_list.md) avec les fondations existantes et les étapes non réalisées : décisions métier, carte, infrastructure ASGI/Redis, permissions, émission GPS, diffusion, interface, tests et validation terrain.
 - Pas de code applicatif modifié à cette étape ; le suivi en temps réel reste à développer et à tester.
 - Précision de périmètre : le suivi ne concerne pas seulement le client. Le superviseur de flotte (`role="bloc_admin"`, profil `AdminBloc` actif avec `poste="superviseur_flotte"`) doit aussi suivre les courses des livreurs rattachés à son bloc. L'architecture, les critères d'autorisation WebSocket et les tests à prévoir ont été mis à jour en conséquence dans [`suivis_livreur_temp_reel.md`](./suivis_livreur_temp_reel.md) et [`bakamzone_todo_list.md`](./bakamzone_todo_list.md).
+
+## 17. Cadrage métier du suivi livreur — 4 novembre 2026
+
+- Décision : le suivi ne démarre pas à la seule acceptation de la demande. Il commence lorsque les coordonnées GPS du destinataire sont validées (par le destinataire via la PWA ou saisies par l'assistant) et disponibles au livreur assigné. Le suivi s'arrête à la livraison, à l'annulation ou à la désassignation du livreur.
+- À cette disponibilité, le client doit recevoir une Web Push l'informant que les coordonnées de localisation du destinataire sont disponibles pour le livreur ; aucun accusé de réception manuel du livreur n'est requis. L'envoi effectif nécessite une souscription Push active. Le suivi est alors activé, et la collecte GPS commence lorsque le livreur ouvre sa course et autorise la géolocalisation.
+- Politique de position : transmission GPS toutes les 15 secondes au plus ; un point historique `PositionLivreur` toutes les 60 secondes au plus ; purge automatique de l'historique après 7 jours.
+- Les lecteurs restent le client propriétaire de la demande et le superviseur de flotte actif du bloc du livreur. La première tâche de cadrage de la section 7 est terminée et les étapes d'implémentation correspondantes sont ajoutées à [`bakamzone_todo_list.md`](./bakamzone_todo_list.md) et [`suivis_livreur_temp_reel.md`](./suivis_livreur_temp_reel.md).
+- Choix cartographique initial : Leaflet avec cartographie OpenStreetMap. Le client suivra une seule livraison active ; le superviseur aura une vue multi-courses limitée à son bloc avec liste et filtres. Le mode d'hébergement des tuiles a été décidé ensuite (voir section 18).
+- Mise à jour initiale de la TODO : la décision cartographique et UX est terminée ; l'intégration de Leaflet et la configuration des tuiles restent à réaliser.
+
+## 18. Choix d'hébergement des tuiles cartographiques — 4 novembre 2026
+
+- Choix initial : auto-héberger les tuiles OpenStreetMap pour Ouagadougou et ses environs sur le KVM 2 alors envisagé pour Django/Nginx.
+- Caractéristiques annoncées à cette date : 2 vCPU, 8 Go RAM, 100 Go NVMe et 8 To de bande passante. Leaflet, le serveur de tuiles et les données cartographiques n'étaient pas déployés.
+- Ce choix d'hébergement a été remplacé par la décision en section 19. La souscription/migration et la mesure des ressources libres restent à faire.
+
+## 19. Passage au KVM 4 — 4 novembre 2026
+
+- Décision : retenir le KVM 4 et écarter le KVM 2 pour l'hébergement cible de l'application et des tuiles OpenStreetMap auto-hébergées pour Ouagadougou et environs.
+- Caractéristiques annoncées du KVM 4 : 4 vCPU, 16 Go RAM, 200 Go NVMe et 16 To de bande passante mensuelle. Ces capacités sont nominales ; la place réellement disponible après système, Django, Redis et autres services devra être mesurée.
+- La souscription ou migration vers le KVM 4 n'est pas présumée effectuée. La TODO, le plan stratégique et [`suivis_livreur_temp_reel.md`](./suivis_livreur_temp_reel.md) sont mis à jour avec cette cible et les prochaines étapes.
+
+## 20. Début du développement Channels local — 4 novembre 2026
+
+- La souscription/migration KVM 4 et la mise en place du serveur de tuiles OSM sont reportées jusqu'à ce que la feature soit prête pour les tests de production ; elles ne bloquent pas le développement WebSocket local.
+- Ajout de `channels==4.3.2`, `channels-redis==4.3.0` et `daphne==4.2.3`. Configuration du channel layer `channels_redis` via `CHANNEL_REDIS_URL`, avec Redis `/2` par défaut (Celery conserve `/0` et `/1`).
+- Configuration de l'application ASGI pour HTTP et WebSocket, authentification de session et validation via la liste `WEBSOCKET_ALLOWED_ORIGINS`. Le routage WebSocket est préparé, mais ne contient pas encore de route ni de consumer de suivi.
+- Vérification de l'installation dans un Python 3.13 standard : `manage.py check` et les 9 tests de `bakam_zone.tests` réussissent. Tests ajoutés pour le channel layer Redis, le routeur ASGI et le refus des origines non autorisées.
+- La réception/validation des coordonnées GPS, leur persistance/diffusion et le test avec Redis local restent à faire.
+
+## 21. Routes et autorisations WebSocket du suivi — 4 novembre 2026
+
+- Ajout de la route `/ws/livraisons/<id>/suivi/` et du consumer de suivi.
+- Le serveur n'accepte que les courses acceptées/en cours, attribuées à un livreur actif, avec coordonnées validées du destinataire.
+- Accès réservé au livreur assigné, au client propriétaire ou au superviseur de flotte actif du bloc du livreur ; les autres connexions sont refusées.
+- Autorisations revalidées à chaque diffusion ; un superviseur dont le profil est désactivé est déconnecté avant de recevoir une position.
+- Tests couvrant l'accès autorisé/refusé pour ces profils, la révocation d'un accès, les demandes terminées et le suivi non encore activé.
+- L'émission des coordonnées, leur validation/persistance et leur diffusion sont encore à implémenter ; les tests de connexions utilisent le channel layer mémoire, aucun Redis local n'a été testé.
+
+## 22. Émission et diffusion GPS du livreur — 4 novembre 2026
+
+- À la première validation des coordonnées du destinataire, par la PWA ou par la saisie manuelle de l'assistant, programmation d'une Web Push au client ; les mises à jour ultérieures n'envoient pas de notification répétée. Une indisponibilité du broker est signalée sans perdre les coordonnées enregistrées.
+- Ajout au tableau de bord livreur d'un démarrage/arrêt volontaire du GPS, avec demande de permission du navigateur et envoi WebSocket au plus toutes les 15 secondes.
+- Le serveur n'accepte les coordonnées que du livreur assigné sur une demande active et activée ; il vérifie les bornes GPS et applique sa propre limite de cadence.
+- Enregistrement de la position courante avec son horodatage, création d'un point d'historique au plus toutes les 60 secondes et diffusion réservée au groupe privé de la course.
+- Ajout de `Livreur.position_suivi_mise_a_jour` et de sa migration pour permettre le contrôle serveur de la cadence, y compris après reconnexion.
+- Tests couvrant l'émission autorisée, la cadence 15/60 s, les coordonnées invalides, l'interdiction d'émission par un lecteur, la Web Push unique et l'affichage du contrôle GPS.
+- Les interfaces de suivi client/superviseur restent à développer. Les tests WebSocket utilisent le channel layer mémoire ; Redis local n'a pas encore été vérifié.
+
+## 23. Purge de l'historique GPS — 9 novembre 2026
+
+- Ajout de `livreurs_app.tasks.purger_historique_positions_task`, qui supprime les points `PositionLivreur` de plus de 7 jours et journalise le nombre supprimé.
+- Configuration Celery Beat pour exécuter la purge chaque jour à 02:00 UTC. Le service Beat doit être démarré séparément du worker Celery pour que la planification soit effective.
+- Tests couvrant le seuil exact de 7 jours, la conservation des points récents, une purge vide et la configuration de la planification.
+
+## 24. Cartes de suivi client et superviseur — 9 novembre 2026
+
+- Ajout d'une page de suivi accessible depuis les livraisons actives du tableau de bord client ; la vue renvoie 404 si la demande n'appartient pas au client connecté.
+- Ajout d'une carte Leaflet multi-courses dans le tableau de bord du superviseur de flotte, limitée aux courses GPS actives des livreurs de son bloc, avec recherche par livreur, client et zones.
+- Les pages se connectent aux WebSockets par course et affichent le marqueur uniquement après réception d'une nouvelle position ; aucune position persistée au niveau du livreur n'est traitée comme une position récente de la course.
+- Ajout de l'heure de dernière position, de l'indication de coupure et d'obsolescence après 45 secondes, ainsi que d'une reconnexion avec délai progressif.
+- L'URL des tuiles est configurable avec `OPENSTREETMAP_TILE_URL`. La valeur de développement utilise le service public OSM ; le service régional auto-hébergé reste à configurer pour la production sur le KVM 4.
+- Ajout de tests de périmètre client et superviseur. Leur exécution reste à valider : l'écart préexistant entre `statut_position_destinataire` dans le modèle et les migrations empêche déjà les tests liés aux demandes de livraison de démarrer correctement.
+
+## 25. Migration et validation du suivi GPS — 9 novembre 2026
+
+- Application de la migration de renommage `statut_destinataire` vers `statut_position_destinataire`, sans recréer la colonne ni perdre ses données.
+- Alignement des références restantes dans le workflow livreur, le tableau du livreur, le tableau de l'assistant et les tests.
+- Validation : 49 tests des demandes de livraison, des vues client et du tableau superviseur réussis ; 7 tests du workflow livreur réussis. `manage.py check` et `makemigrations --check --dry-run --noinput` réussissent aussi.
+- Restent à faire : tests avec Redis/Daphne réels, coupures/reconnexions, HTTPS/WSS derrière proxy et validation sur téléphone.

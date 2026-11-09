@@ -631,7 +631,7 @@ class DestinataireGeoViewTestCase(TestCase):
             self.demande.latitude_destinataire_reelle,
             Decimal("12.345678"),
         )
-        self.assertEqual(self.demande.statut_destinataire, "position_recue")
+        self.assertEqual(self.demande.statut_position_destinataire, "position_recue")
         send_push_notification.assert_called_once_with(
             user_id=self.demande.client.user_id,
             title="Position du destinataire disponible",

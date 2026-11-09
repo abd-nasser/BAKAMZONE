@@ -3,10 +3,14 @@ asgiref==3.12.1
 binaryornot==0.6.0
 certifi==2026.7.22
 charset-normalizer==3.5.2
+# WebSocket Django, diffusion des événements entre processus via Redis, et serveur ASGI.
+channels==4.3.2
+channels-redis==4.3.0
 click==8.5.0
 colorama==0.4.6
 cookiecutter==2.7.1
 celery[redis]==5.4.0
+daphne==4.2.3
 Django==6.0.4
 django-browser-reload==1.21.0
 django-tailwind==4.5.0

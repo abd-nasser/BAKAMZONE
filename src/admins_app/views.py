@@ -1,6 +1,7 @@
 import json
 from decimal import Decimal, InvalidOperation
 
+from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib import messages
 from django.db import transaction
@@ -341,9 +342,35 @@ class SuperviseurFlotteDashbordView(SuperviseurFlotteRequiredMixin, TemplateView
             | Q(zone_arrivee__bloc=bloc)
             | Q(livreur__blocs=bloc)
         ).distinct()
+        suivi_livraisons = DemandeLivraison.objects.filter(
+            statut__in=("acceptee", "en_cours"),
+            livreur__blocs=bloc,
+            livreur__actif=True,
+            position_destinataire_validee=True,
+            latitude_destinataire_reelle__isnull=False,
+            longitude_destinataire_reelle__isnull=False,
+        ).select_related(
+            "client__user",
+            "livreur__user",
+            "zone_depart",
+            "zone_arrivee",
+        ).order_by("-date_creation")
         context.update({
             "livreurs_count": Livreur.objects.filter(blocs=bloc).count(),
             "demandes_livraison_count": demandes_livraison.count(),
+            "suivi_livraisons": suivi_livraisons,
+            "tracking_config": {
+                "tile_url": settings.OPENSTREETMAP_TILE_URL,
+                "deliveries": [{
+                    "id": demande.pk,
+                    "label": f"Livraison #{demande.pk}",
+                    "livreur": demande.livreur.user.get_full_name(),
+                    "client": demande.client.user.get_full_name(),
+                    "depart": demande.zone_depart.nom,
+                    "arrivee": demande.zone_arrivee.nom,
+                    "ws_path": f"/ws/livraisons/{demande.pk}/suivi/",
+                } for demande in suivi_livraisons],
+            },
         })
         return context
 
@@ -380,7 +407,7 @@ class AssistantOperationnelDashboardView(AdminBlocPostDashboardView):
             "description": "Suivi des livraisons actives et résolution des alertes de votre bloc.",
             "livraisons_actives": livraisons.order_by("-date_creation"),
             "alertes_destinataire": livraisons.filter(
-                statut_destinataire="alerte_assistant",
+                statut_position_destinataire="alerte_assistant",
             ).order_by("-date_creation"),
         })
         return context
@@ -398,14 +425,14 @@ class AssistantOperationnelDashboardView(AdminBlocPostDashboardView):
         action = request.POST.get("action")
 
         if action == "marquer_injoignable":
-            if demande.statut_destinataire != "alerte_assistant":
+            if demande.statut_position_destinataire != "alerte_assistant":
                 messages.error(
                     request,
                     "Seules les demandes en alerte peuvent être marquées injoignables.",
                 )
                 return redirect("admins_app:tableau-de-bord-assistant")
-            demande.statut_destinataire = "injoignable"
-            demande.save(update_fields=["statut_destinataire"])
+            demande.statut_position_destinataire = "injoignable"
+            demande.save(update_fields=["statut_position_destinataire"])
             messages.success(
                 request,
                 f"Le destinataire de la demande #{demande.pk} est marqué injoignable.",
@@ -454,12 +481,12 @@ class AssistantOperationnelDashboardView(AdminBlocPostDashboardView):
                 demande.latitude_destinataire_reelle = latitude
                 demande.longitude_destinataire_reelle = longitude
                 demande.position_destinataire_validee = True
-                demande.statut_destinataire = "position_recue"
+                demande.statut_position_destinataire = "position_recue"
                 demande.save(update_fields=[
                     "latitude_destinataire_reelle",
                     "longitude_destinataire_reelle",
                     "position_destinataire_validee",
-                    "statut_destinataire",
+                    "statut_position_destinataire",
                 ])
 
             if (

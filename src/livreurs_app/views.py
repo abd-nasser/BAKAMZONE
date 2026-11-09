@@ -167,7 +167,7 @@ class AccepterDemandeLivraisonView(LivreurRequiredMixin, View):
             livreur=livreur,
             statut='acceptee',
             date_acceptation=timezone.now(),
-            statut_destinataire='en_attente',
+            statut_position_destinataire='en_attente',
         )
         if not accepte:
             messages.error(

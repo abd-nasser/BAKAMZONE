@@ -321,6 +321,76 @@ class AdminBlocPostDashboardViewTests(TestCase):
             reverse("admins_app:tableau-de-bord-flotte-demandes-livraison"),
         )
 
+    def test_fleet_map_includes_only_trackable_deliveries_from_its_block(self):
+        self.admin_bloc.poste = "superviseur_flotte"
+        self.admin_bloc.save(update_fields=["poste"])
+        client_user = User.objects.create(
+            telephone="70000919",
+            first_name="Mariam",
+            last_name="Client",
+            role="client",
+        )
+        client_profile = Client.objects.create(user=client_user)
+        other_bloc = Blocs.objects.create(
+            nom="Bloc autre flotte",
+            ville="ouagadougou",
+            quartier="pattedoie",
+        )
+        local_zone = Zone.objects.create(nom="Zone locale", bloc=self.bloc)
+        remote_zone = Zone.objects.create(nom="Zone distante", bloc=other_bloc)
+        local_courier_user = User.objects.create(
+            telephone="70000920",
+            first_name="Issa",
+            last_name="Kaboré",
+            role="livreur",
+        )
+        local_courier = Livreur.objects.create(
+            user=local_courier_user,
+            type_vehicule="moto",
+            blocs=self.bloc,
+            actif=True,
+        )
+        remote_courier_user = User.objects.create(
+            telephone="70000921",
+            first_name="Awa",
+            last_name="Traore",
+            role="livreur",
+        )
+        remote_courier = Livreur.objects.create(
+            user=remote_courier_user,
+            type_vehicule="velo",
+            blocs=other_bloc,
+            actif=True,
+        )
+
+        def create_delivery(courier):
+            return DemandeLivraison.objects.create(
+                client=client_profile,
+                livreur=courier,
+                zone_depart=local_zone,
+                zone_arrivee=remote_zone,
+                latitude_depart=Decimal("12.345678"),
+                longitude_depart=Decimal("-1.234567"),
+                prix=Decimal("1500"),
+                whatsapp_destinataire="+22670000003",
+                statut="en_cours",
+                position_destinataire_validee=True,
+                latitude_destinataire_reelle=Decimal("12.350000"),
+                longitude_destinataire_reelle=Decimal("-1.230000"),
+            )
+
+        local_delivery = create_delivery(local_courier)
+        create_delivery(remote_courier)
+
+        response = self.client.get(reverse("admins_app:tableau-de-bord-flotte"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            [item["id"] for item in response.context["tracking_config"]["deliveries"]],
+            [local_delivery.pk],
+        )
+        self.assertContains(response, f"Livraison #{local_delivery.pk}")
+
     def test_livreur_list_displays_only_livreurs_from_supervisor_block(self):
         self.admin_bloc.poste = "superviseur_flotte"
         self.admin_bloc.save(update_fields=["poste"])
@@ -493,12 +563,18 @@ class AssistantOperationnelDashboardTests(TestCase):
         )
         self.alert = self.create_delivery(
             statut="en_cours",
-            statut_destinataire="alerte_assistant",
+            statut_position_destinataire="alerte_assistant",
         )
         self.url = reverse("admins_app:tableau-de-bord-assistant")
         self.client.force_login(self.user)
 
-    def create_delivery(self, *, statut, statut_destinataire="en_attente", zone=None):
+    def create_delivery(
+        self,
+        *,
+        statut,
+        statut_position_destinataire="en_attente",
+        zone=None,
+    ):
         return DemandeLivraison.objects.create(
             client=self.client_profile,
             zone_depart=zone or self.local_zone,
@@ -508,7 +584,7 @@ class AssistantOperationnelDashboardTests(TestCase):
             prix=Decimal("1500"),
             whatsapp_destinataire="+22670000003",
             statut=statut,
-            statut_destinataire=statut_destinataire,
+            statut_position_destinataire=statut_position_destinataire,
         )
 
     def test_dashboard_shows_regional_deliveries_alerts_and_call_action(self):
@@ -561,7 +637,7 @@ class AssistantOperationnelDashboardTests(TestCase):
         self.assertRedirects(response, self.url)
         self.alert.refresh_from_db()
         self.assertTrue(self.alert.position_destinataire_validee)
-        self.assertEqual(self.alert.statut_destinataire, "position_recue")
+        self.assertEqual(self.alert.statut_position_destinataire, "position_recue")
         self.assertEqual(
             self.alert.latitude_destinataire_reelle,
             Decimal("12.123456"),
@@ -615,7 +691,7 @@ class AssistantOperationnelDashboardTests(TestCase):
 
         self.assertRedirects(response, self.url)
         self.alert.refresh_from_db()
-        self.assertEqual(self.alert.statut_destinataire, "injoignable")
+        self.assertEqual(self.alert.statut_position_destinataire, "injoignable")
 
     def test_rejects_invalid_manual_coordinates(self):
         response = self.client.post(self.url, {
@@ -628,11 +704,11 @@ class AssistantOperationnelDashboardTests(TestCase):
         self.assertContains(response, "Coordonnées invalides")
         self.alert.refresh_from_db()
         self.assertFalse(self.alert.position_destinataire_validee)
-        self.assertEqual(self.alert.statut_destinataire, "alerte_assistant")
+        self.assertEqual(self.alert.statut_position_destinataire, "alerte_assistant")
 
     def test_cannot_mark_non_alert_delivery_unreachable(self):
-        self.alert.statut_destinataire = "en_attente"
-        self.alert.save(update_fields=["statut_destinataire"])
+        self.alert.statut_position_destinataire = "en_attente"
+        self.alert.save(update_fields=["statut_position_destinataire"])
 
         response = self.client.post(self.url, {
             "demande_id": self.alert.pk,
@@ -641,12 +717,12 @@ class AssistantOperationnelDashboardTests(TestCase):
 
         self.assertContains(response, "Seules les demandes en alerte")
         self.alert.refresh_from_db()
-        self.assertEqual(self.alert.statut_destinataire, "en_attente")
+        self.assertEqual(self.alert.statut_position_destinataire, "en_attente")
 
     def test_assistant_cannot_update_delivery_outside_its_block(self):
         remote_delivery = self.create_delivery(
             statut="en_cours",
-            statut_destinataire="alerte_assistant",
+            statut_position_destinataire="alerte_assistant",
             zone=self.remote_zone,
         )
 
@@ -657,7 +733,10 @@ class AssistantOperationnelDashboardTests(TestCase):
 
         self.assertEqual(response.status_code, 404)
         remote_delivery.refresh_from_db()
-        self.assertEqual(remote_delivery.statut_destinataire, "alerte_assistant")
+        self.assertEqual(
+            remote_delivery.statut_position_destinataire,
+            "alerte_assistant",
+        )
 
     def test_dashboard_remains_limited_to_active_assistant_of_block(self):
         self.admin_bloc.actif = False

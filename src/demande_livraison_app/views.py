@@ -172,12 +172,12 @@ class DestinataireGeoView(View):
             demande.latitude_destinataire_reelle = latitude
             demande.longitude_destinataire_reelle = longitude
             demande.position_destinataire_validee = True
-            demande.statut_destinataire = 'position_recue'
+            demande.statut_position_destinataire = 'position_recue'
             demande.save(update_fields=[
                 'latitude_destinataire_reelle',
                 'longitude_destinataire_reelle',
                 'position_destinataire_validee',
-                'statut_destinataire',
+                'statut_position_destinataire',
             ])
 
         notification_warning = ''

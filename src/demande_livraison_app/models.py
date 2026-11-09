@@ -69,7 +69,7 @@ class DemandeLivraison(models.Model):
     latitude_destinataire_reelle = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     longitude_destinataire_reelle = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     
-    statut_destinataire = models.CharField(
+    statut_position_destinataire = models.CharField(
         max_length=30,
         choices=STATUT_DESTINATAIRE_CHOICES,
         default='en_attente'

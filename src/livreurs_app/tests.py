@@ -1,8 +1,11 @@
 from decimal import Decimal
+from datetime import timedelta
 from unittest.mock import patch
 
+from django.conf import settings
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 from kombu.exceptions import OperationalError as CeleryOperationalError
 
 from auth_app.models import User
@@ -10,7 +13,8 @@ from blocs_app.models import Blocs
 from clients_app.models import Client
 from demande_livraison_app.models import DemandeLivraison
 from livreurs_app.forms import InscriptionLivreurForm
-from livreurs_app.models import Livreur
+from livreurs_app.models import Livreur, PositionLivreur
+from livreurs_app.tasks import purger_historique_positions_task
 from zones_app.models import Zone
 
 
@@ -298,6 +302,7 @@ class LivreurDeliveryWorkflowTests(TestCase):
         )
         send_push_notification.assert_called_once_with(self.demande.pk)
 
+
     @patch('livreurs_app.views.envoyer_notification_smartdrop_destinataire_task.delay')
     @patch('livreurs_app.views.notifier_acceptation_demande_livraison_task.delay')
     def test_cannot_accept_request_from_another_block(
@@ -372,3 +377,67 @@ class LivreurDeliveryWorkflowTests(TestCase):
         self.demande.refresh_from_db()
         self.assertEqual(self.demande.statut, 'en_attente')
         self.assertIsNone(self.demande.livreur)
+
+
+class PurgerHistoriquePositionsTaskTests(TestCase):
+    def setUp(self):
+        bloc = Blocs.objects.create(nom="Bloc purge GPS")
+        user = User.objects.create_user(
+            telephone="70000150",
+            password="test-password",
+            first_name="Livreur",
+            last_name="Purge",
+            role="livreur",
+        )
+        self.livreur = Livreur.objects.create(
+            user=user,
+            type_vehicule="moto",
+            blocs=bloc,
+        )
+
+    def create_position(self):
+        return PositionLivreur.objects.create(
+            livreur=self.livreur,
+            latitude=Decimal("12.345678"),
+            longitude=Decimal("-1.234567"),
+        )
+
+    def test_removes_only_positions_older_than_seven_days(self):
+        instantane = timezone.now()
+        position_limite = self.create_position()
+        position_ancienne = self.create_position()
+        position_recente = self.create_position()
+        PositionLivreur.objects.filter(pk=position_limite.pk).update(
+            horodatage=instantane - timedelta(days=7),
+        )
+        PositionLivreur.objects.filter(pk=position_ancienne.pk).update(
+            horodatage=instantane - timedelta(days=7, seconds=1),
+        )
+        PositionLivreur.objects.filter(pk=position_recente.pk).update(
+            horodatage=instantane - timedelta(days=1),
+        )
+
+        with patch("livreurs_app.tasks.timezone.now", return_value=instantane):
+            nombre_supprime = purger_historique_positions_task.run()
+
+        self.assertEqual(nombre_supprime, 1)
+        self.assertTrue(PositionLivreur.objects.filter(pk=position_limite.pk).exists())
+        self.assertFalse(PositionLivreur.objects.filter(pk=position_ancienne.pk).exists())
+        self.assertTrue(PositionLivreur.objects.filter(pk=position_recente.pk).exists())
+
+    def test_returns_zero_when_no_positions_need_purging(self):
+        self.create_position()
+
+        self.assertEqual(purger_historique_positions_task.run(), 0)
+
+    def test_celery_beat_schedules_the_purge_daily_at_0200_utc(self):
+        schedule = settings.CELERY_BEAT_SCHEDULE[
+            "purger-historique-positions-livreur"
+        ]
+
+        self.assertEqual(
+            schedule["task"],
+            "livreurs_app.tasks.purger_historique_positions_task",
+        )
+        self.assertEqual(schedule["schedule"].hour, {2})
+        self.assertEqual(schedule["schedule"].minute, {0})

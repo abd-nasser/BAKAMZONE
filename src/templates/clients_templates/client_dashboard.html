@@ -19,6 +19,34 @@
         </a>
     </header>
 
+    {% if active_deliveries %}
+    <section class="space-y-4" aria-labelledby="active-deliveries-heading">
+        <div>
+            <p class="text-sm font-bold uppercase tracking-wider text-[#059669]">En cours</p>
+            <h2 id="active-deliveries-heading" class="mt-1 text-2xl font-black sm:text-3xl">Mes livraisons actives</h2>
+        </div>
+        <div class="grid gap-4 md:grid-cols-2">
+            {% for demande in active_deliveries %}
+            <article class="card border border-base-300 bg-base-100 shadow-sm">
+                <div class="card-body">
+                    <h3 class="card-title">Livraison #{{ demande.pk }}</h3>
+                    <p class="text-sm text-base-content/70">
+                        {{ demande.zone_depart.nom }} → {{ demande.zone_arrivee.nom }}
+                    </p>
+                    <p class="text-sm">
+                        Statut : <span class="font-semibold">{{ demande.get_statut_display }}</span>
+                        {% if demande.livreur %} · Livreur : {{ demande.livreur.user.get_full_name }}{% endif %}
+                    </p>
+                    <a href="{% url 'clients_app:suivi-livraison' demande.pk %}" class="btn btn-success mt-2 self-start rounded-xl">
+                        Voir le suivi
+                    </a>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
     <section id="livreurs" class="space-y-5">
         <div>
             <p class="text-sm font-bold uppercase tracking-wider text-[#059669]">Livraison</p>
