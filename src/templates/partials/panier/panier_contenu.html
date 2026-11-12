@@ -1,0 +1,117 @@
+<section id="panier-contenu" class="space-y-5">
+    {% if is_htmx %}
+        <span id="panier-count-badge" hx-swap-oob="outerHTML" class="badge badge-lg rounded-xl bg-[#059669] text-white">
+            {{ nombre_articles }}
+        </span>
+    {% endif %}
+
+    {% if message_panier %}
+        <div class="alert {% if est_erreur %}alert-error{% else %}alert-success{% endif %} rounded-2xl shadow-sm"
+             role="{% if est_erreur %}alert{% else %}status{% endif %}"
+             aria-live="{% if est_erreur %}assertive{% else %}polite{% endif %}">
+            <span>{{ message_panier }}</span>
+        </div>
+    {% endif %}
+
+    {% if lignes %}
+        <div class="space-y-3">
+            {% for ligne in lignes %}
+                <article class="rounded-2xl border border-base-300 bg-base-100 p-4 shadow-sm sm:p-5">
+                    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div class="min-w-0">
+                            <h2 class="truncate text-lg font-black">{{ ligne.article.nom }}</h2>
+                            <p class="mt-1 text-sm text-base-content/60">{{ ligne.article.entreprise.nom_entreprise }}</p>
+                            <p class="mt-2 font-bold text-[#059669]">
+                                {{ ligne.article.prix_actuel }} FCFA
+                                <span class="font-normal text-base-content/60">/ unité</span>
+                            </p>
+                        </div>
+
+                        <div class="flex flex-wrap items-center gap-3">
+                            <form
+                                method="post"
+                                action="{% url 'panier_app:modifier_panier' ligne.pk %}"
+                                hx-post="{% url 'panier_app:modifier_panier' ligne.pk %}"
+                                hx-target="#panier-contenu"
+                                hx-swap="outerHTML"
+                                x-data="{ quantite: {{ ligne.quantite }} }"
+                                class="flex items-center gap-2"
+                            >
+                                {% csrf_token %}
+                                <button type="button" class="btn btn-square btn-sm rounded-lg" aria-label="Diminuer la quantité" @click="quantite = Math.max(1, quantite - 1)">−</button>
+                                <input
+                                    type="number"
+                                    name="quantite"
+                                    min="1"
+                                    x-model.number="quantite"
+                                    class="input input-bordered input-sm w-20 rounded-lg text-center"
+                                    aria-label="Quantité de {{ ligne.article.nom }}"
+                                >
+                                <button type="button" class="btn btn-square btn-sm rounded-lg" aria-label="Augmenter la quantité" @click="quantite += 1">+</button>
+                                <button type="submit" class="btn btn-sm rounded-lg bg-[#059669] text-white hover:bg-[#047857]">
+                                    Mettre à jour
+                                </button>
+                            </form>
+
+                            <form
+                                method="post"
+                                action="{% url 'panier_app:modifier_panier' ligne.pk %}"
+                                hx-post="{% url 'panier_app:modifier_panier' ligne.pk %}"
+                                hx-target="#panier-contenu"
+                                hx-swap="outerHTML"
+                            >
+                                {% csrf_token %}
+                                <input type="hidden" name="quantite" value="0">
+                                <button type="submit" class="btn btn-ghost btn-sm rounded-lg text-error">Retirer</button>
+                            </form>
+                        </div>
+                    </div>
+                    <div class="mt-4 flex justify-between border-t border-base-200 pt-3 text-sm">
+                        <span class="text-base-content/60">Sous-total</span>
+                        <strong>{{ ligne.sous_total }} FCFA</strong>
+                    </div>
+                </article>
+            {% endfor %}
+        </div>
+
+        <div class="rounded-2xl border border-base-300 bg-base-200/50 p-5 sm:p-6">
+            <div class="flex items-center justify-between gap-4">
+                <span class="text-lg font-bold">Total des articles</span>
+                <span class="text-2xl font-black text-[#059669]">{{ panier.total_panier }} FCFA</span>
+            </div>
+            <p class="mt-2 text-sm text-base-content/60">
+                Le prix et le stock seront vérifiés à nouveau avant la validation de la commande.
+            </p>
+            <div class="mt-5 flex flex-wrap justify-between gap-3">
+                <form
+                    method="post"
+                    action="{% url 'panier_app:vider_panier' %}"
+                    hx-post="{% url 'panier_app:vider_panier' %}"
+                    hx-target="#panier-contenu"
+                    hx-swap="outerHTML"
+                    hx-confirm="Voulez-vous vraiment vider votre panier ?"
+                >
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline btn-error rounded-xl">Vider le panier</button>
+                </form>
+                <button
+                    type="button"
+                    class="btn rounded-xl bg-[#059669] text-white hover:bg-[#047857]"
+                    @click="$refs.checkout.showModal()"
+                    {% if not lignes %}disabled{% endif %}
+                >
+                    Valider ma commande
+                </button>
+            </div>
+        </div>
+    {% else %}
+        <div class="rounded-3xl border border-dashed border-base-300 bg-base-100 px-6 py-12 text-center">
+            <p class="text-5xl" aria-hidden="true">🛒</p>
+            <h2 class="mt-4 text-xl font-black">Votre panier est vide</h2>
+            <p class="mt-2 text-sm text-base-content/60">Parcourez le catalogue pour ajouter des articles.</p>
+            <a href="{% url 'clients_app:tableau-de-bord' %}#articles" class="btn mt-5 rounded-xl bg-[#059669] text-white">
+                Découvrir les articles
+            </a>
+        </div>
+    {% endif %}
+</section>

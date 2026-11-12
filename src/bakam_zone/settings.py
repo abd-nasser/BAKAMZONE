@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     'admins_app',
     'avis_app',
     'notifications_app',
+    'panier_app',
 ]
 if DEBUG:
     # Add django_browser_reload only in DEBUG mode

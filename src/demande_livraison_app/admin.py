@@ -1,3 +1,6 @@
 from django.contrib import admin
+from demande_livraison_app.models import DemandeLivraison
 
-# Register your models here.
+@admin.register(DemandeLivraison)
+class DemandeLivraisonAdmin(admin.ModelAdmin):
+    list_display = ["ligne_commande", "zone_depart", "zone_arrivee", "date_creation"]

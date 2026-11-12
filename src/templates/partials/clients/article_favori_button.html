@@ -1,0 +1,19 @@
+<form
+    id="article-favori-{{ article.pk }}"
+    method="post"
+    action="{% url 'clients_app:toggle-favori-article' article.pk %}"
+    hx-post="{% url 'clients_app:toggle-favori-article' article.pk %}"
+    hx-target="#article-favori-{{ article.pk }}"
+    hx-swap="outerHTML"
+>
+    {% csrf_token %}
+    <button
+        type="submit"
+        class="btn gap-2 rounded-xl {% if est_favori %}btn-error{% else %}btn-outline btn-error{% endif %}"
+        aria-pressed="{{ est_favori|yesno:'true,false' }}"
+    >
+        <span aria-hidden="true">{% if est_favori %}❤️{% else %}🤍{% endif %}</span>
+        {% if est_favori %}Retirer des favoris{% else %}Ajouter aux favoris{% endif %}
+        <span class="badge">{{ nb_favoris }}</span>
+    </button>
+</form>

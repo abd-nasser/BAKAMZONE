@@ -1,0 +1,63 @@
+<section class="card border border-base-300 bg-base-100 shadow-sm" aria-labelledby="article-stats-title">
+    <div class="card-body">
+        <div>
+            <span class="badge badge-info badge-outline mb-2">Suivi des articles</span>
+            <h2 id="article-stats-title" class="card-title text-2xl">Activité des articles par entreprise</h2>
+            <p class="mt-1 text-sm text-base-content/60">
+                Les quantités correspondent aux unités. Les commandes annulées sont exclues.
+                Un paiement est compté comme réussi uniquement si son statut est confirmé.
+            </p>
+        </div>
+
+        <div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <article class="rounded-xl border border-base-300 p-4">
+                <p class="text-xs font-semibold text-base-content/60">Paniers actifs</p>
+                <p class="mt-1 text-2xl font-black">{{ article_usage_totals.paniers_actifs }}</p>
+                <p class="text-xs text-base-content/50">{{ article_usage_totals.quantite_panier }} unité(s) d'article</p>
+            </article>
+            <article class="rounded-xl border border-base-300 p-4">
+                <p class="text-xs font-semibold text-base-content/60">Paniers commandés</p>
+                <p class="mt-1 text-2xl font-black">{{ article_usage_totals.paniers_commandes }}</p>
+                <p class="text-xs text-base-content/50">{{ article_usage_totals.quantite_commandee }} unité(s) commandée(s)</p>
+            </article>
+            <article class="rounded-xl border border-base-300 p-4">
+                <p class="text-xs font-semibold text-base-content/60">Articles payés</p>
+                <p class="mt-1 text-2xl font-black text-success">{{ article_usage_totals.quantite_payee }}</p>
+                <p class="text-xs text-base-content/50">Unités avec paiement réussi</p>
+            </article>
+        </div>
+
+        <div class="mt-5 overflow-x-auto">
+            <table class="table table-zebra">
+                <caption class="sr-only">Paniers, commandes et paiements pour chaque article de l'entreprise</caption>
+                <thead>
+                    <tr>
+                        <th>Article</th>
+                        <th class="text-right">Paniers actifs / unités</th>
+                        <th class="text-right">Paniers commandés / unités</th>
+                        <th class="text-right">Unités payées</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for stats in article_usage_stats %}
+                        <tr>
+                            <th scope="row">{{ stats.article.nom }}</th>
+                            <td class="text-right">{{ stats.paniers_actifs }} / {{ stats.quantite_panier }}</td>
+                            <td class="text-right">{{ stats.paniers_commandes }} / {{ stats.quantite_commandee }}</td>
+                            <td class="text-right font-semibold">{{ stats.quantite_payee }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="4" class="py-8 text-center text-base-content/60">
+                                Aucun article n'est encore associé à cette entreprise.
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <p class="text-xs text-base-content/50">
+            Le paiement en ligne n'étant pas encore activé, le compteur payé reste à zéro tant qu'aucune commande n'a le statut de paiement « réussi ».
+        </p>
+    </div>
+</section>

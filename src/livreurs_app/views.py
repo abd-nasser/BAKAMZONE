@@ -163,12 +163,20 @@ class AccepterDemandeLivraisonView(LivreurRequiredMixin, View):
             Q(livreur=livreur)
             | Q(livreur__isnull=True, zone_depart__bloc_id=livreur.blocs_id)
         )
-        accepte = demande_eligible.update(
-            livreur=livreur,
-            statut='acceptee',
-            date_acceptation=timezone.now(),
-            statut_destinataire='en_attente',
-        )
+        demande = demande_eligible.first()
+        if demande is None:
+            accepte = 0
+        else:
+            update_fields = {
+                'livreur': livreur,
+                'statut': 'acceptee',
+                'date_acceptation': timezone.now(),
+            }
+            if not demande.position_destinataire_validee:
+                update_fields['statut_destinataire'] = 'en_attente'
+            accepte = demande_eligible.update(
+                **update_fields,
+            )
         if not accepte:
             messages.error(
                 request,
@@ -188,29 +196,39 @@ class AccepterDemandeLivraisonView(LivreurRequiredMixin, View):
                 f"Course #{demande.pk} acceptée, mais la notification push au client n'a pas pu être programmée.",
             )
 
-        # Déclenchement Celery du message WhatsApp avec lien PWA éphémère
-        base_url = request.build_absolute_uri('/')[:-1]
-        try:
-            envoyer_notification_smartdrop_destinataire_task.delay(
-                demande.pk,
-                base_url=base_url,
-            )
-        except CeleryOperationalError:
-            messages.error(
-                request,
-                f"Course #{demande.pk} acceptée, mais la notification WhatsApp n'a pas pu être programmée. Veuillez prévenir l'assistance.",
-            )
-            return redirect('livreurs_app:tableau-de-bord')
+        if not demande.position_destinataire_validee:
+            base_url = request.build_absolute_uri('/')[:-1]
+            try:
+                envoyer_notification_smartdrop_destinataire_task.delay(
+                    demande.pk,
+                    base_url=base_url,
+                )
+            except CeleryOperationalError:
+                messages.error(
+                    request,
+                    f"Course #{demande.pk} acceptée, mais la notification WhatsApp n'a pas pu être programmée. Veuillez prévenir l'assistance.",
+                )
+                return redirect('livreurs_app:tableau-de-bord')
 
+        if demande.position_destinataire_validee:
+            success_message = (
+                f"Course #{demande.pk} acceptée. La position GPS du client est déjà validée."
+            )
+            if notification_push_programmee:
+                success_message += " La notification push a été programmée."
+        elif notification_push_programmee:
+            success_message = (
+                f"Course #{demande.pk} acceptée. Les notifications push au client et "
+                "WhatsApp de validation de position ont été programmées."
+            )
+        else:
+            success_message = (
+                f"Course #{demande.pk} acceptée. La notification WhatsApp de validation "
+                "de position a été programmée."
+            )
         messages.success(
             request,
-            (
-                f"Course #{demande.pk} acceptée. Les notifications push au client et WhatsApp "
-                "de validation de position ont été programmées."
-                if notification_push_programmee
-                else f"Course #{demande.pk} acceptée. La notification WhatsApp de validation "
-                "de position a été programmée."
-            ),
+            success_message,
         )
         return redirect('livreurs_app:tableau-de-bord')
 

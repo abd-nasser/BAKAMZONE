@@ -1,5 +1,6 @@
 import uuid
 from django.db import models
+from django.db.models import Q
 from django.utils import timezone
 from livreurs_app.models import Livreur
 from zones_app.models import Zone
@@ -27,6 +28,18 @@ class DemandeLivraison(models.Model):
         on_delete=models.PROTECT,
         related_name='demandes_livraison',
         help_text="Le client ou l'entreprise qui initie la livraison"
+    )
+    ligne_commande = models.ForeignKey(
+        "panier_app.LigneCommande",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="demandes_livraison",
+    )
+    lignes_commande = models.ManyToManyField(
+        "panier_app.LigneCommande",
+        blank=True,
+        related_name="courses_livraison",
     )
     livreur = models.ForeignKey(
         Livreur,
@@ -85,6 +98,16 @@ class DemandeLivraison(models.Model):
         indexes = [
             models.Index(fields=['statut', 'date_creation'], name='commandes_a_statut_f79ac0_idx'),
             models.Index(fields=['token_pwa_destinataire'], name='idx_token_pwa'),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["ligne_commande"],
+                condition=Q(
+                    ligne_commande__isnull=False,
+                    statut__in=["en_attente", "acceptee", "en_cours", "livree"],
+                ),
+                name="unique_course_active_par_ligne_commande",
+            ),
         ]
 
     def __str__(self):

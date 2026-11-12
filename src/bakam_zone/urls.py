@@ -18,6 +18,7 @@ urlpatterns = [
     path('clients/', include('clients_app.urls', namespace='clients_app')),
     path('entreprises/', include('entreprise_app.urls', namespace='entreprise_app')),
     path('articles/', include('articles_app.urls', namespace='articles_app')),
+    path('panier/', include('panier_app.urls', namespace='panier_app')),
     path('demandes/', include('demande_livraison_app.urls', namespace='demande_livraison_app')),
     path('notifications/', include('notifications_app.urls', namespace='notifications_app')),
     path('sw.js', ServiceWorkerView.as_view(), name='service-worker'),

@@ -283,6 +283,44 @@ class LivreurDeliveryWorkflowTests(TestCase):
 
     @patch('livreurs_app.views.envoyer_notification_smartdrop_destinataire_task.delay')
     @patch('livreurs_app.views.notifier_acceptation_demande_livraison_task.delay')
+    def test_accepting_request_with_validated_destination_skips_smartdrop(
+        self,
+        send_push_notification,
+        send_smartdrop_notification,
+    ):
+        self.demande.position_destinataire_validee = True
+        self.demande.latitude_destinataire_reelle = Decimal('12.345678')
+        self.demande.longitude_destinataire_reelle = Decimal('-1.234567')
+        self.demande.statut_destinataire = 'position_recue'
+        self.demande.save(update_fields=[
+            'position_destinataire_validee',
+            'latitude_destinataire_reelle',
+            'longitude_destinataire_reelle',
+            'statut_destinataire',
+        ])
+
+        response = self.client.post(
+            reverse('livreurs_app:accepter-demande', args=[self.demande.pk]),
+        )
+
+        self.assertRedirects(response, reverse('livreurs_app:tableau-de-bord'))
+        self.demande.refresh_from_db()
+        self.assertEqual(self.demande.statut, 'acceptee')
+        self.assertTrue(self.demande.position_destinataire_validee)
+        self.assertEqual(self.demande.statut_destinataire, 'position_recue')
+        self.assertEqual(
+            self.demande.latitude_destinataire_reelle,
+            Decimal('12.345678'),
+        )
+        self.assertEqual(
+            self.demande.longitude_destinataire_reelle,
+            Decimal('-1.234567'),
+        )
+        send_push_notification.assert_called_once_with(self.demande.pk)
+        send_smartdrop_notification.assert_not_called()
+
+    @patch('livreurs_app.views.envoyer_notification_smartdrop_destinataire_task.delay')
+    @patch('livreurs_app.views.notifier_acceptation_demande_livraison_task.delay')
     def test_cannot_accept_request_from_another_block(
         self,
         send_push_notification,

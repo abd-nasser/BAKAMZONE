@@ -4,6 +4,11 @@ from django.db import models
 
 class Client(models.Model):
     user = models.OneToOneField('auth_app.User', on_delete=models.CASCADE, related_name='client_profil')
+    articles_favoris = models.ManyToManyField(
+        'articles_app.Article',
+        related_name='favoris_de',
+        blank=True,
+    )
     photo_profil = models.ImageField(upload_to='client_photos/', blank=True, null=True)
     ville = models.CharField(max_length=100, blank=True, null=True)
     quartier = models.CharField(max_length=100, blank=True, null=True)

@@ -1,4 +1,5 @@
 from uuid import uuid4
+from decimal import Decimal
 
 from django import forms
 from django.contrib.auth import get_user_model
@@ -7,9 +8,60 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils.text import slugify
 
+from zones_app.models import Zone
+
 from .models import Entreprise, MembreAdminsEntreprise
 
 User = get_user_model()
+
+
+class DemandeLivraisonArticleForm(forms.Form):
+    zone_depart = forms.ModelChoiceField(
+        queryset=Zone.objects.filter(
+            latitude__isnull=False,
+            longitude__isnull=False,
+        ).select_related("bloc").order_by("bloc__nom", "nom"),
+        label="Zone de départ",
+        empty_label="Choisir la zone de départ",
+        widget=forms.Select(attrs={
+            "class": "select select-bordered w-full rounded-xl",
+        }),
+    )
+    latitude_depart = forms.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        min_value=-90,
+        max_value=90,
+        label="Latitude du point de collecte",
+        widget=forms.HiddenInput(attrs={
+            "x-model": "latitude",
+        }),
+    )
+    longitude_depart = forms.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        min_value=-180,
+        max_value=180,
+        label="Longitude du point de collecte",
+        widget=forms.HiddenInput(attrs={
+            "x-model": "longitude",
+        }),
+    )
+
+
+class DemandeRetraitEntrepriseForm(forms.Form):
+    montant = forms.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        min_value=Decimal("0.01"),
+        label="Montant à retirer (FCFA)",
+        widget=forms.NumberInput(attrs={
+            "class": "input input-bordered w-full rounded-xl",
+            "min": "0.01",
+            "step": "0.01",
+            "placeholder": "Ex. : 15000",
+        }),
+    )
 
 
 class InscriptionEntrepriseForm(forms.ModelForm):

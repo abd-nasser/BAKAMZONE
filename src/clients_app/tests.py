@@ -17,6 +17,7 @@ from clients_app.views import ClientBlocDetailView, LivreurProfilViewByClient
 from demande_livraison_app.models import DemandeLivraison
 from entreprise_app.models import Entreprise
 from livreurs_app.models import Livreur
+from panier_app.models import Commande, Panier
 from zones_app.models import Zone
 
 
@@ -213,6 +214,71 @@ class ClientDashboardViewTests(TestCase):
         self.assertNotContains(response, no_stock_article.nom)
         self.assertNotContains(response, expired_article.nom)
 
+    def test_dashboard_links_to_latest_client_order_when_one_exists(self):
+        zone = Zone.objects.create(
+            nom="Zone commande client",
+            bloc=self.bloc,
+            latitude=Decimal("12.390000"),
+            longitude=Decimal("-1.540000"),
+        )
+        panier = Panier.objects.create(
+            client=self.client_profile,
+            statut=Panier.STATUT_COMMANDE,
+        )
+        commande = Commande.objects.create(
+            panier=panier,
+            client=self.client_profile,
+            zone_arrivee=zone,
+            latitude_livraison=zone.latitude,
+            longitude_livraison=zone.longitude,
+            montant_produits=Decimal("2500.00"),
+            total_a_payer=Decimal("2500.00"),
+        )
+
+        response = self.client.get(reverse("clients_app:tableau-de-bord"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["client_commande"], commande)
+        self.assertContains(response, "Suivre ma dernière commande")
+        self.assertContains(
+            response,
+            reverse(
+                "panier_app:detail_commande",
+                args=[commande.reference],
+            ),
+        )
+
+    def test_dashboard_shows_off_block_articles_with_available_quantity(self):
+        off_block_article = Article.objects.create(
+            entreprise=self.entreprise,
+            nom="Savon hors bloc",
+            prix=Decimal("750.00"),
+            en_bloc=False,
+            quantite_disponible=3,
+        )
+        Article.objects.create(
+            entreprise=self.entreprise,
+            nom="Savon hors bloc épuisé",
+            prix=Decimal("750.00"),
+            en_bloc=False,
+            quantite_disponible=0,
+        )
+        Article.objects.create(
+            entreprise=self.entreprise,
+            nom="Article de bloc sans stock local",
+            prix=Decimal("750.00"),
+            en_bloc=True,
+            quantite_disponible=3,
+        )
+
+        response = self.client.get(reverse("clients_app:tableau-de-bord"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, off_block_article.nom)
+        self.assertContains(response, "Quantité disponible : 3")
+        self.assertNotContains(response, "Savon hors bloc épuisé")
+        self.assertNotContains(response, "Article de bloc sans stock local")
+
     def test_search_and_filters_apply_to_each_section_independently(self):
         other_article = self.create_article(
             "Huile de karité",
@@ -399,6 +465,67 @@ class ClientDashboardViewTests(TestCase):
         self.assertFalse(livreur.favoris_de.filter(pk=self.client_profile.pk).exists())
         self.assertEqual(livreur.nb_ajout_favoris, 0)
         self.assertContains(response_htmx, "Ajouter aux favoris")
+
+    def test_client_can_view_article_details_and_toggle_favorite(self):
+        detail_url = reverse(
+            "clients_app:detail-article",
+            args=[self.article.pk],
+        )
+        favorite_url = reverse(
+            "clients_app:toggle-favori-article",
+            args=[self.article.pk],
+        )
+
+        response = self.client.get(detail_url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.article.nom)
+        self.assertContains(response, "Ajouter au panier")
+        self.assertContains(response, "Ajouter aux favoris")
+
+        response = self.client.post(favorite_url, HTTP_HX_REQUEST="true")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            self.client_profile.articles_favoris.filter(
+                pk=self.article.pk,
+            ).exists()
+        )
+        self.assertContains(response, "Retirer des favoris")
+        self.assertContains(response, "1")
+
+        response = self.client.post(favorite_url)
+
+        self.assertRedirects(response, detail_url)
+        self.assertFalse(
+            self.client_profile.articles_favoris.filter(
+                pk=self.article.pk,
+            ).exists()
+        )
+
+    def test_article_detail_is_not_available_for_unavailable_or_expired_articles(self):
+        unavailable_article = Article.objects.create(
+            entreprise=self.entreprise,
+            nom="Article indisponible",
+            prix=Decimal("750.00"),
+            disponible=False,
+        )
+        expired_article = Article.objects.create(
+            entreprise=self.entreprise,
+            nom="Article expiré",
+            prix=Decimal("750.00"),
+            date_expiration=timezone.now() - timedelta(days=1),
+        )
+
+        for article in (unavailable_article, expired_article):
+            with self.subTest(article=article.nom):
+                response = self.client.get(
+                    reverse(
+                        "clients_app:detail-article",
+                        args=[article.pk],
+                    )
+                )
+                self.assertEqual(response.status_code, 404)
 
     def test_livreur_profile_displays_reviews_and_social_stats(self):
         livreur = Livreur.objects.get(user__telephone="70000803")

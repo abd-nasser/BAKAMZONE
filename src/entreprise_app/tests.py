@@ -1,3 +1,4 @@
+from decimal import Decimal
 from unittest.mock import patch
 
 from django.db import IntegrityError
@@ -5,11 +6,22 @@ from django.test import TestCase
 from django.urls import reverse
 
 from auth_app.models import User
+from articles_app.models import Article
+from blocs_app.models import Blocs
+from clients_app.models import Client
+from demande_livraison_app.models import DemandeLivraison
+from django.utils import timezone
 from entreprise_app.forms import (
     InscriptionEntrepriseForm,
     MembreAdminsEntrepriseForm,
 )
-from entreprise_app.models import Entreprise, MembreAdminsEntreprise
+from entreprise_app.models import (
+    Entreprise,
+    MembreAdminsEntreprise,
+    RetraitEntreprise,
+)
+from panier_app.models import ArticlePanier, Commande, LigneCommande, Panier
+from zones_app.models import Zone
 
 
 class InscriptionEntrepriseViewTests(TestCase):
@@ -330,13 +342,13 @@ class InscriptionEntrepriseAdminViewTests(TestCase):
 
         self.assertRedirects(
             response,
-            reverse("entreprise_app:detail"),
+            reverse("entreprise_app:entreprise-detail"),
         )
 
     def test_enterprise_owner_can_open_dashboard(self):
         self.client.force_login(self.responsable)
 
-        response = self.client.get(reverse("entreprise_app:detail"))
+        response = self.client.get(reverse("entreprise_app:entreprise-detail"))
 
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "entreprise_templates/entreprise_detail.html")
@@ -345,6 +357,624 @@ class InscriptionEntrepriseAdminViewTests(TestCase):
         self.assertContains(response, 'href="#"')
         self.assertEqual(response.context["article_count"], 0)
         self.assertEqual(response.context["admin_count"], 0)
+
+    def test_dashboard_shows_cart_order_and_paid_quantities_per_enterprise_article(self):
+        article = Article.objects.create(
+            entreprise=self.entreprise,
+            nom="Riz local",
+            prix="1000.00",
+            quantite_disponible=20,
+        )
+        bloc = Blocs.objects.create(nom="Bloc statistiques entreprise")
+        zone = Zone.objects.create(
+            nom="Zone statistiques entreprise",
+            bloc=bloc,
+            latitude="12.400000",
+            longitude="-1.500000",
+        )
+        client_user = User.objects.create_user(
+            telephone="70000616",
+            password="StrongPassword123!",
+            first_name="Client",
+            last_name="Statistiques",
+            role="client",
+        )
+        client_profile = Client.objects.create(user=client_user)
+        panier_actif = Panier.objects.create(client=client_profile)
+        ArticlePanier.objects.create(
+            panier=panier_actif,
+            article=article,
+            quantite=3,
+        )
+
+        panier_paye = Panier.objects.create(
+            client=client_profile,
+            statut=Panier.STATUT_COMMANDE,
+        )
+        commande_payee = Commande.objects.create(
+            panier=panier_paye,
+            client=client_profile,
+            zone_arrivee=zone,
+            latitude_livraison=zone.latitude,
+            longitude_livraison=zone.longitude,
+            montant_produits="2000.00",
+            total_a_payer="2000.00",
+            statut_paiement=Commande.PAIEMENT_REUSSI,
+        )
+        LigneCommande.objects.create(
+            commande=commande_payee,
+            article=article,
+            entreprise=self.entreprise,
+            nom_article=article.nom,
+            nom_entreprise=self.entreprise.nom_entreprise,
+            quantite=2,
+            prix_unitaire="1000.00",
+        )
+
+        panier_en_attente = Panier.objects.create(
+            client=client_profile,
+            statut=Panier.STATUT_COMMANDE,
+        )
+        commande_en_attente = Commande.objects.create(
+            panier=panier_en_attente,
+            client=client_profile,
+            zone_arrivee=zone,
+            latitude_livraison=zone.latitude,
+            longitude_livraison=zone.longitude,
+            montant_produits="3000.00",
+            total_a_payer="3000.00",
+        )
+        LigneCommande.objects.create(
+            commande=commande_en_attente,
+            article=article,
+            entreprise=self.entreprise,
+            nom_article=article.nom,
+            nom_entreprise=self.entreprise.nom_entreprise,
+            quantite=3,
+            prix_unitaire="1000.00",
+        )
+
+        self.client.force_login(self.responsable)
+        response = self.client.get(reverse("entreprise_app:entreprise-detail"))
+
+        stats = response.context["article_usage_stats"][0]
+        self.assertEqual(stats["article"], article)
+        self.assertEqual(stats["paniers_actifs"], 1)
+        self.assertEqual(stats["quantite_panier"], 3)
+        self.assertEqual(stats["paniers_commandes"], 2)
+        self.assertEqual(stats["quantite_commandee"], 5)
+        self.assertEqual(stats["quantite_payee"], 2)
+        self.assertContains(response, "Riz local")
+        self.assertContains(response, "Paniers actifs")
+        self.assertContains(response, "Unités avec paiement réussi")
+
+    def test_company_balance_uses_paid_snapshots_and_reserves_withdrawals(self):
+        bloc = Blocs.objects.create(nom="Bloc solde entreprise")
+        zone = Zone.objects.create(
+            nom="Zone solde entreprise",
+            bloc=bloc,
+            latitude="12.400000",
+            longitude="-1.500000",
+        )
+        client_user = User.objects.create_user(
+            telephone="70000619",
+            password="StrongPassword123!",
+            first_name="Client",
+            last_name="Solde",
+            role="client",
+        )
+        client_profile = Client.objects.create(user=client_user)
+        article = Article.objects.create(
+            entreprise=self.entreprise,
+            nom="Article vendu",
+            prix="9999.00",
+        )
+        paid_cart = Panier.objects.create(
+            client=client_profile,
+            statut=Panier.STATUT_COMMANDE,
+        )
+        paid_order = Commande.objects.create(
+            panier=paid_cart,
+            client=client_profile,
+            zone_arrivee=zone,
+            latitude_livraison=zone.latitude,
+            longitude_livraison=zone.longitude,
+            montant_produits="4000.00",
+            total_a_payer="4000.00",
+            statut_paiement=Commande.PAIEMENT_REUSSI,
+            date_paiement=timezone.now(),
+        )
+        LigneCommande.objects.create(
+            commande=paid_order,
+            article=article,
+            entreprise=self.entreprise,
+            nom_article="Article vendu (prix figé)",
+            nom_entreprise=self.entreprise.nom_entreprise,
+            quantite=2,
+            prix_unitaire="2000.00",
+        )
+
+        cancelled_cart = Panier.objects.create(
+            client=client_profile,
+            statut=Panier.STATUT_COMMANDE,
+        )
+        cancelled_paid_order = Commande.objects.create(
+            panier=cancelled_cart,
+            client=client_profile,
+            zone_arrivee=zone,
+            latitude_livraison=zone.latitude,
+            longitude_livraison=zone.longitude,
+            montant_produits="500.00",
+            total_a_payer="500.00",
+            statut=Commande.STATUT_ANNULEE,
+            statut_paiement=Commande.PAIEMENT_REUSSI,
+            date_paiement=timezone.now(),
+        )
+        LigneCommande.objects.create(
+            commande=cancelled_paid_order,
+            article=article,
+            entreprise=self.entreprise,
+            nom_article="Article payé, commande annulée",
+            nom_entreprise=self.entreprise.nom_entreprise,
+            quantite=1,
+            prix_unitaire="500.00",
+        )
+
+        unpaid_cart = Panier.objects.create(
+            client=client_profile,
+            statut=Panier.STATUT_COMMANDE,
+        )
+        unpaid_order = Commande.objects.create(
+            panier=unpaid_cart,
+            client=client_profile,
+            zone_arrivee=zone,
+            latitude_livraison=zone.latitude,
+            longitude_livraison=zone.longitude,
+            montant_produits="5000.00",
+            total_a_payer="5000.00",
+        )
+        LigneCommande.objects.create(
+            commande=unpaid_order,
+            article=article,
+            entreprise=self.entreprise,
+            nom_article="Article impayé",
+            nom_entreprise=self.entreprise.nom_entreprise,
+            quantite=1,
+            prix_unitaire="5000.00",
+        )
+
+        RetraitEntreprise.objects.create(
+            entreprise=self.entreprise,
+            montant="500.00",
+            statut=RetraitEntreprise.STATUT_EN_ATTENTE,
+        )
+        RetraitEntreprise.objects.create(
+            entreprise=self.entreprise,
+            montant="500.00",
+            statut=RetraitEntreprise.STATUT_APPROUVE,
+        )
+        RetraitEntreprise.objects.create(
+            entreprise=self.entreprise,
+            montant="500.00",
+            statut=RetraitEntreprise.STATUT_PAYE,
+        )
+
+        self.client.force_login(self.responsable)
+        response = self.client.get(reverse("entreprise_app:solde"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["solde"]["montant_ventes"], Decimal("4500.00"))
+        self.assertEqual(
+            response.context["solde"]["montant_ventes_mois"],
+            Decimal("4500.00"),
+        )
+        self.assertEqual(
+            response.context["solde"]["montant_retraits_reserves"],
+            Decimal("1500.00"),
+        )
+        self.assertEqual(
+            response.context["solde"]["montant_disponible"],
+            Decimal("3000.00"),
+        )
+        self.assertContains(response, "Article vendu (prix figé)")
+        self.assertNotContains(response, "Article impayé")
+
+        response = self.client.post(
+            reverse("entreprise_app:demander-retrait"),
+            {"montant": "3000.01"},
+        )
+        self.assertRedirects(response, reverse("entreprise_app:solde"))
+        self.assertEqual(
+            RetraitEntreprise.objects.filter(
+                entreprise=self.entreprise,
+                statut=RetraitEntreprise.STATUT_EN_ATTENTE,
+            ).count(),
+            1,
+        )
+
+        response = self.client.post(
+            reverse("entreprise_app:demander-retrait"),
+            {"montant": "3000.00"},
+        )
+        self.assertRedirects(response, reverse("entreprise_app:solde"))
+        self.assertTrue(
+            RetraitEntreprise.objects.filter(
+                entreprise=self.entreprise,
+                montant=Decimal("3000.00"),
+                statut=RetraitEntreprise.STATUT_EN_ATTENTE,
+            ).exists()
+        )
+
+    def test_company_cannot_request_a_withdrawal_above_available_balance(self):
+        self.client.force_login(self.responsable)
+
+        response = self.client.post(
+            reverse("entreprise_app:demander-retrait"),
+            {"montant": "1.00"},
+        )
+
+        self.assertRedirects(response, reverse("entreprise_app:solde"))
+        self.assertFalse(RetraitEntreprise.objects.exists())
+
+    def test_admin_can_approve_pay_and_reject_withdrawal_requests(self):
+        admin_user = User.objects.create_superuser(
+            telephone="70000620",
+            password="StrongPassword123!",
+            first_name="Admin",
+            last_name="Finance",
+        )
+        withdrawal = RetraitEntreprise.objects.create(
+            entreprise=self.entreprise,
+            montant="1000.00",
+        )
+        admin_url = reverse("admin:entreprise_app_retraitentreprise_changelist")
+        self.client.force_login(admin_user)
+
+        response = self.client.post(
+            admin_url,
+            {
+                "action": "approuver_retraits",
+                "_selected_action": [str(withdrawal.pk)],
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        withdrawal.refresh_from_db()
+        self.assertEqual(withdrawal.statut, RetraitEntreprise.STATUT_APPROUVE)
+        self.assertEqual(withdrawal.traite_par, admin_user)
+
+        response = self.client.post(
+            admin_url,
+            {
+                "action": "marquer_retraits_payes",
+                "_selected_action": [str(withdrawal.pk)],
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        withdrawal.refresh_from_db()
+        self.assertEqual(withdrawal.statut, RetraitEntreprise.STATUT_PAYE)
+
+        rejected_withdrawal = RetraitEntreprise.objects.create(
+            entreprise=self.entreprise,
+            montant="250.00",
+        )
+        response = self.client.post(
+            admin_url,
+            {
+                "action": "rejeter_retraits",
+                "_selected_action": [str(rejected_withdrawal.pk)],
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        rejected_withdrawal.refresh_from_db()
+        self.assertEqual(
+            rejected_withdrawal.statut,
+            RetraitEntreprise.STATUT_REJETE,
+        )
+
+    def test_paid_out_of_block_articles_are_isolated_and_can_create_delivery(self):
+        bloc = Blocs.objects.create(nom="Bloc retrait entreprise")
+        zone_depart = Zone.objects.create(
+            nom="Zone retrait entreprise",
+            bloc=bloc,
+            latitude="12.390000",
+            longitude="-1.540000",
+        )
+        zone_client = Zone.objects.create(
+            nom="Zone client livraison",
+            bloc=bloc,
+            latitude="12.410000",
+            longitude="-1.510000",
+        )
+        client_user = User.objects.create_user(
+            telephone="70000617",
+            password="StrongPassword123!",
+            first_name="Client",
+            last_name="Livraison",
+            role="client",
+        )
+        client_profile = Client.objects.create(user=client_user)
+        article = Article.objects.create(
+            entreprise=self.entreprise,
+            nom="Article entreprise hors bloc",
+            prix="1500.00",
+            quantite_disponible=10,
+            en_bloc=False,
+        )
+        article_entreprise_2 = Article.objects.create(
+            entreprise=self.entreprise,
+            nom="Deuxième article entreprise hors bloc",
+            prix="1200.00",
+            quantite_disponible=6,
+            en_bloc=False,
+        )
+        article_bloc = Article.objects.create(
+            entreprise=self.entreprise,
+            nom="Article entreprise en bloc",
+            prix="2000.00",
+            en_bloc=True,
+        )
+        other_user = User.objects.create_user(
+            telephone="70000618",
+            password="StrongPassword123!",
+            first_name="Autre",
+            last_name="Entreprise",
+            role="entreprise",
+        )
+        autre_entreprise = Entreprise.objects.create(
+            user_principal=other_user,
+            nom_entreprise="Autre entreprise",
+            address="Bobo-Dioulasso",
+        )
+        article_autre_entreprise = Article.objects.create(
+            entreprise=autre_entreprise,
+            nom="Article confidentiel autre entreprise",
+            prix="900.00",
+            quantite_disponible=8,
+            en_bloc=False,
+        )
+
+        panier_paye = Panier.objects.create(
+            client=client_profile,
+            statut=Panier.STATUT_COMMANDE,
+        )
+        commande_payee = Commande.objects.create(
+            panier=panier_paye,
+            client=client_profile,
+            zone_arrivee=zone_client,
+            latitude_livraison="12.412345",
+            longitude_livraison="-1.512345",
+            montant_produits="4400.00",
+            total_a_payer="4400.00",
+            statut_paiement=Commande.PAIEMENT_REUSSI,
+        )
+        ligne_entreprise = LigneCommande.objects.create(
+            commande=commande_payee,
+            article=article,
+            entreprise=self.entreprise,
+            nom_article=article.nom,
+            nom_entreprise=self.entreprise.nom_entreprise,
+            quantite=2,
+            prix_unitaire="1500.00",
+        )
+        ligne_entreprise_2 = LigneCommande.objects.create(
+            commande=commande_payee,
+            article=article_entreprise_2,
+            entreprise=self.entreprise,
+            nom_article=article_entreprise_2.nom,
+            nom_entreprise=self.entreprise.nom_entreprise,
+            quantite=1,
+            prix_unitaire="1200.00",
+        )
+        ligne_autre_entreprise = LigneCommande.objects.create(
+            commande=commande_payee,
+            article=article_autre_entreprise,
+            entreprise=autre_entreprise,
+            nom_article=article_autre_entreprise.nom,
+            nom_entreprise=autre_entreprise.nom_entreprise,
+            quantite=1,
+            prix_unitaire="900.00",
+        )
+        LigneCommande.objects.create(
+            commande=commande_payee,
+            article=article_bloc,
+            entreprise=self.entreprise,
+            nom_article=article_bloc.nom,
+            nom_entreprise=self.entreprise.nom_entreprise,
+            quantite=1,
+            prix_unitaire="2000.00",
+        )
+
+        panier_non_paye = Panier.objects.create(
+            client=client_profile,
+            statut=Panier.STATUT_COMMANDE,
+        )
+        commande_non_payee = Commande.objects.create(
+            panier=panier_non_paye,
+            client=client_profile,
+            zone_arrivee=zone_client,
+            latitude_livraison=zone_client.latitude,
+            longitude_livraison=zone_client.longitude,
+            montant_produits="1500.00",
+            total_a_payer="1500.00",
+        )
+        LigneCommande.objects.create(
+            commande=commande_non_payee,
+            article=article,
+            entreprise=self.entreprise,
+            nom_article="Article impayé",
+            nom_entreprise=self.entreprise.nom_entreprise,
+            quantite=1,
+            prix_unitaire="1500.00",
+        )
+
+        self.client.force_login(self.responsable)
+        url = reverse("entreprise_app:livraisons-articles")
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            len(response.context["commandes_entreprise"]),
+            1,
+        )
+        self.assertEqual(
+            [
+                ligne.pk
+                for ligne in response.context["commandes_entreprise"][0]["lignes"]
+            ],
+            [ligne_entreprise.pk, ligne_entreprise_2.pk],
+        )
+        self.assertContains(response, article.nom)
+        self.assertContains(response, article_entreprise_2.nom)
+        self.assertNotContains(response, article_autre_entreprise.nom)
+        self.assertNotContains(response, article_bloc.nom)
+        self.assertNotContains(response, "Article impayé")
+        self.assertContains(response, "Capturer ma position de collecte")
+        self.assertContains(response, 'x-model="latitude"')
+        self.assertContains(response, 'x-model="longitude"')
+
+        creation_url = reverse(
+            "entreprise_app:creer-livraison-commande",
+            args=[commande_payee.pk],
+        )
+        response = self.client.post(
+            creation_url,
+            {"zone_depart": zone_depart.pk},
+        )
+        self.assertRedirects(response, url)
+        self.assertFalse(DemandeLivraison.objects.exists())
+
+        response = self.client.post(
+            creation_url,
+            {
+                "zone_depart": zone_depart.pk,
+                "latitude_depart": "91",
+                "longitude_depart": "-1.234567",
+            },
+        )
+        self.assertRedirects(response, url)
+        self.assertFalse(DemandeLivraison.objects.exists())
+
+        response = self.client.post(
+            creation_url,
+            {
+                "zone_depart": zone_depart.pk,
+                "latitude_depart": "12.345678",
+                "longitude_depart": "-1.234567",
+            },
+        )
+
+        self.assertRedirects(response, url)
+        demande = DemandeLivraison.objects.get(ligne_commande=ligne_entreprise)
+        self.assertQuerySetEqual(
+            demande.lignes_commande.order_by("pk"),
+            [ligne_entreprise, ligne_entreprise_2],
+        )
+        commande_payee.refresh_from_db()
+        self.assertEqual(demande.client, client_profile)
+        self.assertEqual(demande.zone_depart, zone_depart)
+        self.assertEqual(demande.zone_arrivee, zone_client)
+        self.assertEqual(demande.latitude_depart, Decimal("12.345678"))
+        self.assertEqual(demande.longitude_depart, Decimal("-1.234567"))
+        self.assertEqual(
+            demande.latitude_arrivee,
+            commande_payee.latitude_livraison,
+        )
+        self.assertEqual(
+            demande.longitude_arrivee,
+            commande_payee.longitude_livraison,
+        )
+        self.assertTrue(demande.position_destinataire_validee)
+        self.assertEqual(demande.statut_destinataire, "position_recue")
+        self.assertEqual(
+            demande.latitude_destinataire_reelle,
+            commande_payee.latitude_livraison,
+        )
+        self.assertEqual(
+            demande.longitude_destinataire_reelle,
+            commande_payee.longitude_livraison,
+        )
+        self.assertEqual(
+            demande.whatsapp_destinataire,
+            client_user.telephone,
+        )
+        self.assertIn(article.nom, demande.description_colis)
+        self.assertIn(article_entreprise_2.nom, demande.description_colis)
+        self.assertEqual(demande.statut, "en_attente")
+
+        response = self.client.post(
+            reverse(
+                "entreprise_app:creer-livraison-commande",
+                args=[commande_payee.pk],
+            ),
+            {
+                "zone_depart": zone_depart.pk,
+                "latitude_depart": "12.345678",
+                "longitude_depart": "-1.234567",
+            },
+        )
+        self.assertRedirects(response, url)
+        self.assertEqual(
+            DemandeLivraison.objects.filter(
+                ligne_commande=ligne_entreprise,
+            ).count(),
+            1,
+        )
+
+        response = self.client.post(
+            reverse(
+                "entreprise_app:creer-livraison-commande",
+                args=[commande_payee.pk],
+            ),
+            {
+                "zone_depart": zone_depart.pk,
+                "latitude_depart": "12.345678",
+                "longitude_depart": "-1.234567",
+            },
+        )
+        self.assertRedirects(response, url)
+        self.assertEqual(
+            DemandeLivraison.objects.filter(
+                ligne_commande=ligne_entreprise,
+            ).count(),
+            1,
+        )
+
+        self.client.force_login(other_user)
+        response = self.client.get(url)
+        self.assertEqual(
+            [
+                ligne.pk
+                for ligne in response.context["commandes_entreprise"][0]["lignes"]
+            ],
+            [ligne_autre_entreprise.pk],
+        )
+        self.assertNotContains(response, article.nom)
+
+        response = self.client.post(
+            reverse(
+                "entreprise_app:creer-livraison-commande",
+                args=[commande_payee.pk],
+            ),
+            {
+                "zone_depart": zone_depart.pk,
+                "latitude_depart": "12.345678",
+                "longitude_depart": "-1.234567",
+            },
+        )
+        self.assertRedirects(response, url)
+        demande_autre = DemandeLivraison.objects.get(
+            ligne_commande=ligne_autre_entreprise,
+        )
+        self.assertQuerySetEqual(
+            demande_autre.lignes_commande.all(),
+            [ligne_autre_entreprise],
+        )
+        self.assertEqual(demande_autre.client, client_profile)
+        self.assertEqual(
+            demande_autre.latitude_arrivee,
+            commande_payee.latitude_livraison,
+        )
 
     def test_other_user_cannot_open_enterprise_dashboard(self):
         client_user = User.objects.create_user(
@@ -356,7 +986,7 @@ class InscriptionEntrepriseAdminViewTests(TestCase):
         )
         self.client.force_login(client_user)
 
-        response = self.client.get(reverse("entreprise_app:detail"))
+        response = self.client.get(reverse("entreprise_app:entreprise-detail"))
 
         self.assertEqual(response.status_code, 404)
 

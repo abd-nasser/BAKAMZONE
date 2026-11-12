@@ -17,6 +17,18 @@
         <a href="{% url 'demande_livraison_app:creer-demande' %}" class="btn btn-md self-start border-0 bg-white font-black text-[#047857] shadow-lg hover:bg-emerald-50 sm:self-auto rounded-2xl shrink-0 gap-2">
             <span>⚡ Commander une livraison</span>
         </a>
+        <a href="{% url 'panier_app:panier' %}" class="btn btn-md self-start border-0 bg-white font-black text-[#047857] shadow-lg hover:bg-emerald-50 sm:self-auto rounded-2xl shrink-0 gap-2">
+            <span>🛒 Mon panier</span>
+            <span id="panier-count-badge" class="badge rounded-lg bg-[#059669] text-white">{{ nombre_articles_panier }}</span>
+        </a>
+        {% if client_commande %}
+            <a
+                href="{% url 'panier_app:detail_commande' client_commande.reference %}"
+                class="btn btn-md self-start border-0 bg-white font-black text-[#047857] shadow-lg hover:bg-emerald-50 sm:self-auto rounded-2xl shrink-0 gap-2"
+            >
+                📦 Suivre ma dernière commande
+            </a>
+        {% endif %}
     </header>
 
     <section id="livreurs" class="space-y-5">
@@ -143,6 +155,7 @@
             </div>
         </form>
 
+        <div id="panier-feedback" class="mb-4" aria-live="polite"></div>
         {% include "partials/clients/client_dashboard_articles.html" %}
     </section>
 </main>

@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block title %}Solde entreprise | BAKAMZONE{% endblock %}
+
+{% block content %}
+<main class="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
+    <header class="flex flex-wrap items-center justify-between gap-4 rounded-3xl bg-gradient-to-br from-[#047857] to-[#059669] p-6 text-white shadow-xl sm:p-8">
+        <div>
+            <p class="text-sm font-semibold text-white/75">Espace financier entreprise</p>
+            <h1 class="mt-1 text-3xl font-black">Solde de {{ entreprise.nom_entreprise }}</h1>
+            <p class="mt-2 text-sm text-white/80">
+                Ventes créditées au montant brut des lignes, sans commission déduite.
+            </p>
+        </div>
+        <a href="{% url 'entreprise_app:entreprise-detail' %}" class="btn rounded-xl border-white/30 bg-white/10 text-white hover:bg-white/20">
+            Retour au tableau de bord
+        </a>
+    </header>
+
+    {% if messages %}
+        <div class="space-y-2" aria-live="polite">
+            {% for message in messages %}
+                <div class="alert {% if message.tags == 'error' %}alert-error{% elif message.tags == 'success' %}alert-success{% else %}alert-info{% endif %} rounded-xl">
+                    <span>{{ message }}</span>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Résumé du solde">
+        <article class="card border border-base-300 bg-base-100 shadow-sm">
+            <div class="card-body p-5">
+                <p class="text-sm font-semibold text-base-content/60">Disponible au retrait</p>
+                <p class="text-2xl font-black text-success">{{ solde.montant_disponible|floatformat:2 }} FCFA</p>
+                <p class="text-xs text-base-content/50">Après retraits en attente, approuvés et payés</p>
+            </div>
+        </article>
+        <article class="card border border-base-300 bg-base-100 shadow-sm">
+            <div class="card-body p-5">
+                <p class="text-sm font-semibold text-base-content/60">Ventes payées cumulées</p>
+                <p class="text-2xl font-black">{{ solde.montant_ventes|floatformat:2 }} FCFA</p>
+                <p class="text-xs text-base-content/50">Lignes dont le paiement est confirmé</p>
+            </div>
+        </article>
+        <article class="card border border-base-300 bg-base-100 shadow-sm">
+            <div class="card-body p-5">
+                <p class="text-sm font-semibold text-base-content/60">Ventes payées ce mois</p>
+                <p class="text-2xl font-black">{{ solde.montant_ventes_mois|floatformat:2 }} FCFA</p>
+                <p class="text-xs text-base-content/50">Calculées avec le prix figé des commandes</p>
+            </div>
+        </article>
+        <article class="card border border-base-300 bg-base-100 shadow-sm">
+            <div class="card-body p-5">
+                <p class="text-sm font-semibold text-base-content/60">Retraits réservés ou payés</p>
+                <p class="text-2xl font-black">{{ solde.montant_retraits_reserves|floatformat:2 }} FCFA</p>
+                <p class="text-xs text-base-content/50">Demandes en attente, approuvées ou payées</p>
+            </div>
+        </article>
+    </section>
+
+    <section class="grid gap-6 xl:grid-cols-3">
+        <article class="card border border-base-300 bg-base-100 shadow-sm xl:col-span-1">
+            <div class="card-body">
+                <h2 class="card-title">Demander un retrait</h2>
+                <p class="text-sm text-base-content/60">
+                    Le montant demandé sera réservé immédiatement. L'administration vérifiera votre demande et effectuera le paiement hors plateforme.
+                </p>
+                <form method="post" action="{% url 'entreprise_app:demander-retrait' %}" class="mt-2 space-y-4">
+                    {% csrf_token %}
+                    <label class="form-control">
+                        <span class="label-text mb-2 font-semibold">{{ form_retrait.montant.label }}</span>
+                        {{ form_retrait.montant }}
+                    </label>
+                    {% for error in form_retrait.montant.errors %}
+                        <p class="text-sm text-error">{{ error }}</p>
+                    {% endfor %}
+                    <p class="text-xs text-base-content/50">
+                        Disponible : {{ solde.montant_disponible|floatformat:2 }} FCFA.
+                        Le contact de l'entreprise enregistré dans son profil sera utilisé pour le traitement.
+                    </p>
+                    <button
+                        type="submit"
+                        class="btn btn-success w-full rounded-xl text-white"
+                        {% if solde.montant_disponible <= 0 %}disabled{% endif %}
+                    >
+                        Envoyer la demande de retrait
+                    </button>
+                </form>
+            </div>
+        </article>
+
+        <article class="card border border-base-300 bg-base-100 shadow-sm xl:col-span-2">
+            <div class="card-body">
+                <h2 class="card-title">Historique des retraits</h2>
+                <div class="overflow-x-auto">
+                    <table class="table table-zebra">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Montant</th>
+                                <th>Statut</th>
+                                <th>Traité par</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for retrait in solde.demandes_retrait %}
+                                <tr>
+                                    <td>{{ retrait.date_demande|date:"d/m/Y H:i" }}</td>
+                                    <td>{{ retrait.montant|floatformat:2 }} FCFA</td>
+                                    <td>{{ retrait.get_statut_display }}</td>
+                                    <td>{{ retrait.traite_par.get_full_name|default:"—" }}</td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="4" class="py-6 text-center text-base-content/60">
+                                        Aucune demande de retrait pour le moment.
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </article>
+    </section>
+
+    <section class="card border border-base-300 bg-base-100 shadow-sm">
+        <div class="card-body">
+            <h2 class="card-title">Détail des ventes créditées</h2>
+            <p class="text-sm text-base-content/60">
+                Chaque ligne est créditée une seule fois à l'entreprise enregistrée sur cette ligne.
+                Seules les commandes au paiement confirmé sont incluses. Les éventuels remboursements ne sont pas encore gérés par le workflow. Les 100 dernières lignes sont affichées.
+            </p>
+            <div class="overflow-x-auto">
+                <table class="table table-zebra">
+                    <thead>
+                        <tr>
+                            <th>Date de paiement</th>
+                            <th>Commande</th>
+                            <th>Article</th>
+                            <th>Quantité</th>
+                            <th>Prix unitaire figé</th>
+                            <th>Sous-total crédité</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ligne in solde.ventes_payees %}
+                            <tr>
+                                <td>{{ ligne.commande.date_paiement|date:"d/m/Y H:i"|default:"—" }}</td>
+                                <td>{{ ligne.commande.reference }}</td>
+                                <td>{{ ligne.nom_article }}</td>
+                                <td>{{ ligne.quantite }}</td>
+                                <td>{{ ligne.prix_unitaire|floatformat:2 }} FCFA</td>
+                                <td>{{ ligne.sous_total|floatformat:2 }} FCFA</td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="6" class="py-6 text-center text-base-content/60">
+                                    Aucune vente payée créditée pour le moment.
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+</main>
+{% endblock %}

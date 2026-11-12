@@ -19,6 +19,7 @@ class Article(models.Model):
     # Image principale de l'article
     image = models.ImageField(upload_to='articles/images/', null=True, blank=True)
     
+    quantite_disponible = models.PositiveIntegerField(default=0)  # Quantité disponible pour la vente
     # Disponibilité globale de l'article
     disponible = models.BooleanField(default=True)
     date_expiration = models.DateTimeField(null=True, blank=True)  # Date d'expiration de l'article, si applicable

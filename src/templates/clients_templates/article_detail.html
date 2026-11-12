@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}{{ article.nom }} | BAKAMZONE{% endblock %}
+
+{% block content %}
+<main class="mx-auto max-w-5xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
+    <a href="{% url 'clients_app:tableau-de-bord' %}#articles" class="btn btn-ghost rounded-xl">
+        ← Retour aux articles
+    </a>
+
+    <article class="grid overflow-hidden rounded-3xl border border-base-300 bg-base-100 shadow-lg md:grid-cols-2">
+        {% if article.image %}
+            <img src="{{ article.image.url }}" alt="{{ article.nom }}" class="aspect-square h-full w-full object-cover">
+        {% else %}
+            <div class="flex aspect-square items-center justify-center bg-base-200 text-7xl" aria-hidden="true">📦</div>
+        {% endif %}
+
+        <div class="card-body justify-center gap-4 p-6 sm:p-8">
+            <p class="text-sm font-semibold uppercase tracking-wide text-base-content/60">
+                {{ article.entreprise.nom_entreprise }}
+            </p>
+            <h1 class="text-3xl font-black">{{ article.nom }}</h1>
+            {% if article.description %}
+                <p class="whitespace-pre-line text-base-content/75">{{ article.description }}</p>
+            {% endif %}
+
+            <p class="text-2xl font-black text-[#059669]">
+                {% if article.est_en_promotion %}
+                    <span class="mr-2 text-base font-medium text-base-content/50 line-through">{{ article.prix }} FCFA</span>
+                {% endif %}
+                {{ article.prix_actuel }} FCFA
+            </p>
+
+            {% if article.en_bloc %}
+                <span class="badge badge-success badge-outline w-fit">Stock géré par bloc</span>
+            {% else %}
+                <span class="badge badge-success badge-outline w-fit">
+                    Quantité disponible : {{ article.quantite_disponible }}
+                </span>
+            {% endif %}
+
+            {% include "partials/clients/article_favori_button.html" %}
+
+            <form
+                method="post"
+                action="{% url 'panier_app:ajouter_panier' article.pk %}"
+                hx-post="{% url 'panier_app:ajouter_panier' article.pk %}"
+                hx-target="#panier-feedback"
+                hx-swap="innerHTML"
+            >
+                {% csrf_token %}
+                <button type="submit" class="btn w-full rounded-xl bg-[#059669] text-white hover:bg-[#047857]">
+                    <span class="htmx-indicator loading loading-spinner loading-sm" aria-hidden="true"></span>
+                    Ajouter au panier
+                </button>
+            </form>
+            <div id="panier-feedback" aria-live="polite"></div>
+        </div>
+    </article>
+</main>
+{% endblock %}
