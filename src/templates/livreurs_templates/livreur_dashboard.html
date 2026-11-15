@@ -355,20 +355,30 @@
 </main>
 <script>
 (() => {
-    // Keep the browser cadence aligned with the server-side throttling interval.
+    // 1. Réglages du suivi GPS
+    // Une position est envoyée au serveur au maximum toutes les 15 secondes,
+    // conformément à la fréquence de limitation appliquée côté serveur.
     const positionIntervalMs = 15000;
 
-    // Each active course gets its own socket and explicit start/stop controls.
+    // Chaque course active dispose de son propre panneau, de son WebSocket
+    // et de ses boutons. Les courses terminées n'ont pas ces éléments.
     document.querySelectorAll('[data-gps-tracking]').forEach((panel) => {
         const startButton = panel.querySelector('[data-gps-start]');
         const stopButton = panel.querySelector('[data-gps-stop]');
         const status = panel.querySelector('[data-gps-status]');
+        // socket transporte les positions GPS entre le navigateur et Django.
         let socket = null;
+        // watchId identifie la surveillance GPS pour pouvoir l'arrêter ensuite.
         let watchId = null;
+        // lastSentAt permet de respecter l'intervalle minimal entre deux envois.
         let lastSentAt = 0;
+        // Indique si le livreur a arrêté le suivi ou si une erreur GPS l'a interrompu.
+        // Cette information évite d'afficher le même message pour un arrêt volontaire
+        // et pour une déconnexion inattendue.
         let stoppedByCourier = false;
 
-        // Clear the browser watcher so GPS collection stops when the socket closes.
+        // Arrête la collecte continue des positions GPS dans le navigateur.
+        // clearWatch doit recevoir l'identifiant renvoyé par watchPosition.
         const stopWatching = () => {
             if (watchId !== null) {
                 navigator.geolocation.clearWatch(watchId);
@@ -376,7 +386,9 @@
             }
         };
 
-        // Restore the controls after an explicit stop or a lost WebSocket.
+        // Réinitialise les boutons et arrête la collecte GPS.
+        // Cette fonction est utilisée après la fermeture du WebSocket,
+        // qu'elle soit demandée par le livreur ou causée par une déconnexion.
         const showStoppedState = () => {
             stopWatching();
             startButton.hidden = false;
@@ -384,7 +396,10 @@
             stopButton.hidden = true;
         };
 
-        // Start the socket first; geolocation begins only after the courier asks for it.
+        // 2. Démarrage du suivi
+        // Le GPS ne démarre qu'après un clic explicite du livreur.
+        // On ouvre d'abord le WebSocket ; la position n'est demandée qu'une fois
+        // la connexion acceptée par le serveur.
         startButton.addEventListener('click', () => {
             if (!navigator.geolocation) {
                 status.textContent = "La géolocalisation n'est pas disponible sur cet appareil.";
@@ -396,30 +411,42 @@
             startButton.disabled = true;
             status.textContent = "Connexion au suivi...";
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            // Same-origin cookies let Django's session middleware authenticate this socket.
+            // Le protocole sécurisé wss est utilisé avec HTTPS, sinon ws.
+            // Le chemin vient de l'attribut data-websocket-path du panneau HTML.
+            // Comme la connexion est sur le même domaine, le navigateur envoie
+            // la session Django pour authentifier le livreur.
             const url = `${protocol}//${window.location.host}${panel.dataset.websocketPath}`;
             socket = new WebSocket(url);
 
             socket.addEventListener('open', () => {
                 status.textContent = "Autorisez la localisation lorsque le navigateur le demande.";
                 stopButton.hidden = false;
+                // watchPosition continue à signaler les changements de position.
+                // Le navigateur demandera l'autorisation GPS si elle n'a pas déjà été accordée.
                 watchId = navigator.geolocation.watchPosition(
                     (position) => {
                         const now = Date.now();
+                        // Ignore les points trop rapprochés et n'envoie rien si
+                        // le WebSocket n'est pas encore ouvert.
                         if (now - lastSentAt < positionIntervalMs || socket.readyState !== WebSocket.OPEN) {
                             return;
                         }
 
+                        // Seules la latitude et la longitude sont envoyées.
+                        // Le serveur associe ce point à la course et date sa réception.
                         socket.send(JSON.stringify({
                             type: 'position',
                             latitude: position.coords.latitude,
                             longitude: position.coords.longitude,
                         }));
-                        // The server timestamps receipt; the browser timestamp is display-only.
+                        // Mémorise l'heure locale du dernier envoi pour appliquer
+                        // l'intervalle minimal ; elle sert aussi au message affiché.
                         lastSentAt = now;
                         status.textContent = `Position envoyée à ${new Date(now).toLocaleTimeString()}.`;
                     },
                     (error) => {
+                        // Codes d'erreur standards de la géolocalisation :
+                        // autorisation refusée, position indisponible ou délai dépassé.
                         const messages = {
                             1: "Autorisation GPS refusée. Le suivi n'a pas démarré.",
                             2: "Position GPS indisponible. Vérifiez le GPS de l'appareil.",
@@ -430,6 +457,8 @@
                         socket.close();
                     },
                     {
+                        // Demande un point précis, sans réutiliser une ancienne position,
+                        // et abandonne une tentative après 15 secondes.
                         enableHighAccuracy: true,
                         maximumAge: 0,
                         timeout: 15000,
@@ -437,28 +466,37 @@
                 );
             });
 
+            // En cas d'erreur de connexion, informer le livreur.
+            // L'événement close réinitialisera ensuite les boutons.
             socket.addEventListener('error', () => {
                 status.textContent = "Connexion au suivi impossible. Vérifiez le réseau et réessayez.";
             });
 
             socket.addEventListener('close', () => {
                 showStoppedState();
+                // Si le livreur n'a pas demandé l'arrêt, la fermeture signale
+                // une interruption ou une course qui n'est plus active.
                 if (!stoppedByCourier) {
                     status.textContent = "Suivi interrompu ou course devenue inactive.";
                 }
             });
         });
 
-        // Stop both the GPS watcher and the open connection on the courier's request.
+        // 3. Arrêt du suivi
+        // Le bouton Arrêter cesse la collecte GPS puis ferme la connexion WebSocket.
         stopButton.addEventListener('click', () => {
             stoppedByCourier = true;
             stopWatching();
             if (socket && socket.readyState < WebSocket.CLOSING) {
+                // Désactive les boutons pendant la fermeture afin d'éviter
+                // plusieurs demandes d'arrêt simultanées.
                 startButton.disabled = true;
                 stopButton.hidden = true;
                 status.textContent = "Arrêt du suivi GPS...";
                 socket.close();
             } else {
+                // Si la connexion est déjà fermée, remettre directement l'interface
+                // dans son état initial.
                 showStoppedState();
                 status.textContent = "Suivi GPS arrêté.";
             }

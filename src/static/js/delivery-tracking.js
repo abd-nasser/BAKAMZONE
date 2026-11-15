@@ -1,4 +1,6 @@
 (() => {
+    // 1. Configuration de la page et initialisation de la carte
+    // Ces éléments sont fournis par le template. Sans eux, cette page n'affiche pas de suivi.
     const configElement = document.getElementById("delivery-tracking-config");
     const mapElement = document.getElementById("delivery-tracking-map");
 
@@ -16,12 +18,16 @@
         return;
     }
 
+    // La configuration JSON contient notamment les livraisons à suivre, leurs libellés,
+    // ainsi que le chemin WebSocket et l'URL des tuiles de carte.
     const config = JSON.parse(configElement.textContent);
     const deliveries = config.deliveries || [];
     if (!deliveries.length) {
         return;
     }
 
+    // La carte démarre centrée sur Ouagadougou. Elle sera recentrée sur la première
+    // position de livreur reçue.
     const map = L.map(mapElement).setView([12.3714, -1.5197], 12);
     const tileLayer = L.tileLayer(config.tile_url, {
         maxZoom: 19,
@@ -35,11 +41,18 @@
     });
     tileLayer.addTo(map);
 
+    // Les Maps sont indexées par l'identifiant de livraison :
+    // - markers conserve le marqueur Leaflet à déplacer à chaque nouvelle position ;
+    // - states conserve l'état du WebSocket et l'heure de la dernière position reçue.
     const markers = new Map();
     const states = new Map();
+    // Une position qui n'a pas été actualisée dans ce délai est signalée comme obsolète.
     const staleAfterMs = 45000;
+    // La page superviseur possède un filtre et plusieurs cartes de livraison ;
+    // la page client ne suit qu'une seule livraison.
     const isFleetView = document.getElementById("delivery-tracking-filter") !== null;
 
+    // Met à jour le texte d'état et l'heure de réception dans la carte de livraison.
     function updateStatus(delivery, message, updatedAt = null) {
         const statusId = isFleetView
             ? `delivery-status-${delivery.id}`
@@ -60,6 +73,7 @@
         }
     }
 
+    // Sur la vue superviseur, un marqueur doit suivre la visibilité de sa carte filtrée.
     function deliveryIsVisible(deliveryId) {
         if (!isFleetView) {
             return true;
@@ -70,6 +84,7 @@
         return Boolean(card && card.hidden === false);
     }
 
+    // Change l'apparence du marqueur pour distinguer une position récente d'une ancienne.
     function setMarkerStale(deliveryId, stale) {
         const marker = markers.get(deliveryId);
         if (marker) {
@@ -82,6 +97,8 @@
         }
     }
 
+    // Vérifie et affiche une position envoyée par le serveur pour cette livraison.
+    // Les coordonnées et la date sont validées avant de toucher à la carte.
     function handlePosition(delivery, data) {
         if (data.type !== "position") {
             return;
@@ -104,6 +121,8 @@
             return;
         }
 
+        // Crée le marqueur lors du premier message, puis déplace le même marqueur
+        // pour les messages suivants afin d'éviter d'en accumuler sur la carte.
         let marker = markers.get(delivery.id);
         if (!marker) {
             const popup = document.createElement("span");
@@ -133,17 +152,25 @@
         updateStatus(delivery, "Position en direct reçue.", timestamp);
     }
 
+    // 2. Connexion temps réel pour une livraison
+    // Chaque livraison a son propre WebSocket et son propre état de reconnexion.
     function connect(delivery) {
         const state = {
             connected: false,
+            // Le délai de reconnexion augmente progressivement en cas d'échec,
+            // jusqu'à 30 secondes, afin d'éviter des tentatives trop fréquentes.
             retryDelayMs: 2000,
             socket: null,
             retryTimer: null,
+            // Date de la dernière position utilisée pour déterminer si le marqueur vieillit.
+            lastPositionAt: null,
         };
         states.set(delivery.id, state);
 
+        // Ouvre le WebSocket et installe les réactions aux événements du navigateur.
         function openSocket() {
             updateStatus(delivery, "Connexion au suivi en temps réel…");
+            // Utilise le même protocole que la page : ws en HTTP, wss en HTTPS.
             const url = new URL(delivery.ws_path, window.location.href);
             url.protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
             const socket = new WebSocket(url);
@@ -168,6 +195,8 @@
             socket.addEventListener("close", (event) => {
                 state.connected = false;
                 setMarkerStale(delivery.id, true);
+                // 4401/4403 signifient que le serveur refuse désormais l'accès :
+                // dans ce cas, reconnecter ne ferait que répéter un refus.
                 if (event.code === 4401 || event.code === 4403) {
                     updateStatus(
                         delivery,
@@ -187,6 +216,8 @@
             socket.addEventListener("error", () => socket.close());
         }
 
+        // Planifie une nouvelle tentative avec un délai croissant.
+        // Le contrôle du timer empêche de créer plusieurs tentatives simultanées.
         function scheduleReconnect() {
             if (state.retryTimer || !document.documentElement.isConnected) {
                 return;
@@ -204,6 +235,9 @@
 
     deliveries.forEach(connect);
 
+    // 3. Filtrage des livraisons (vue superviseur)
+    // Le filtre masque les cartes qui ne correspondent pas et rend aussi leurs
+    // marqueurs invisibles, sans fermer leurs connexions WebSocket.
     const filter = document.getElementById("delivery-tracking-filter");
     if (filter) {
         filter.addEventListener("input", () => {
@@ -224,6 +258,9 @@
         });
     }
 
+    // 4. Détection des positions devenues obsolètes
+    // Le serveur peut rester connecté sans envoyer de nouvelle position ; on vérifie
+    // donc périodiquement l'âge du dernier point reçu pour chaque livraison.
     window.setInterval(() => {
         const now = Date.now();
         deliveries.forEach((delivery) => {

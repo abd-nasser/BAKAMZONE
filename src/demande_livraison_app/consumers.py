@@ -210,6 +210,7 @@ class SuiviLivraisonConsumer(AsyncJsonWebsocketConsumer):
                 position_destinataire_validee=True,
                 latitude_destinataire_reelle__isnull=False,
                 longitude_destinataire_reelle__isnull=False,
+                statut_position_destinataire="position_recue",
             )
             .first()
         )

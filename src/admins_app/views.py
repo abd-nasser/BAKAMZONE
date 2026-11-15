@@ -342,6 +342,7 @@ class SuperviseurFlotteDashbordView(SuperviseurFlotteRequiredMixin, TemplateView
             | Q(zone_arrivee__bloc=bloc)
             | Q(livreur__blocs=bloc)
         ).distinct()
+        
         suivi_livraisons = DemandeLivraison.objects.filter(
             statut__in=("acceptee", "en_cours"),
             livreur__blocs=bloc,
