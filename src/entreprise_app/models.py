@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Q
 
 from auth_app.models import User
 
@@ -63,3 +64,53 @@ class MembreAdminsEntreprise(models.Model):
     ajoute_par = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='admins_ajoutes')
     def __str__(self):
         return f"{self.membre_admin.get_full_name()} — admin {self.entreprise.nom_entreprise}"
+
+
+class RetraitEntreprise(models.Model):
+    STATUT_EN_ATTENTE = "en_attente"
+    STATUT_APPROUVE = "approuve"
+    STATUT_PAYE = "paye"
+    STATUT_REJETE = "rejete"
+    STATUT_CHOICES = [
+        (STATUT_EN_ATTENTE, "En attente de validation"),
+        (STATUT_APPROUVE, "Approuvé, paiement à effectuer"),
+        (STATUT_PAYE, "Payé"),
+        (STATUT_REJETE, "Rejeté"),
+    ]
+
+    entreprise = models.ForeignKey(
+        Entreprise,
+        on_delete=models.PROTECT,
+        related_name="retraits",
+    )
+    montant = models.DecimalField(max_digits=12, decimal_places=2)
+    statut = models.CharField(
+        max_length=20,
+        choices=STATUT_CHOICES,
+        default=STATUT_EN_ATTENTE,
+    )
+    date_demande = models.DateTimeField(auto_now_add=True)
+    date_traitement = models.DateTimeField(null=True, blank=True)
+    traite_par = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="retraits_entreprise_traites",
+    )
+
+    class Meta:
+        ordering = ["-date_demande"]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(montant__gt=0),
+                name="retrait_entreprise_montant_positif",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["entreprise", "statut"]),
+            models.Index(fields=["statut", "date_demande"]),
+        ]
+
+    def __str__(self):
+        return f"Retrait {self.montant} FCFA — {self.entreprise.nom_entreprise}"

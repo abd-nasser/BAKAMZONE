@@ -3,140 +3,6 @@
 
 {% block title %}BAKAMZONE — La Révolution de la Livraison Intégrée{% endblock %}
 
-{% block navbar %}
-<!-- Navbar Responsive DaisyUI -->
-<header class="sticky top-0 z-40 backdrop-blur-md bg-base-100/90 border-b border-base-200">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex items-center justify-between h-16 sm:h-20">
-            
-            <!-- Logo BAKAMZONE -->
-            <a href="{% url 'home_app:home' %}" class="flex items-center gap-2 group">
-                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-[#059669] to-[#047857] flex items-center justify-center text-white shadow-md group-hover:scale-105 transition-transform">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                </div>
-                <span class="text-2xl font-black tracking-tight">
-                    <span class="text-[#059669]">BAKAM</span><span class="text-[#F97316]">ZONE</span>
-                </span>
-            </a>
-
-            <!-- Actions Utilisateur & Navigation -->
-            <nav class="flex items-center gap-3" aria-label="Navigation principale">
-                
-                <!-- Bascule Thème Clair / Sombre -->
-                <button @click="darkMode = !darkMode; localStorage.setItem('theme', darkMode ? 'dark' : 'light')"
-                        class="btn btn-ghost btn-circle btn-sm text-base-content/80 hover:bg-base-200" 
-                        title="Changer de thème">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                    </svg>
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 hidden dark:block text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                    </svg>
-                </button>
-
-                {% if request.user.is_authenticated %}
-                    <!-- Utilisateur Connecté -->
-                    <div class="dropdown dropdown-end">
-                        <label tabindex="0" class="btn btn-ghost rounded-2xl gap-2 pl-2 pr-3 py-1 flex items-center border border-base-300">
-                            <div class="avatar placeholder">
-                                <div class="bg-[#059669] text-white rounded-xl w-8 h-8 font-bold text-xs">
-                                    {{ request.user.first_name|default:request.user.telephone|slice:":2"|upper }}
-                                </div>
-                            </div>
-                            <div class="text-left hidden sm:block">
-                                <p class="text-xs font-bold leading-tight">{{ request.user.get_full_name|default:request.user.telephone }}</p>
-                                <span class="badge badge-xs text-[10px] 
-                                    {% if request.user.is_superuser %}badge-error text-white
-                                    {% elif request.user.role == 'bloc_admin' %}badge-warning
-                                    {% elif request.user.role == 'livreur' %}badge-info text-white
-                                    {% elif request.user.role == 'entreprise' or request.user.role == 'entreprise_admin' %}badge-secondary text-white
-                                    {% else %}badge-ghost{% endif %}">
-                                    {% if request.user.is_superuser %}Superuser
-                                    {% elif request.user.role == 'bloc_admin' %}Admin Bloc
-                                    {% elif request.user.role == 'livreur' %}Livreur
-                                    {% elif request.user.role == 'entreprise_admin' %}Admin Entreprise
-                                    {% elif request.user.role == 'entreprise' %}Entreprise
-                                    {% else %}Client{% endif %}
-                                </span>
-                            </div>
-                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-base-content/50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                            </svg>
-                        </label>
-                        <ul tabindex="0" class="dropdown-content menu p-2 shadow-2xl bg-base-100 rounded-2xl w-60 border border-base-200 mt-2 z-50">
-                            <li class="menu-title px-3 py-1 text-[11px] uppercase tracking-wider text-base-content/50">
-                                Mon Compte ({{ request.user.telephone }})
-                            </li>
-                            {% if request.user.is_superuser %}
-                                <li>
-                                    <a href="{% url 'superuser_app:dashboard' %}" class="font-bold text-[#059669] py-2.5">
-                                        ⚡ Cockpit Superuser
-                                    </a>
-                                </li>
-                            {% endif %}
-                            <li>
-                                <a href="{% url 'home_app:home' %}" class="py-2.5">🏠 Accueil BAKAMZONE</a>
-                            </li>
-                            {% if request.user.role == 'client' %}
-                                <li>
-                                    <a href="{% url 'clients_app:tableau-de-bord' %}" class="py-2.5">🛍️ Mon espace client</a>
-                                </li>
-                            {% endif %}
-                            {% if request.user.role == 'entreprise' %}
-                                <li>
-                                    <a href="{% url 'entreprise_app:entreprise-detail' %}" class="py-2.5">📊 Tableau de bord entreprise</a>
-                                </li>
-                                <li>
-                                    <a href="{% url 'entreprise_app:choix-palier' %}" class="py-2.5">📦 Mon abonnement</a>
-                                </li>
-
-                            {% endif %}
-
-                            {% if request.user.role == 'bloc_admin' and admin_bloc_dashboard_url %}
-                                <li>
-                                    <a href="{{ admin_bloc_dashboard_url }}" class="py-2.5">📊 Mon tableau de bord — {{ admin_bloc_profil.get_poste_display }}</a>
-                                </li>
-                            {% endif %}
-                            <div class="divider my-1"></div>
-                            <li>
-                                <a href="{% url 'auth_app:deconnexion' %}" class="text-error font-medium py-2.5">
-                                    🚪 Se déconnecter
-                                </a>
-                            </li>
-                        </ul>
-                    </div>
-                    <button id="pwa-push-button"
-                            type="button"
-                            data-csrf-token="{{ csrf_token }}"
-                            class="btn btn-outline btn-success btn-sm rounded-xl">
-                        Activer les notifications
-                    </button>
-                    <span id="pwa-push-status" class="max-w-48 text-xs" role="status" aria-live="polite"></span>
-                {% else %}
-                    <!-- Utilisateur Non Connecté : Bouton Connexion qui ouvre le Modal -->
-                    <a href="{% url 'clients_app:inscription-client' %}"
-                       class="btn btn-outline btn-sm sm:btn-md rounded-xl border-[#059669] text-[#059669] hover:bg-[#059669] hover:text-white font-bold">
-                        Créer un compte client
-                    </a>
-                    <a href="{% url 'entreprise_app:inscription' %}"
-                       class="btn btn-ghost btn-sm sm:btn-md rounded-xl font-bold">
-                        Inscrire une entreprise
-                    </a>
-                    <button onclick="login_modal.showModal()"
-                            class="btn btn-sm sm:btn-md bg-[#059669] hover:bg-[#047857] text-white border-none rounded-xl font-bold shadow-md hover:shadow-lg transition-all px-4 sm:px-6">
-                        Connexion
-                    </button>
-                {% endif %}
-
-            </nav>
-
-        </div>
-    </div>
-</header>
-{% endblock %}
-
 {% block content %}
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
 
@@ -258,21 +124,21 @@
             <!-- Actions Rapides -->
             <div class="mt-8 sm:mt-10 flex flex-wrap justify-center items-center gap-4">
                 <button onclick="login_modal.showModal()"
-                        class="btn bg-[#059669] hover:bg-[#047857] text-white border-none rounded-2xl h-14 px-8 font-bold text-base shadow-xl hover:shadow-2xl hover:scale-105 transition-all">
+                        class="btn bg-[#059669] hover:bg-[#047857] text-white border-none rounded-2xl h-14 px-8 font-bold text-base shadow-xl hover:shadow-2xl hover:scale-105 transition-all w-full sm:w-auto">
                     Accéder à mon espace
                 </button>
                 <a href="{% url 'clients_app:inscription-client' %}"
-                   class="btn btn-outline border-[#059669] text-[#059669] hover:bg-[#059669] hover:text-white rounded-2xl h-14 px-8 font-bold text-base transition-all">
+                   class="btn btn-outline border-[#059669] text-[#059669] hover:bg-[#059669] hover:text-white rounded-2xl h-14 px-8 font-bold text-base transition-all w-full sm:w-auto">
                     Créer un compte client
                 </a>
                 <a href="#decouvrir-blocs" 
-                   class="btn btn-outline border-base-300 hover:border-[#F97316] hover:bg-[#F97316] hover:text-white rounded-2xl h-14 px-8 font-bold text-base transition-all">
+                   class="btn btn-outline border-base-300 hover:border-[#F97316] hover:bg-[#F97316] hover:text-white rounded-2xl h-14 px-8 font-bold text-base transition-all w-full sm:w-auto">
                     Découvrir les blocs ({{ total_blocs }})
                 </a>
             </div>
 
             <!-- Badges de réassurance -->
-            <div class="mt-14 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto text-left">
+            <div class="mt-14 grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 max-w-4xl mx-auto text-left">
                 <div class="p-4 rounded-2xl bg-base-200/50 border border-base-300">
                     <p class="text-2xl font-black text-[#059669]">100%</p>
                     <p class="text-xs text-base-content/70 font-semibold mt-1">Flotte intégrée sans intermédiaires</p>
@@ -297,7 +163,7 @@
     <!-- SECTION DES BLOCS DU RÉSEAU                -->
     <!-- ========================================== -->
     <section id="decouvrir-blocs" class="mt-8 pt-8 border-t border-base-200">
-        <div class="flex items-center justify-between mb-6">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
             <div>
                 <h2 class="text-2xl font-black tracking-tight">Réseau des Blocs BAKAMZONE</h2>
                 <p class="text-sm text-base-content/70">Hubs logistiques et équipes opérationnelles de proximité</p>
@@ -383,5 +249,6 @@
 
 <!-- Inclusion du Modal de Connexion -->
 {% include 'modal/login_modal.html' %}
+
 
 {% endblock %}

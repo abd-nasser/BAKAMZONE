@@ -54,3 +54,26 @@ class HomeBlockLinksTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, f'href="{detail_url}"')
         self.assertNotContains(response, "Voir le détail")
+
+    def test_superuser_with_default_client_role_sees_only_superuser_navigation(self):
+        user = User.objects.create(
+            telephone="70000993",
+            first_name="Admin",
+            last_name="Principal",
+            role="client",
+            is_staff=True,
+            is_superuser=True,
+        )
+        self.client.force_login(user)
+
+        response = self.client.get(reverse("home_app:home"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(
+            response,
+            f'href="{reverse("superuser_app:dashboard")}"',
+        )
+        self.assertNotContains(
+            response,
+            f'href="{reverse("clients_app:tableau-de-bord")}"',
+        )

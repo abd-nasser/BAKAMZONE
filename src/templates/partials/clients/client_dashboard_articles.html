@@ -10,7 +10,11 @@
             {% endif %}
             <div class="card-body gap-2">
                 <div class="flex items-start justify-between gap-2">
-                    <h3 class="card-title text-lg">{{ article.nom }}</h3>
+                    <h3 class="card-title text-lg">
+                        <a href="{% url 'clients_app:detail-article' article.pk %}" class="link-hover">
+                            {{ article.nom }}
+                        </a>
+                    </h3>
                     {% if article.est_en_promotion %}<span class="badge badge-warning">Promo</span>{% endif %}
                 </div>
                 <p class="text-xs font-semibold uppercase tracking-wide text-base-content/60">{{ article.entreprise.nom_entreprise }}</p>
@@ -23,7 +27,33 @@
                     {% endif %}
                     <span class="text-[#059669]">{{ article.prix_actuel }} FCFA</span>
                 </p>
-                <span class="badge badge-success badge-outline w-fit">En stock</span>
+                {% if article.en_bloc %}
+                    <span class="badge badge-success badge-outline w-fit">En stock dans un bloc</span>
+                {% else %}
+                    <span class="badge badge-success badge-outline w-fit">
+                        Quantité disponible : {{ article.quantite_disponible }}
+                    </span>
+                {% endif %}
+                <a
+                    href="{% url 'clients_app:detail-article' article.pk %}"
+                    class="btn btn-outline btn-sm mt-2 w-full rounded-xl"
+                >
+                    Voir les détails
+                </a>
+                <form
+                    method="post"
+                    action="{% url 'panier_app:ajouter_panier' article.pk %}"
+                    hx-post="{% url 'panier_app:ajouter_panier' article.pk %}"
+                    hx-target="#panier-feedback"
+                    hx-swap="innerHTML"
+                    class="mt-2"
+                >
+                    {% csrf_token %}
+                    <button type="submit" class="btn w-full rounded-xl bg-[#059669] text-white hover:bg-[#047857]">
+                        <span class="htmx-indicator loading loading-spinner loading-sm" aria-hidden="true"></span>
+                        Ajouter au panier
+                    </button>
+                </form>
             </div>
         </article>
     {% empty %}

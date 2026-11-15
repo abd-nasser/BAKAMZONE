@@ -21,6 +21,7 @@ class ArticleEntrepriseForm(forms.ModelForm):
             "description",
             "prix",
             "prix_promo",
+            "quantite_disponible",
             "image",
             "disponible",
             "date_expiration",
@@ -30,6 +31,7 @@ class ArticleEntrepriseForm(forms.ModelForm):
             "description": "Description",
             "prix": "Prix",
             "prix_promo": "Prix promotionnel (facultatif)",
+            "quantite_disponible": "Quantité disponible (hors bloc)",
             "image": "Image de l'article",
             "disponible": "Article disponible",
             "date_expiration": "Date d'expiration (facultative)",
@@ -56,6 +58,11 @@ class ArticleEntrepriseForm(forms.ModelForm):
                 "placeholder": "Facultatif",
                 "min": "0",
                 "step": "0.01",
+            }),
+            "quantite_disponible": forms.NumberInput(attrs={
+                "class": "input input-bordered w-full rounded-xl focus:border-[#059669] focus:outline-none transition-colors",
+                "min": "0",
+                "step": "1",
             }),
             "image": forms.ClearableFileInput(attrs={
                 "class": "file-input file-input-bordered w-full rounded-xl",

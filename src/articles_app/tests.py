@@ -30,6 +30,7 @@ class ArticleEntrepriseFormTests(TestCase):
             "nom": "Riz local",
             "description": "Sac de riz local",
             "prix": "2500.00",
+            "quantite_disponible": "6",
             "disponible": "on",
             "en_bloc": "on",
         }
@@ -37,7 +38,14 @@ class ArticleEntrepriseFormTests(TestCase):
     def test_form_widgets_follow_project_styles(self):
         form = ArticleEntrepriseForm(user=self.entreprise_user)
 
-        for field_name in ("nom", "description", "prix", "prix_promo", "date_expiration"):
+        for field_name in (
+            "nom",
+            "description",
+            "prix",
+            "prix_promo",
+            "quantite_disponible",
+            "date_expiration",
+        ):
             self.assertIn(
                 "input-bordered" if field_name != "description" else "textarea-bordered",
                 form.fields[field_name].widget.attrs["class"],
@@ -84,6 +92,7 @@ class ArticleEntrepriseFormTests(TestCase):
 
         self.assertEqual(article.entreprise, self.entreprise)
         self.assertFalse(article.en_bloc)
+        self.assertEqual(article.quantite_disponible, 6)
 
     def test_block_admin_form_creates_article_and_stock_in_the_admin_block(self):
         bloc = Blocs.objects.create(
@@ -109,6 +118,7 @@ class ArticleEntrepriseFormTests(TestCase):
         )
 
         self.assertTrue(form.is_valid(), form.errors)
+        self.assertNotIn("quantite_disponible", form.fields)
         self.assertIn(self.entreprise, form.fields["entreprise"].queryset)
 
         article = form.save()
@@ -250,6 +260,7 @@ class ArticleBlocAdminCRUDViewTests(TestCase):
             "nom": "Riz local",
             "description": "Sac de riz local",
             "prix": "2500.00",
+            "quantite_disponible": "6",
             "disponible": "on",
         }
         self.detail_url = reverse(
@@ -482,6 +493,7 @@ class AjouteArticleViewTests(TestCase):
             "nom": "Riz local",
             "description": "Sac de riz local",
             "prix": "2500.00",
+            "quantite_disponible": "6",
             "disponible": "on",
         }
 
@@ -753,6 +765,7 @@ class EntrepriseArticleModificationTests(TestCase):
             "nom": "Riz local modifié",
             "description": "Riz de qualité supérieure",
             "prix": "3000.00",
+            "quantite_disponible": "6",
             "disponible": "on",
         }
         self.client.force_login(self.user)

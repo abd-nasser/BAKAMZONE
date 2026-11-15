@@ -4,10 +4,12 @@ from clients_app.views import (
     ClientBlocDetailView,
     ClientDashboardView,
     ClientDeliveryTrackingView,
+    ClientArticleDetailView,
     InscriptionClientView,
     LivreurProfilViewByClient,
     StartBlocSupportChatView,
     SupportChatView,
+    ToggleFavoriArticleView,
     ToggleFavoriLivreurView,
 )
 
@@ -20,6 +22,16 @@ urlpatterns = [
         'livraisons/<int:pk>/suivi/',
         ClientDeliveryTrackingView.as_view(),
         name='suivi-livraison',
+    ),
+    path(
+        'articles/<int:pk>/',
+        ClientArticleDetailView.as_view(),
+        name='detail-article',
+    ),
+    path(
+        'articles/<int:pk>/favori/',
+        ToggleFavoriArticleView.as_view(),
+        name='toggle-favori-article',
     ),
     path(
         'blocs/<int:pk>/',

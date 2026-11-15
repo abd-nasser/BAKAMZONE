@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% load l10n %}
+
+{% block title %}Commande {{ commande.reference }} | BAKAMZONE{% endblock %}
+
+{% block content %}
+<main class="mx-auto max-w-4xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
+    <header class="rounded-3xl bg-gradient-to-br from-[#047857] to-[#059669] p-6 text-white shadow-xl sm:p-8">
+        <p class="text-sm font-semibold text-white/75">Commande {{ commande.reference }}</p>
+        <h1 class="mt-2 text-3xl font-black">Votre commande est enregistrée</h1>
+        <p class="mt-2">
+            Statut :
+            <span class="font-bold">{{ commande.get_statut_display }}</span>
+        </p>
+    </header>
+
+    <section class="rounded-2xl border border-base-300 bg-base-100 p-5 shadow-sm sm:p-7">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+            <div>
+                <h2 class="text-xl font-black">Suivi de la commande</h2>
+                <p class="mt-1 text-sm text-base-content/60">
+                    Statut actuel : <strong class="text-base-content">{{ commande.get_statut_display }}</strong>
+                </p>
+            </div>
+            {% if commande_annulee %}
+                <span class="badge badge-error badge-lg">Commande annulée</span>
+            {% endif %}
+        </div>
+
+        {% if commande_annulee %}
+            <div class="alert alert-error mt-5 rounded-xl">
+                <span>Cette commande a été annulée.</span>
+            </div>
+        {% else %}
+            <ol class="mt-6 space-y-0">
+                {% for etape in etapes_commande %}
+                    <li class="relative flex gap-4 pb-7 last:pb-0">
+                        {% if not forloop.last %}
+                            <span
+                                class="absolute left-[0.6875rem] top-6 h-full w-0.5 {% if etape.terminee %}bg-success{% else %}bg-base-300{% endif %}"
+                                aria-hidden="true"
+                            ></span>
+                        {% endif %}
+                        <span
+                            class="relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 text-xs font-black {% if etape.actuelle %}border-success bg-success text-white{% elif etape.terminee %}border-success bg-success/15 text-success{% else %}border-base-300 bg-base-100 text-base-content/40{% endif %}"
+                            {% if etape.actuelle %}aria-current="step"{% endif %}
+                        >
+                            {% if etape.terminee %}✓{% else %}{{ forloop.counter }}{% endif %}
+                        </span>
+                        <div class="-mt-0.5">
+                            <p class="font-bold {% if etape.actuelle %}text-success{% elif not etape.terminee %}text-base-content/50{% endif %}">
+                                {{ etape.label }}
+                                {% if etape.actuelle %}<span class="badge badge-success badge-sm ml-1">En cours</span>{% endif %}
+                            </p>
+                            <p class="mt-1 text-sm text-base-content/60">{{ etape.description }}</p>
+                            {% if etape.date %}
+                                <time class="mt-1 block text-xs text-base-content/50">{{ etape.date|date:"d/m/Y à H:i" }}</time>
+                            {% endif %}
+                        </div>
+                    </li>
+                {% endfor %}
+            </ol>
+        {% endif %}
+    </section>
+
+    <section class="rounded-2xl border border-base-300 bg-base-100 p-5 shadow-sm sm:p-7">
+        <h2 class="text-xl font-black">Zone de livraison</h2>
+        <p class="mt-2 font-semibold">{{ commande.zone_arrivee.nom }} — {{ commande.zone_arrivee.bloc.nom }}</p>
+        <p class="mt-2 text-sm text-base-content/70">
+            Latitude : <span class="font-mono">{{ commande.latitude_livraison|unlocalize }}</span>
+            <br>
+            Longitude : <span class="font-mono">{{ commande.longitude_livraison|unlocalize }}</span>
+        </p>
+        <a
+            href="https://www.google.com/maps?q={{ commande.latitude_livraison|unlocalize }},{{ commande.longitude_livraison|unlocalize }}"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="btn btn-outline btn-sm mt-4 rounded-xl"
+        >
+            Voir la position sur la carte
+        </a>
+    </section>
+
+    <section class="rounded-2xl border border-base-300 bg-base-100 p-5 shadow-sm sm:p-7">
+        <h2 class="text-xl font-black">Articles commandés</h2>
+        <div class="mt-4 divide-y divide-base-200">
+            {% for ligne in commande.lignes.all %}
+                <div class="flex justify-between gap-4 py-3">
+                    <div>
+                        <p class="font-bold">{{ ligne.nom_article }}</p>
+                        <p class="text-sm text-base-content/60">{{ ligne.quantite }} × {{ ligne.prix_unitaire }} FCFA</p>
+                    </div>
+                    <strong>{{ ligne.sous_total }} FCFA</strong>
+                </div>
+            {% endfor %}
+        </div>
+
+        <div class="mt-4 space-y-2 border-t border-base-200 pt-4">
+            <p class="flex justify-between gap-4">
+                <span>Articles</span>
+                <strong>{{ commande.montant_produits }} FCFA</strong>
+            </p>
+            <p class="flex justify-between gap-4 text-sm text-base-content/60">
+                <span>Livraison</span>
+                <span>À déterminer séparément</span>
+            </p>
+            <p class="flex justify-between gap-4 text-lg font-black">
+                <span>Total produits</span>
+                <span class="text-[#059669]">{{ commande.total_a_payer }} FCFA</span>
+            </p>
+        </div>
+    </section>
+
+    <div class="alert alert-info rounded-2xl">
+        <span>
+            {% if commande.statut == "en_attente_paiement" %}
+                Le paiement en ligne n'est pas encore disponible. Votre commande est en attente de paiement.
+            {% else %}
+                Consultez le statut ci-dessus pour connaître la suite de votre commande.
+            {% endif %}
+        </span>
+    </div>
+
+    <div class="flex flex-wrap gap-3">
+        {% if commande.statut == "en_attente_paiement" %}
+            <button type="button" class="btn btn-disabled rounded-xl" disabled>
+                Paiement bientôt disponible
+            </button>
+        {% endif %}
+        <a href="{% url 'clients_app:tableau-de-bord' %}#articles" class="btn btn-outline rounded-xl">
+            Retour au catalogue
+        </a>
+    </div>
+</main>
+{% endblock %}

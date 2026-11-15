@@ -1,0 +1,13 @@
+{% if nombre_articles != None %}
+    <span id="panier-count-badge" hx-swap-oob="outerHTML" class="badge badge-lg rounded-xl bg-[#059669] text-white">
+        {{ nombre_articles }}
+    </span>
+{% endif %}
+<div class="alert {% if est_erreur %}alert-error{% else %}alert-success{% endif %} rounded-2xl shadow-sm"
+     role="{% if est_erreur %}alert{% else %}status{% endif %}"
+     aria-live="{% if est_erreur %}assertive{% else %}polite{% endif %}">
+    <span>{{ message_panier }}</span>
+    {% if not est_erreur %}
+        <a href="{% url 'panier_app:panier' %}" class="link font-bold">Voir mon panier</a>
+    {% endif %}
+</div>

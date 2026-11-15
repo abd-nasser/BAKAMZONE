@@ -21,9 +21,15 @@
             <a href="{% url 'entreprise_app:choix-palier' %}" class="btn rounded-xl border-white/30 bg-white/10 text-white hover:bg-white/20">
                 Gérer mon abonnement
             </a>
+            <a href="{% url 'entreprise_app:livraisons-articles' %}" class="btn rounded-xl border-white/30 bg-white/10 text-white hover:bg-white/20">
+                Suivre les livraisons
+            </a>
+            <a href="{% url 'entreprise_app:solde' %}" class="btn rounded-xl border-white/30 bg-white/10 text-white hover:bg-white/20">
+                Solde et retraits
+            </a>
         </header>
 
-        <section aria-label="Indicateurs de l'entreprise" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <section aria-label="Indicateurs de l'entreprise" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
             <article class="card border border-base-300 bg-base-100 shadow-sm">
                 <div class="card-body p-5">
                     <p class="text-sm font-semibold text-base-content/60">Articles disponibles</p>
@@ -57,7 +63,16 @@
                     {% endif %}
                 </div>
             </article>
+            <article class="card border border-base-300 bg-base-100 shadow-sm">
+                <div class="card-body p-5">
+                    <p class="text-sm font-semibold text-base-content/60">Solde disponible</p>
+                    <p class="text-2xl font-black text-success">{{ solde_entreprise.montant_disponible|floatformat:2 }} FCFA</p>
+                    <a href="{% url 'entreprise_app:solde' %}" class="link link-success text-xs">Ventes et demandes de retrait</a>
+                </div>
+            </article>
         </section>
+
+        {% include "entreprise_templates/entreprise_article_stats.html" %}
 
         <section class="grid gap-6 xl:grid-cols-5">
             <article class="card border border-base-300 bg-base-100 shadow-sm xl:col-span-2">

@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% load l10n %}
+
+{% block title %}Livraisons des articles | BAKAMZONE{% endblock %}
+
+{% block content %}
+<main class="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
+    <header class="flex flex-wrap items-center justify-between gap-4 rounded-3xl bg-gradient-to-br from-[#047857] to-[#059669] p-6 text-white shadow-xl sm:p-8">
+        <div>
+            <p class="text-sm font-semibold text-white/75">Espace entreprise</p>
+            <h1 class="mt-1 text-3xl font-black">Livraisons de {{ entreprise.nom_entreprise }}</h1>
+            <p class="mt-2 max-w-2xl text-sm text-white/80">
+                Seuls vos articles hors bloc issus de commandes payées apparaissent ici.
+                Les articles de votre entreprise dans une même commande sont regroupés en une seule course.
+            </p>
+        </div>
+        <a href="{% url 'entreprise_app:entreprise-detail' %}" class="btn rounded-xl border-white/30 bg-white/10 text-white hover:bg-white/20">
+            Retour au tableau de bord
+        </a>
+    </header>
+
+    {% if messages %}
+        <div class="space-y-2" aria-live="polite">
+            {% for message in messages %}
+                <div class="alert {% if message.tags == 'error' %}alert-error{% elif message.tags == 'success' %}alert-success{% else %}alert-info{% endif %} rounded-xl">
+                    <span>{{ message }}</span>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <section class="space-y-4" aria-label="Commandes payées à livrer">
+        {% for groupe in commandes_entreprise %}
+            <article class="card border border-base-300 bg-base-100 shadow-sm">
+                <div class="card-body gap-5 md:flex-row md:items-start md:justify-between">
+                    <div class="space-y-3">
+                        <div>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <h2 class="card-title">Commande {{ groupe.commande.reference }}</h2>
+                                <span class="badge badge-success badge-outline">Payée</span>
+                                {% if groupe.peut_creer_course %}
+                                    <span class="badge badge-warning badge-outline">À expédier</span>
+                                {% endif %}
+                            </div>
+                            <p class="mt-1 text-sm text-base-content/60">
+                                {{ groupe.commande.client.user.get_full_name }}
+                            </p>
+                        </div>
+                        <div class="text-sm">
+                            <p class="font-semibold">Destination client : {{ groupe.commande.zone_arrivee.nom }}</p>
+                            <p class="text-base-content/60">
+                                GPS : {{ groupe.commande.latitude_livraison|unlocalize }},
+                                {{ groupe.commande.longitude_livraison|unlocalize }}
+                            </p>
+                            <a
+                                href="https://www.google.com/maps?q={{ groupe.commande.latitude_livraison|unlocalize }},{{ groupe.commande.longitude_livraison|unlocalize }}"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="link link-success text-xs"
+                            >
+                                Voir la destination sur la carte
+                            </a>
+                        </div>
+
+                        <div class="rounded-xl border border-base-300 p-3">
+                            <h3 class="font-semibold">Vos articles dans cette commande</h3>
+                            <ul class="mt-2 list-inside list-disc space-y-1 text-sm">
+                                {% for ligne in groupe.lignes %}
+                                    <li>{{ ligne.nom_article }} × {{ ligne.quantite }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+
+                        {% for demande in groupe.courses_livraison %}
+                            <div class="rounded-xl border border-base-300 bg-base-200/50 p-3 text-sm">
+                                <p class="font-semibold">
+                                    Course #{{ demande.pk }} — {{ demande.get_statut_display }}
+                                </p>
+                                <p class="text-base-content/60">
+                                    Départ : {{ demande.zone_depart.nom }} · {{ demande.prix }} FCFA (non encaissés)
+                                </p>
+                                <ul class="mt-1 list-inside list-disc text-base-content/60">
+                                    {% for ligne in demande.lignes_livrees %}
+                                        <li>{{ ligne.nom_article }} × {{ ligne.quantite }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        {% endfor %}
+                    </div>
+
+                    {% if not groupe.courses_livraison or groupe.courses_livraison.0.statut == "annulee" %}
+                        <form
+                            x-data="{
+                                latitude: '',
+                                longitude: '',
+                                geoStatus: '',
+                                capturing: false,
+                                capturePosition() {
+                                    if (!navigator.geolocation) {
+                                        this.geoStatus = 'La géolocalisation n’est pas disponible sur cet appareil.';
+                                        return;
+                                    }
+                                    this.capturing = true;
+                                    this.geoStatus = 'Recherche de votre position…';
+                                    navigator.geolocation.getCurrentPosition(
+                                        (position) => {
+                                            this.latitude = position.coords.latitude.toFixed(6);
+                                            this.longitude = position.coords.longitude.toFixed(6);
+                                            this.geoStatus = 'Position du point de collecte capturée.';
+                                            this.capturing = false;
+                                        },
+                                        (error) => {
+                                            this.geoStatus = error.code === 1
+                                                ? 'Autorisez la géolocalisation pour capturer le point de collecte.'
+                                                : 'Position indisponible. Réessayez dans un endroit mieux couvert.';
+                                            this.capturing = false;
+                                        },
+                                        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+                                    );
+                                }
+                            }"
+                            method="post"
+                            action="{% url 'entreprise_app:creer-livraison-commande' groupe.commande.pk %}"
+                            class="w-full space-y-3 rounded-2xl border border-base-300 p-4 md:max-w-sm"
+                        >
+                            {% csrf_token %}
+                            <label class="form-control">
+                                <span class="label-text mb-2 font-semibold">Zone de départ</span>
+                                {{ livraison_form.zone_depart }}
+                            </label>
+                            {{ livraison_form.latitude_depart }}
+                            {{ livraison_form.longitude_depart }}
+                            <div class="space-y-2">
+                                <button
+                                    type="button"
+                                    class="btn btn-outline btn-sm w-full rounded-xl"
+                                    @click="capturePosition()"
+                                    :disabled="capturing"
+                                >
+                                    <span x-text="capturing ? 'Capture en cours…' : 'Capturer ma position de collecte'"></span>
+                                </button>
+                                <p
+                                    class="min-h-5 text-xs"
+                                    :class="latitude && longitude ? 'text-success' : 'text-base-content/60'"
+                                    x-text="geoStatus || 'La position GPS réelle est obligatoire pour publier la course.'"
+                                    aria-live="polite"
+                                ></p>
+                                <p x-show="latitude && longitude" class="text-xs text-base-content/60">
+                                    Point de collecte :
+                                    <span class="font-mono" x-text="latitude"></span>,
+                                    <span class="font-mono" x-text="longitude"></span>
+                                </p>
+                            </div>
+                            <p class="text-xs text-base-content/60">
+                                La zone choisie détermine le bloc de dispatch. Le GPS capturé indique le point précis de collecte. Le tarif est indicatif ; aucun frais n'est encaissé ici.
+                            </p>
+                            <button
+                                type="submit"
+                                class="btn btn-success w-full rounded-xl text-white"
+                                :disabled="!latitude || !longitude || capturing"
+                            >
+                                Trouver un livreur
+                            </button>
+                        </form>
+                    {% endif %}
+                </div>
+            </article>
+        {% empty %}
+            <div class="rounded-3xl border border-dashed border-base-300 bg-base-100 p-10 text-center">
+                <h2 class="text-xl font-bold">Aucun article payé hors bloc à livrer</h2>
+                <p class="mt-2 text-sm text-base-content/60">
+                    Les commandes contenant vos articles hors bloc apparaîtront ici après confirmation du paiement.
+                </p>
+            </div>
+        {% endfor %}
+    </section>
+</main>
+{% endblock %}

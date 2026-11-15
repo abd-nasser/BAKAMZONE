@@ -71,7 +71,7 @@ Avant tout engagement financier lourd (import des motos, recrutements), un accor
 ---
 
 ## 9. Direction technique & Stack validée
-* **Hébergement & Infra** : Conteneurisation **Docker**, serveur **Nginx** sur un VPS KVM 2 (Hostinger).
+* **Hébergement & Infra** : Conteneurisation **Docker**, serveur **Nginx** sur un VPS KVM 4 (Hostinger) retenu comme cible — 4 vCPU, 16 Go RAM, 200 Go NVMe et 16 To de bande passante mensuelle. Le KVM 2 est écarté ; la souscription ou migration reste à confirmer.
 * **Stack Logicielle** : 
   - **Django** (Back-end et logique métier robuste).
   - **django-tailwind + DaisyUI** (Design system moderne, classes utilitaires).

@@ -4,7 +4,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.core.exceptions import PermissionDenied
-from django.db.models import Case, DecimalField, Exists, F, OuterRef, Q, When
+from django.db.models import Case, DecimalField, Exists, F, OuterRef, Q, Sum, When
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.utils import timezone
@@ -21,6 +21,7 @@ from demande_livraison_app.forms import DemandeLivraisonForm
 from demande_livraison_app.models import DemandeLivraison
 from demande_livraison_app.pricing import obtenir_tarifs_livraison
 from livreurs_app.models import Livreur
+from panier_app.models import Commande, Panier
 from zones_app.models import Zone
 
 logger = logging.getLogger(__name__)
@@ -117,7 +118,6 @@ class ClientDashboardView(LoginRequiredMixin, UserPassesTestMixin, TemplateView)
         )
         catalogue_articles = Article.objects.filter(
             disponible=True,
-            en_bloc=True,
         ).filter(
             Q(date_expiration__isnull=True) | Q(date_expiration__gt=timezone.now())
         ).annotate(
@@ -127,8 +127,6 @@ class ClientDashboardView(LoginRequiredMixin, UserPassesTestMixin, TemplateView)
                 default=F("prix"),
                 output_field=DecimalField(max_digits=10, decimal_places=2),
             ),
-        ).filter(
-            stock_disponible=True,
         ).select_related("entreprise")
         articles = catalogue_articles
         if article_query:
@@ -161,6 +159,19 @@ class ClientDashboardView(LoginRequiredMixin, UserPassesTestMixin, TemplateView)
         context.update({
             "client": client,
             "active_deliveries": active_deliveries,
+            "client_commande": Commande.objects.filter(
+                client=client,
+            ).select_related(
+                "zone_arrivee",
+            ).order_by(
+                "-date_creation",
+            ).first(),
+            "nombre_articles_panier": (
+                Panier.objects.filter(
+                    client=client,
+                    statut=Panier.STATUT_ACTIF,
+                ).aggregate(total=Sum("lignes__quantite"))["total"] or 0
+            ),
             "livreurs": livreurs,
             "livreur_query": livreur_query,
             "livreur_vehicule": livreur_vehicule,
@@ -232,6 +243,31 @@ class ClientDeliveryTrackingView(
                     "ws_path": f"/ws/livraisons/{demande.pk}/suivi/",
                 }] if suivi_disponible else [],
             },
+        })
+        return context
+
+
+class ClientArticleDetailView(ClientRequiredMixin, DetailView):
+    model = Article
+    template_name = "clients_templates/article_detail.html"
+    context_object_name = "article"
+
+    def get_queryset(self):
+        return Article.objects.filter(
+            disponible=True,
+        ).filter(
+            Q(date_expiration__isnull=True)
+            | Q(date_expiration__gt=timezone.now())
+        ).select_related("entreprise")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        client = Client.objects.get(user=self.request.user)
+        context.update({
+            "est_favori": client.articles_favoris.filter(
+                pk=self.object.pk,
+            ).exists(),
+            "nb_favoris": self.object.favoris_de.count(),
         })
         return context
 
@@ -497,6 +533,39 @@ class ToggleFavoriLivreurView(LoginRequiredMixin, UserPassesTestMixin, View):
                 },
             )
         return redirect("clients_app:profil-livreur", pk=livreur.pk)
+
+
+class ToggleFavoriArticleView(ClientRequiredMixin, View):
+    def post(self, request, pk, *args, **kwargs):
+        article = get_object_or_404(
+            Article.objects.filter(
+                disponible=True,
+            ).filter(
+                Q(date_expiration__isnull=True)
+                | Q(date_expiration__gt=timezone.now())
+            ),
+            pk=pk,
+        )
+        client = Client.objects.get(user=request.user)
+
+        if client.articles_favoris.filter(pk=article.pk).exists():
+            client.articles_favoris.remove(article)
+            est_favori = False
+        else:
+            client.articles_favoris.add(article)
+            est_favori = True
+
+        if request.headers.get("HX-Request") == "true":
+            return render(
+                request,
+                "partials/clients/article_favori_button.html",
+                {
+                    "article": article,
+                    "est_favori": est_favori,
+                    "nb_favoris": article.favoris_de.count(),
+                },
+            )
+        return redirect("clients_app:detail-article", pk=article.pk)
 
 
 class InscriptionClientView(CreateView):

@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block title %}Mon panier | BAKAMZONE{% endblock %}
+
+{% block content %}
+<main
+    class="mx-auto max-w-5xl space-y-6 px-4 py-8 sm:px-6 lg:px-8"
+    x-data="commandeCheckout()"
+    {% if checkout_open %}x-init="$nextTick(() => $refs.checkout.showModal())"{% endif %}
+>
+    <header class="flex flex-wrap items-center justify-between gap-4">
+        <div>
+            <p class="text-sm font-bold uppercase tracking-wider text-[#059669]">Achats</p>
+            <h1 class="mt-1 text-3xl font-black">Mon panier</h1>
+        </div>
+        <div class="flex items-center gap-3">
+            <span id="panier-count-badge" class="badge badge-lg rounded-xl bg-[#059669] text-white">{{ nombre_articles }}</span>
+            <a href="{% url 'clients_app:tableau-de-bord' %}#articles" class="btn btn-ghost rounded-xl">
+                Continuer mes achats
+            </a>
+        </div>
+    </header>
+
+    {% include "partials/panier/panier_contenu.html" %}
+
+    <dialog id="validation-commande-modal" class="modal" x-ref="checkout">
+        <div class="modal-box max-w-xl rounded-3xl">
+            <div class="flex items-start justify-between gap-4">
+                <div>
+                    <p class="text-sm font-bold uppercase tracking-wider text-[#059669]">Dernière étape</p>
+                    <h2 class="mt-1 text-2xl font-black">Valider ma commande</h2>
+                </div>
+                <button
+                    type="button"
+                    class="btn btn-circle btn-ghost btn-sm"
+                    aria-label="Fermer"
+                    @click="$refs.checkout.close()"
+                >✕</button>
+            </div>
+
+            <p class="mt-3 text-sm text-base-content/70">
+                Choisissez la zone de livraison et partagez votre position GPS précise.
+                Si le GPS est indisponible, les coordonnées de la zone sélectionnée seront utilisées.
+            </p>
+
+            <form
+                method="post"
+                action="{% url 'panier_app:valider_commande' %}"
+                hx-post="{% url 'panier_app:valider_commande' %}"
+                hx-target="#commande-feedback"
+                hx-swap="outerHTML"
+                class="mt-5 space-y-4"
+            >
+                {% csrf_token %}
+                <label class="form-control">
+                    <span class="label-text mb-1 font-semibold">{{ form_commande.zone_arrivee.label }}</span>
+                    {{ form_commande.zone_arrivee }}
+                </label>
+
+                {{ form_commande.latitude }}
+                {{ form_commande.longitude }}
+
+                <div class="rounded-2xl border border-base-300 bg-base-200/50 p-4">
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <p class="font-bold">Position GPS</p>
+                            <p class="text-xs text-base-content/60" x-show="!latitude">
+                                La zone choisie sera utilisée comme repli.
+                            </p>
+                            <p class="text-xs text-success" x-show="latitude" x-cloak>
+                                Position capturée : <span x-text="latitude"></span>, <span x-text="longitude"></span>
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            class="btn btn-outline btn-success rounded-xl"
+                            @click="capturerPosition()"
+                            :disabled="isGeolocating"
+                        >
+                            <span x-show="!isGeolocating">📍 Capturer ma position</span>
+                            <span x-show="isGeolocating" x-cloak class="loading loading-spinner loading-sm"></span>
+                            <span x-show="isGeolocating" x-cloak>Capture en cours...</span>
+                        </button>
+                    </div>
+                    {% include "partials/panier/gps_fallback_notice.html" %}
+                </div>
+
+                {% include "partials/panier/commande_feedback.html" %}
+
+                <div class="rounded-xl bg-base-200/60 p-4 text-sm">
+                    <div class="flex justify-between gap-4">
+                        <span>Articles</span>
+                        <strong>{{ panier.total_panier }} FCFA</strong>
+                    </div>
+                    <p class="mt-2 text-xs text-base-content/60">
+                        Les frais de livraison seront déterminés séparément. Le paiement en ligne sera proposé dans une prochaine étape.
+                    </p>
+                </div>
+
+                <button type="submit" class="btn w-full rounded-xl bg-[#059669] text-white hover:bg-[#047857]">
+                    <span class="htmx-indicator loading loading-spinner loading-sm" aria-hidden="true"></span>
+                    Confirmer la commande
+                </button>
+            </form>
+        </div>
+        <form method="dialog" class="modal-backdrop">
+            <button aria-label="Fermer la fenêtre">Fermer</button>
+        </form>
+    </dialog>
+</main>
+
+<script>
+    function commandeCheckout() {
+        return {
+            latitude: "{{ form_commande.latitude.value|default:'' }}",
+            longitude: "{{ form_commande.longitude.value|default:'' }}",
+            isGeolocating: false,
+            geoError: "",
+            capturerPosition() {
+                if (!navigator.geolocation) {
+                    this.geoError = "La géolocalisation n'est pas prise en charge. La zone choisie servira de repli.";
+                    return;
+                }
+
+                this.isGeolocating = true;
+                this.geoError = "";
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        this.latitude = position.coords.latitude.toFixed(6);
+                        this.longitude = position.coords.longitude.toFixed(6);
+                        this.isGeolocating = false;
+                    },
+                    () => {
+                        this.latitude = "";
+                        this.longitude = "";
+                        this.geoError = "Position GPS indisponible. Les coordonnées de la zone choisie seront utilisées.";
+                        this.isGeolocating = false;
+                    },
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                );
+            },
+        };
+    }
+</script>
+{% endblock %}

@@ -36,10 +36,14 @@
             <!-- Champ Identifiant (Téléphone ou Username) -->
             <div>
                 <label class="label font-semibold text-xs tracking-wider uppercase text-base-content/70 py-1">
-                    {{ connexion_form.identifiant.label }}
+                    {{ connexion_form.identifiant.label|default:"Téléphone ou Nom d'utilisateur" }}
                 </label>
                 <div class="relative">
-                    {{ connexion_form.identifiant }}
+                    {% if connexion_form.identifiant %}
+                        {{ connexion_form.identifiant }}
+                    {% else %}
+                        <input type="text" name="identifiant" required placeholder="Numéro de téléphone ou identifiant" class="input input-bordered w-full rounded-2xl bg-base-200/50 border-base-300 focus:border-[#059669] focus:ring-2 focus:ring-[#059669]/20 transition-all text-sm h-12 pr-10">
+                    {% endif %}
                     <span class="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-base-content/40">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
@@ -52,12 +56,16 @@
             <div>
                 <div class="flex justify-between items-center py-1">
                     <label class="label font-semibold text-xs tracking-wider uppercase text-base-content/70 p-0">
-                        {{ connexion_form.password.label }}
+                        {{ connexion_form.password.label|default:"Mot de passe" }}
                     </label>
                     <a href="#" class="text-xs text-[#059669] hover:underline">Oublié ?</a>
                 </div>
                 <div class="relative">
-                    {{ connexion_form.password }}
+                    {% if connexion_form.password %}
+                        {{ connexion_form.password }}
+                    {% else %}
+                        <input :type="showPassword ? 'text' : 'password'" name="password" required placeholder="Votre mot de passe" class="input input-bordered w-full rounded-2xl bg-base-200/50 border-base-300 focus:border-[#059669] focus:ring-2 focus:ring-[#059669]/20 transition-all text-sm h-12 pr-10">
+                    {% endif %}
                     <button type="button" 
                             @click="showPassword = !showPassword"
                             class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-base-content/40 hover:text-base-content focus:outline-none">
