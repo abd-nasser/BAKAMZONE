@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}BAKAMZONE — Entreprises Partenaires & Retraits{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    
+    <!-- En-tête et retour cockpit -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="flex items-center gap-2 mb-1">
+                <a 
+                    href="{% url 'superuser_app:dashboard' %}" 
+                    class="btn btn-ghost btn-xs gap-1 text-base-content/70 hover:text-primary pl-0"
+                >
+                    ← Cockpit Central
+                </a>
+                <span class="text-base-content/30">•</span>
+                <span class="text-xs font-bold uppercase tracking-wider text-primary">Gestion Réseau</span>
+            </div>
+            <h1 class="text-3xl font-black tracking-tight text-base-content flex items-center gap-3">
+                <span>🏢</span> Entreprises Partenaires
+            </h1>
+            <p class="text-sm text-base-content/70 mt-1">
+                Supervision des marchands, gestion des abonnements et validation des demandes de retraits de fonds.
+            </p>
+        </div>
+
+        <!-- Indicateurs Synthétiques -->
+        <div class="flex items-center gap-3">
+            <div class="stat bg-base-100 border border-base-200 rounded-2xl p-3 shadow-sm min-w-[130px]">
+                <div class="stat-title text-xs">Total Entreprises</div>
+                <div class="stat-value text-2xl font-black text-primary">{{ total_entreprises }}</div>
+            </div>
+            
+            <div class="stat bg-base-100 border border-base-200 rounded-2xl p-3 shadow-sm min-w-[170px] {% if total_retraits_en_attente > 0 %}border-warning/50 bg-warning/5{% endif %}">
+                <div class="stat-title text-xs flex items-center gap-1">
+                    {% if total_retraits_en_attente > 0 %}
+                        <span class="w-2 h-2 rounded-full bg-warning animate-ping"></span>
+                    {% endif %}
+                    Retraits en attente
+                </div>
+                <div class="stat-value text-2xl font-black {% if total_retraits_en_attente > 0 %}text-warning{% else %}text-base-content{% endif %}">
+                    {{ total_retraits_en_attente }}
+                </div>
+                <div class="stat-desc text-xs font-bold mt-0.5">
+                    {{ montant_total_retraits_en_attente|floatformat:0 }} FCFA
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Barre de filtres et recherche dynamique HTMX -->
+    <form
+        id="filter-form"
+        method="get"
+        action=""
+        hx-get=""
+        hx-trigger="keyup changed delay:300ms from:#search-input, change from:select, submit"
+        hx-target="#entreprises-table-container"
+        hx-swap="outerHTML"
+        hx-indicator="#search-spinner"
+        hx-push-url="true"
+        class="bg-base-100 p-5 rounded-3xl border border-base-200 shadow-md space-y-4"
+    >
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-center">
+            <!-- Recherche texte -->
+            <div class="lg:col-span-5 relative">
+                <div class="relative">
+                    <input
+                        type="search"
+                        id="search-input"
+                        name="q"
+                        value="{{ search_query }}"
+                        placeholder="Rechercher par nom, RC, gérant, téléphone..."
+                        class="input input-bordered w-full rounded-2xl pl-10 pr-10 text-sm focus:border-primary focus:outline-none"
+                    />
+                    <span class="absolute inset-y-0 left-3 flex items-center pointer-events-none text-base-content/50">
+                        🔍
+                    </span>
+                    <!-- Spinner HTMX -->
+                    <span id="search-spinner" class="htmx-indicator absolute inset-y-0 right-3 flex items-center">
+                        <span class="loading loading-spinner loading-sm text-primary"></span>
+                    </span>
+                </div>
+            </div>
+
+            <!-- Filtre Palier -->
+            <div class="lg:col-span-2">
+                <select name="palier" class="select select-bordered w-full rounded-2xl text-sm focus:border-primary">
+                    <option value="">Tous les paliers</option>
+                    {% for code, label in palier_choices %}
+                        <option value="{{ code }}" {% if selected_palier == code %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Filtre Retraits -->
+            <div class="lg:col-span-3">
+                <select name="retrait" class="select select-bordered w-full rounded-2xl text-sm focus:border-primary {% if selected_retrait == 'en_attente' %}border-warning text-warning font-bold{% endif %}">
+                    <option value="">Toutes les entreprises</option>
+                    <option value="en_attente" {% if selected_retrait == 'en_attente' %}selected{% endif %}>
+                        ⚠️ Retraits en attente uniquement
+                    </option>
+                </select>
+            </div>
+
+            <!-- Filtre Abonnement -->
+            <div class="lg:col-span-2">
+                <select name="abonnement" class="select select-bordered w-full rounded-2xl text-sm focus:border-primary">
+                    <option value="">Tous statuts</option>
+                    <option value="actif" {% if selected_abonnement == 'actif' %}selected{% endif %}>Abonnement actif</option>
+                    <option value="inactif" {% if selected_abonnement == 'inactif' %}selected{% endif %}>Abonnement inactif</option>
+                </select>
+            </div>
+        </div>
+    </form>
+
+    <!-- Conteneur des résultats dynamiques HTMX -->
+    {% include 'partials/superuser/entreprise_list_results.html' %}
+
+</div>
+{% endblock %}

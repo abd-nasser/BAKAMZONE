@@ -940,6 +940,28 @@ class InscriptionEntrepriseAdminViewTests(TestCase):
             1,
         )
 
+        demande.statut = "livree"
+        demande.save(update_fields=["statut"])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(
+            response.context["commandes_entreprise"][0]["peut_creer_course"],
+        )
+        course_context = response.context["commandes_entreprise"][0][
+            "courses_livraison"
+        ][0]
+        self.assertEqual(course_context["demande"], demande)
+        self.assertEqual(
+            sorted(ligne.pk for ligne in course_context["lignes_commande"]),
+            [ligne_entreprise.pk, ligne_entreprise_2.pk],
+        )
+        self.assertContains(
+            response,
+            'class="badge badge-success badge-outline">Livrée</span>',
+        )
+        self.assertNotContains(response, "Capturer ma position de collecte")
+        self.assertNotContains(response, "Trouver un livreur")
+
         self.client.force_login(other_user)
         response = self.client.get(url)
         self.assertEqual(

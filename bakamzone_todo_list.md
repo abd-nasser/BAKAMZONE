@@ -52,3 +52,27 @@
 ## 8. Panier client & achats des produits des entreprises
 - [ ] **Cadrage du panier et du workflow d'achat**: en cours dans [`panier_client.md`](./panier_client.md). Les règles confirmées couvrent le panier multi-entreprises, la commande unique, la position GPS au checkout avec confirmation de la zone proposée, le paiement en ligne de `total_panier()` via LigdiCash, le solde entreprise crédité après confirmation du paiement et récupérable à la demande ou en fin de mois, le choix du bloc couvrant le plus de lignes (puis le plus proche), et les demandes de livraison des entreprises vers le client pour les lignes absentes du bloc. Valider les frais, le stock entreprise, les statuts et l'accès entreprise au workflow classique avant l'implémentation.
 - [ ] **Implémentation et validation du parcours d'achat**: en cours — panier HTMX/Alpine et première étape checkout implémentés : zone/GPS (repli sur les coordonnées de zone), création d'une commande en attente avec lignes/prix figés, contrôle de disponibilité/stock, détail de commande protégé. Restent à faire : réservation durable et affectation du stock/bloc, frais de livraison, paiement LigdiCash, livraisons entreprise et soldes.
+
+## 9. Gestion des entreprises et validation des retraits par le Superuser (`superuser_app`)
+- [x] **Permissions d'accès & Mixin personnalisé Superuser (`SuperuserRequiredMixin`)**:
+  - Contrôle d'accès strict : vérification `is_authenticated`, `is_active` et `is_superuser`.
+  - Redirection automatique et message d'alerte toast explicite en cas de tentative d'accès non autorisée.
+- [x] **Vue Liste des Entreprises (`ListeEntrepriseViewBySuperUser`)**:
+  - CBV dans `superuser_app/views.py` avec route `superuser_app:liste-entreprises` (`/superuser/entreprises/`).
+  - Affichage complet des entreprises partenaires : nom, profil gérant/téléphone, palier, abonnement, compteurs d'articles et administrateurs.
+  - Indicateurs financiers de retraits : détection et affichage dynamique des demandes de retrait en attente de validation (`RetraitEntreprise.STATUT_EN_ATTENTE`) avec total du montant réclamé.
+  - Outils de filtrage et barre de recherche dynamique HTMX par nom d'entreprise, numéro RC, gérant ou téléphone.
+- [x] **Vue Détail d'une Entreprise (`EntrepriseDetailViewBySuperUser`)**:
+  - Fiche détaillée de l'entreprise : informations administratives, coordonnées, membres de l'équipe de gestion, inventaire des articles (en bloc et hors bloc).
+  - Situation financière et comptable : chiffre d'affaires cumulé, ventes du mois, solde brut et solde disponible via `obtenir_solde_entreprise`.
+  - Section dédiée à la gestion des demandes de retrait d'argent (`RetraitEntreprise`) associées à l'entreprise avec identification des demandes en attente d'arbitrage.
+- [x] **Actions de Traitement des Demandes de Retrait (Accepter / Refuser avec Commentaire)**:
+  - Modélisation du champ commentaire / motif de décision (`commentaire`) sur `RetraitEntreprise` avec migration `0003_retraitentreprise_commentaire`.
+  - Workflow d'acceptation (passage au statut `approuve` ou `paye`, enregistrement de `date_traitement` et `traite_par`).
+  - Workflow de refus (passage au statut `rejete`, saisie obligatoire du motif/commentaire, libération du solde réservé).
+  - Vues et modales DaisyUI de traitement avec confirmation dans la vue détail marchand.
+- [x] **Tests Automatisés du Cockpit Superuser (16 tests unitaires validés — 100% OK)**:
+  - 16 tests unitaires couvrant le mixin de permission, la liste dynamique des entreprises, les filtres HTMX, la vue détail entreprise et l'ensemble des actions de retraits (approbation, paiement, rejet avec et sans motif).
+
+
+

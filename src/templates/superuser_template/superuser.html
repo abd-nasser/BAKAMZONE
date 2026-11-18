@@ -4,63 +4,310 @@
 {% block title %}BAKAMZONE — Cockpit Super Administrateur{% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <div class="mb-8">
-        <h1 class="text-3xl font-black tracking-tight">Cockpit Central Superuser</h1>
-        <p class="text-sm text-base-content/70 mt-1">Supervision globale, création de blocs, équipes d'administration et flotte de livreurs.</p>
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    
+    <!-- Hero Banner Cockpit Central -->
+    <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-base-100 via-base-100 to-primary/5 border border-base-200/80 shadow-xl p-6 sm:p-8">
+        <!-- Glows décoratifs -->
+        <div class="absolute -right-20 -top-20 w-80 h-80 bg-primary/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute right-40 -bottom-20 w-60 h-60 bg-warning/10 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div class="space-y-2">
+                <div class="flex items-center gap-2">
+                    <span class="badge badge-sm font-bold bg-primary/15 text-primary border-0 gap-1.5 py-2.5 px-3">
+                        <span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+                        Supervision Centrale
+                    </span>
+                    <span class="text-xs text-base-content/50 font-medium">Plateforme BAKAMZONE</span>
+                </div>
+
+                <h1 class="text-3xl sm:text-4xl font-black text-base-content tracking-tight">
+                    Cockpit Central Superuser
+                </h1>
+                
+                <p class="text-sm text-base-content/70 max-w-2xl">
+                    Pilotage global du réseau : gestion des blocs de quartier, arbitrage financier des retraits marchands, création des équipes et contrôle de la flotte.
+                </p>
+            </div>
+
+            <!-- Identité Superuser & Date -->
+            <div class="bg-base-200/50 backdrop-blur-sm rounded-2xl p-4 border border-base-300/60 flex items-center gap-4 shadow-sm self-start md:self-auto min-w-[240px]">
+                <div class="avatar placeholder">
+                    <div class="bg-primary text-white mask mask-squircle w-12 h-12 flex items-center justify-center font-black text-lg shadow-sm">
+                        {{ request.user.first_name|slice:":1"|upper }}{{ request.user.last_name|slice:":1"|upper }}
+                    </div>
+                </div>
+                <div class="text-xs space-y-0.5">
+                    <p class="font-bold text-sm text-base-content">{{ request.user.get_full_name|default:"Super Administrateur" }}</p>
+                    <p class="text-primary font-mono font-semibold">{{ request.user.telephone }}</p>
+                    <p class="text-base-content/50 text-[11px]">Rôle : Super Administrateur</p>
+                </div>
+            </div>
+        </div>
     </div>
 
+    <!-- KPI Bento Grid de Supervision -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        
+        <!-- Blocs -->
+        <div class="card bg-base-100 rounded-3xl border border-base-200/80 p-5 shadow-sm hover:shadow-md transition-all">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-bold uppercase tracking-wider text-base-content/60">Blocs Réseau</span>
+                <span class="p-2.5 rounded-2xl bg-base-200 text-base-content/70 text-lg">🏢</span>
+            </div>
+            <div class="mt-3">
+                <div class="text-3xl font-black text-base-content font-mono tracking-tight">
+                    {{ total_blocs }}
+                </div>
+                <p class="text-xs text-base-content/60 mt-1">Quartiers couverts à Ouagadougou</p>
+            </div>
+        </div>
+
+        <!-- Entreprises -->
+        <div class="card bg-base-100 rounded-3xl border border-base-200/80 p-5 shadow-sm hover:shadow-md transition-all">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-bold uppercase tracking-wider text-primary">Entreprises Marchandes</span>
+                <span class="p-2.5 rounded-2xl bg-primary/10 text-primary text-lg">🛍️</span>
+            </div>
+            <div class="mt-3">
+                <div class="text-3xl font-black text-primary font-mono tracking-tight">
+                    {{ total_entreprises|default:0 }}
+                </div>
+                <p class="text-xs text-base-content/60 mt-1">Partenaires inscrits sur le réseau</p>
+            </div>
+        </div>
+
+        <!-- Retraits en Attente (Alerte Visuelle) -->
+        <a 
+            href="{% url 'superuser_app:liste-entreprises' %}?retrait=en_attente" 
+            class="card bg-base-100 rounded-3xl border p-5 shadow-sm hover:shadow-md transition-all group
+            {% if total_retraits_attente > 0 %}border-warning/50 bg-gradient-to-br from-warning/10 via-base-100 to-warning/5{% else %}border-base-200/80{% endif %}"
+        >
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-bold uppercase tracking-wider {% if total_retraits_attente > 0 %}text-warning{% else %}text-base-content/60{% endif %}">
+                    Retraits en Attente
+                </span>
+                <span class="p-2.5 rounded-2xl {% if total_retraits_attente > 0 %}bg-warning/20 text-warning{% else %}bg-base-200 text-base-content/70{% endif %} text-lg">
+                    💳
+                </span>
+            </div>
+            <div class="mt-3">
+                <div class="text-3xl font-black font-mono tracking-tight flex items-center gap-2 {% if total_retraits_attente > 0 %}text-warning{% else %}text-base-content{% endif %}">
+                    {{ total_retraits_attente|default:0 }}
+                    {% if total_retraits_attente > 0 %}
+                        <span class="badge badge-warning badge-sm font-bold animate-pulse text-xs">À traiter</span>
+                    {% endif %}
+                </div>
+                <p class="text-xs text-base-content/60 mt-1 flex items-center justify-between">
+                    <span>Demandes nécessitant arbitrage</span>
+                    <span class="text-primary font-bold group-hover:translate-x-1 transition-transform">→</span>
+                </p>
+            </div>
+        </a>
+
+        <!-- Statut Plateforme -->
+        <div class="card bg-gradient-to-br from-emerald-500/15 via-emerald-500/5 to-teal-500/10 rounded-3xl border-2 border-emerald-500/40 p-5 shadow-md">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-300">Statut Système</span>
+                <span class="p-2.5 rounded-2xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-lg">⚡</span>
+            </div>
+            <div class="mt-3">
+                <div class="text-xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight flex items-center gap-2">
+                    <span class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></span>
+                    Opérationnel
+                </div>
+                <p class="text-xs text-emerald-700/80 dark:text-emerald-300/80 font-medium mt-1">
+                    Flotte, PWA & WebSockets connectés
+                </p>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Disposition Principale en 2 Colonnes -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <!-- Colonne 1 & 2 : Gestion des blocs -->
-        <div class="lg:col-span-2 space-y-6">
-            <div class="card bg-base-100 p-6 rounded-3xl border border-base-200 shadow-xl">
-                <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
-                    <span>🏢</span> Liste des Blocs enregistrés ({{ total_blocs }})
-                </h2>
-                
-                <div id="blocs-list-container">
+        
+        <!-- Colonne 1 & 2 : Blocs du Réseau -->
+        <div class="lg:col-span-2 space-y-4">
+            <div class="card bg-base-100 rounded-3xl border border-base-200 shadow-xl overflow-hidden">
+                <div class="p-6 border-b border-base-200 bg-base-200/30 flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="p-2 rounded-xl bg-primary/10 text-primary text-base">🏢</span>
+                            <h2 class="text-xl font-black text-base-content">
+                                Blocs de Quartier Enregistrés
+                            </h2>
+                            <span class="badge badge-sm font-bold bg-base-200">{{ total_blocs }}</span>
+                        </div>
+                        <p class="text-xs text-base-content/60 mt-1 pl-9">
+                            Unités logistiques de proximité assurant le stockage local et le dispatch de la flotte.
+                        </p>
+                    </div>
+
+                    <a 
+                        href="{% url 'blocs_app:creer-bloc' %}" 
+                        class="btn btn-sm btn-primary rounded-xl gap-1.5 shadow-sm"
+                    >
+                        <span>➕</span> Nouveau Bloc
+                    </a>
+                </div>
+
+                <div class="p-6" id="blocs-list-container">
                     {% if blocs %}
-                        <div class="space-y-3">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             {% for b in blocs %}
-                                <div class="p-4 rounded-2xl bg-base-200/50 border border-base-300 flex items-center justify-between">
-                                    <div>
-                                        <p class="font-bold text-base">{{ b.nom }} <span class="badge badge-sm badge-ghost">{{ b.code }}</span></p>
-                                        <p class="text-xs text-base-content/60">📍 {{ b.get_quartier_display }}, {{ b.get_ville_display }} • Capacité: {{ b.capacite_stockage }} articles / {{ b.capacite_motos }} motos</p>
+                                <div class="p-5 rounded-3xl bg-base-200/40 hover:bg-base-200/70 border border-base-300/50 transition-all hover:shadow-md flex flex-col justify-between space-y-4">
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div>
+                                            <div class="flex items-center gap-2">
+                                                <h3 class="font-black text-base text-base-content">{{ b.nom }}</h3>
+                                                <span class="badge badge-xs font-mono font-bold">{{ b.code }}</span>
+                                            </div>
+                                            <p class="text-xs text-base-content/60 mt-1 flex items-center gap-1">
+                                                <span>📍</span> {{ b.get_quartier_display }}, {{ b.get_ville_display }}
+                                            </p>
+                                        </div>
+
+                                        <span class="badge badge-sm font-bold {% if b.actif %}badge-success text-white shadow-sm{% else %}badge-error text-white{% endif %}">
+                                            {% if b.actif %}Actif{% else %}Inactif{% endif %}
+                                        </span>
                                     </div>
-                                    <span class="badge badge-sm {% if b.actif %}badge-success text-white{% else %}badge-error text-white{% endif %}">
-                                        {% if b.actif %}Actif{% else %}Inactif{% endif %}
-                                    </span>
+
+                                    <!-- Capacités de stockage et flotte -->
+                                    <div class="space-y-2 pt-3 border-t border-base-300/50 text-xs">
+                                        <div class="flex items-center justify-between text-base-content/70">
+                                            <span class="flex items-center gap-1.5">
+                                                <span>📦</span> Capacité Stock
+                                            </span>
+                                            <span class="font-bold text-base-content">{{ b.capacite_stockage }} articles</span>
+                                        </div>
+                                        <div class="flex items-center justify-between text-base-content/70">
+                                            <span class="flex items-center gap-1.5">
+                                                <span>🛵</span> Capacité Flotte
+                                            </span>
+                                            <span class="font-bold text-base-content">{{ b.capacite_motos }} motos</span>
+                                        </div>
+                                    </div>
                                 </div>
                             {% endfor %}
                         </div>
                     {% else %}
-                        <p class="text-sm text-base-content/60">Aucun bloc configuré pour le moment.</p>
+                        <div class="p-12 text-center text-base-content/60 flex flex-col items-center justify-center">
+                            <span class="text-4xl">🏢</span>
+                            <p class="font-bold text-sm mt-3">Aucun bloc configuré pour le moment.</p>
+                            <a href="{% url 'blocs_app:creer-bloc' %}" class="btn btn-sm btn-primary rounded-xl mt-4">
+                                Créer le premier bloc
+                            </a>
+                        </div>
                     {% endif %}
                 </div>
             </div>
         </div>
 
-        <!-- Colonne 3 : Actions rapides -->
+        <!-- Colonne 3 : Actions Rapides & Modules Administratifs -->
         <div class="space-y-6">
-            <div class="card bg-base-100 p-6 rounded-3xl border border-base-200 shadow-xl">
-                <h3 class="text-lg font-bold mb-2">⚡ Actions rapides</h3>
-                <p class="text-xs text-base-content/70 mb-4">Initialisation rapide des composants du réseau.</p>
-                <div class="space-y-2">
-                    <a href="{% url 'blocs_app:creer-bloc' %}" class="btn btn-outline btn-primary w-full rounded-xl justify-start gap-2">
-                        <span>➕</span> Créer un nouveau Bloc
+            <div class="card bg-base-100 rounded-3xl border border-base-200 shadow-xl overflow-hidden">
+                <div class="p-6 border-b border-base-200 bg-base-200/30">
+                    <div class="flex items-center gap-2">
+                        <span class="p-2 rounded-xl bg-primary/10 text-primary text-base">⚡</span>
+                        <h3 class="text-lg font-black text-base-content">
+                            Actions & Gestion
+                        </h3>
+                    </div>
+                    <p class="text-xs text-base-content/60 mt-1 pl-9">
+                        Initialisation et gestion rapide des composants du réseau.
+                    </p>
+                </div>
+
+                <div class="p-6 space-y-3">
+                    <!-- Action Vedette : Entreprises & Retraits -->
+                    <a 
+                        href="{% url 'superuser_app:liste-entreprises' %}" 
+                        class="p-4 rounded-2xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20 hover:border-primary/40 flex items-center justify-between transition-all hover:shadow-md group"
+                    >
+                        <div class="flex items-center gap-3">
+                            <div class="p-2.5 rounded-xl bg-primary text-white text-base shadow-sm group-hover:scale-105 transition-transform">
+                                🏢
+                            </div>
+                            <div>
+                                <p class="font-bold text-sm text-base-content">Entreprises & Retraits</p>
+                                <p class="text-xs text-base-content/60">Gestion marchands et trésorerie</p>
+                            </div>
+                        </div>
+                        {% if total_retraits_attente > 0 %}
+                            <span class="badge badge-warning badge-sm font-bold shadow-sm animate-pulse text-xs">
+                                {{ total_retraits_attente }} en attente
+                            </span>
+                        {% else %}
+                            <span class="text-base-content/40 group-hover:translate-x-1 transition-transform">→</span>
+                        {% endif %}
                     </a>
-                    <a href="{% url 'zones_app:creer-zone' %}" class="btn btn-outline w-full rounded-xl justify-start gap-2">
-                        <span>📍</span> Créer une zone
+
+                    <!-- Nouveau Bloc -->
+                    <a 
+                        href="{% url 'blocs_app:creer-bloc' %}" 
+                        class="p-3.5 rounded-2xl bg-base-200/50 hover:bg-base-200 border border-base-300/50 flex items-center justify-between transition-all group"
+                    >
+                        <div class="flex items-center gap-3">
+                            <span class="p-2 rounded-xl bg-base-100 text-base shadow-sm">➕</span>
+                            <div>
+                                <p class="font-bold text-sm text-base-content">Créer un Bloc</p>
+                                <p class="text-[11px] text-base-content/60">Nouveau quartier logistique</p>
+                            </div>
+                        </div>
+                        <span class="text-base-content/40 group-hover:translate-x-1 transition-transform">→</span>
                     </a>
-                    <a href="{% url 'admins_app:creer-admin-bloc' %}" class="btn btn-outline w-full rounded-xl justify-start gap-2">
-                        <span>👥</span> Créer une Équipe Admin Bloc
+
+                    <!-- Créer une zone -->
+                    <a 
+                        href="{% url 'zones_app:creer-zone' %}" 
+                        class="p-3.5 rounded-2xl bg-base-200/50 hover:bg-base-200 border border-base-300/50 flex items-center justify-between transition-all group"
+                    >
+                        <div class="flex items-center gap-3">
+                            <span class="p-2 rounded-xl bg-base-100 text-base shadow-sm">📍</span>
+                            <div>
+                                <p class="font-bold text-sm text-base-content">Créer une Zone</p>
+                                <p class="text-[11px] text-base-content/60">Découpage géographique de livraison</p>
+                            </div>
+                        </div>
+                        <span class="text-base-content/40 group-hover:translate-x-1 transition-transform">→</span>
                     </a>
-                    <a href="{% url 'livreurs_app:inscription-livreur' %}" class="btn btn-outline w-full rounded-xl justify-start gap-2">
-                        <span>🛵</span> Créer un compte livreur
+
+                    <!-- Équipe Admin Bloc -->
+                    <a 
+                        href="{% url 'admins_app:creer-admin-bloc' %}" 
+                        class="p-3.5 rounded-2xl bg-base-200/50 hover:bg-base-200 border border-base-300/50 flex items-center justify-between transition-all group"
+                    >
+                        <div class="flex items-center gap-3">
+                            <span class="p-2 rounded-xl bg-base-100 text-base shadow-sm">👥</span>
+                            <div>
+                                <p class="font-bold text-sm text-base-content">Équipe Admin Bloc</p>
+                                <p class="text-[11px] text-base-content/60">Stock, flotte ou assistant</p>
+                            </div>
+                        </div>
+                        <span class="text-base-content/40 group-hover:translate-x-1 transition-transform">→</span>
+                    </a>
+
+                    <!-- Livreur -->
+                    <a 
+                        href="{% url 'livreurs_app:inscription-livreur' %}" 
+                        class="p-3.5 rounded-2xl bg-base-200/50 hover:bg-base-200 border border-base-300/50 flex items-center justify-between transition-all group"
+                    >
+                        <div class="flex items-center gap-3">
+                            <span class="p-2 rounded-xl bg-base-100 text-base shadow-sm">🛵</span>
+                            <div>
+                                <p class="font-bold text-sm text-base-content">Nouveau Livreur</p>
+                                <p class="text-[11px] text-base-content/60">Affectation moto et rattachement bloc</p>
+                            </div>
+                        </div>
+                        <span class="text-base-content/40 group-hover:translate-x-1 transition-transform">→</span>
                     </a>
                 </div>
             </div>
         </div>
+
     </div>
+
 </div>
 {% endblock %}

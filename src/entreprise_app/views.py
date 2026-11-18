@@ -171,16 +171,20 @@ class EntrepriseLivraisonsArticlesView(EntrepriseRequiredMixin, TemplateView):
         ).prefetch_related(
             "lignes_commande",
         ).order_by("-date_creation")
+        
         courses_par_commande = {}
         for demande in demandes:
-            demande.lignes_livrees = list(demande.lignes_commande.all())
+            lignes_course = list(demande.lignes_commande.all())
             if demande.ligne_commande_id:
                 commande_id = demande.ligne_commande.commande_id
             else:
-                commande_id = demande.lignes_livrees[0].commande_id
-            if not demande.lignes_livrees and demande.ligne_commande_id:
-                demande.lignes_livrees = [demande.ligne_commande]
-            courses_par_commande.setdefault(commande_id, []).append(demande)
+                commande_id = lignes_course[0].commande_id
+            if not lignes_course and demande.ligne_commande_id:
+                lignes_course = [demande.ligne_commande]
+            courses_par_commande.setdefault(commande_id, []).append({
+                "demande": demande,
+                "lignes_commande": lignes_course,
+            })
 
         commandes_entreprise = [
             {
@@ -188,8 +192,8 @@ class EntrepriseLivraisonsArticlesView(EntrepriseRequiredMixin, TemplateView):
                 "lignes": lignes,
                 "courses_livraison": courses_par_commande.get(commande_id, []),
                 "peut_creer_course": not any(
-                    demande.statut in STATUTS_COURSE_EXISTANTE
-                    for demande in courses_par_commande.get(commande_id, [])
+                    course["demande"].statut in STATUTS_COURSE_EXISTANTE
+                    for course in courses_par_commande.get(commande_id, [])
                 ),
             }
             for commande_id, lignes in lignes_par_commande.items()
@@ -239,6 +243,7 @@ class CreerLivraisonCommandeEntrepriseView(EntrepriseRequiredMixin, View):
         if DemandeLivraison.objects.filter(
             Q(ligne_commande__in=lignes_ids)
             | Q(lignes_commande__in=lignes_ids),
+            
             statut__in=STATUTS_COURSE_EXISTANTE,
         ).exists():
             messages.info(request, "Une course existe déjà pour cette commande.")
@@ -267,7 +272,7 @@ class CreerLivraisonCommandeEntrepriseView(EntrepriseRequiredMixin, View):
             position_destinataire_validee=True,
             latitude_destinataire_reelle=commande.latitude_livraison,
             longitude_destinataire_reelle=commande.longitude_livraison,
-            statut_destinataire="position_recue",
+            statut_position_destinataire="position_recue",
             whatsapp_destinataire=telephone_destinataire,
         )
         demande.lignes_commande.set(lignes)

@@ -98,6 +98,12 @@ class RetraitEntreprise(models.Model):
         blank=True,
         related_name="retraits_entreprise_traites",
     )
+    commentaire = models.TextField(
+        blank=True,
+        default="",
+        help_text="Motif de rejet ou commentaire administratif lors du traitement de la demande.",
+    )
+
 
     class Meta:
         ordering = ["-date_demande"]

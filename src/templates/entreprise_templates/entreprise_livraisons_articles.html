@@ -40,6 +40,8 @@
                                 <span class="badge badge-success badge-outline">Payée</span>
                                 {% if groupe.peut_creer_course %}
                                     <span class="badge badge-warning badge-outline">À expédier</span>
+                                {% elif groupe.courses_livraison.0.demande.statut == "livree" %}
+                                    <span class="badge badge-success badge-outline">Livrée</span>
                                 {% endif %}
                             </div>
                             <p class="mt-1 text-sm text-base-content/60">
@@ -71,16 +73,16 @@
                             </ul>
                         </div>
 
-                        {% for demande in groupe.courses_livraison %}
+                        {% for course in groupe.courses_livraison %}
                             <div class="rounded-xl border border-base-300 bg-base-200/50 p-3 text-sm">
                                 <p class="font-semibold">
-                                    Course #{{ demande.pk }} — {{ demande.get_statut_display }}
+                                    Course #{{ course.demande.pk }} — {{ course.demande.get_statut_display }}
                                 </p>
                                 <p class="text-base-content/60">
-                                    Départ : {{ demande.zone_depart.nom }} · {{ demande.prix }} FCFA (non encaissés)
+                                    Départ : {{ course.demande.zone_depart.nom }} · {{ course.demande.prix }} FCFA (non encaissés)
                                 </p>
                                 <ul class="mt-1 list-inside list-disc text-base-content/60">
-                                    {% for ligne in demande.lignes_livrees %}
+                                    {% for ligne in course.lignes_commande %}
                                         <li>{{ ligne.nom_article }} × {{ ligne.quantite }}</li>
                                     {% endfor %}
                                 </ul>
@@ -88,7 +90,7 @@
                         {% endfor %}
                     </div>
 
-                    {% if not groupe.courses_livraison or groupe.courses_livraison.0.statut == "annulee" %}
+                    {% if groupe.peut_creer_course %}
                         <form
                             x-data="{
                                 latitude: '',

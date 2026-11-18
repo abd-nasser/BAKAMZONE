@@ -7,7 +7,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils.text import slugify
-
+        
 from zones_app.models import Zone
 
 from .models import Entreprise, MembreAdminsEntreprise
@@ -17,10 +17,7 @@ User = get_user_model()
 
 class DemandeLivraisonArticleForm(forms.Form):
     zone_depart = forms.ModelChoiceField(
-        queryset=Zone.objects.filter(
-            latitude__isnull=False,
-            longitude__isnull=False,
-        ).select_related("bloc").order_by("bloc__nom", "nom"),
+        queryset=Zone.objects.all().select_related("bloc").order_by("bloc__nom", "nom"),
         label="Zone de départ",
         empty_label="Choisir la zone de départ",
         widget=forms.Select(attrs={

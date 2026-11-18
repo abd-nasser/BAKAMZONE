@@ -1,169 +1,338 @@
 {% extends "base.html" %}
+{% load static %}
 
-{% block title %}Solde entreprise | BAKAMZONE{% endblock %}
+{% block title %}BAKAMZONE — Trésorerie & Retraits · {{ entreprise.nom_entreprise }}{% endblock %}
 
 {% block content %}
-<main class="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
-    <header class="flex flex-wrap items-center justify-between gap-4 rounded-3xl bg-gradient-to-br from-[#047857] to-[#059669] p-6 text-white shadow-xl sm:p-8">
-        <div>
-            <p class="text-sm font-semibold text-white/75">Espace financier entreprise</p>
-            <h1 class="mt-1 text-3xl font-black">Solde de {{ entreprise.nom_entreprise }}</h1>
-            <p class="mt-2 text-sm text-white/80">
-                Ventes créditées au montant brut des lignes, sans commission déduite.
-            </p>
+<main class="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
+    
+    <!-- En-tête Hero Financier -->
+    <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#047857] via-[#059669] to-emerald-700 p-6 sm:p-8 text-white shadow-xl">
+        <div class="absolute -right-20 -top-20 w-80 h-80 bg-white/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute right-40 -bottom-20 w-60 h-60 bg-amber-400/10 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div class="space-y-2">
+                <div class="flex items-center gap-2">
+                    <span class="badge badge-sm font-bold bg-white/20 text-white border-0 gap-1.5 py-2.5 px-3">
+                        <span>💳</span> Trésorerie Marchande
+                    </span>
+                    <span class="text-xs text-white/70 font-medium">BAKAMZONE Partenaire</span>
+                </div>
+
+                <h1 class="text-2xl sm:text-4xl font-black tracking-tight">
+                    Solde & Retraits : {{ entreprise.nom_entreprise }}
+                </h1>
+                
+                <p class="text-sm text-white/80 max-w-2xl">
+                    Suivi de vos revenus générés par les commandes payées et gestion de vos demandes de virement de fonds.
+                </p>
+            </div>
+
+            <div class="flex items-center gap-3 self-start md:self-auto">
+                <a 
+                    href="{% url 'entreprise_app:entreprise-detail' %}" 
+                    class="btn btn-sm sm:btn-md rounded-2xl border-white/30 bg-white/15 text-white hover:bg-white/25 backdrop-blur-sm gap-2 shadow-sm font-semibold transition-all"
+                >
+                    <span>←</span> Tableau de bord
+                </a>
+            </div>
         </div>
-        <a href="{% url 'entreprise_app:entreprise-detail' %}" class="btn rounded-xl border-white/30 bg-white/10 text-white hover:bg-white/20">
-            Retour au tableau de bord
-        </a>
-    </header>
+    </div>
 
     {% if messages %}
         <div class="space-y-2" aria-live="polite">
             {% for message in messages %}
-                <div class="alert {% if message.tags == 'error' %}alert-error{% elif message.tags == 'success' %}alert-success{% else %}alert-info{% endif %} rounded-xl">
+                <div class="alert {% if message.tags == 'error' %}alert-error text-white{% elif message.tags == 'success' %}alert-success text-white{% else %}alert-info{% endif %} rounded-2xl shadow-sm">
                     <span>{{ message }}</span>
                 </div>
             {% endfor %}
         </div>
     {% endif %}
 
-    <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Résumé du solde">
-        <article class="card border border-base-300 bg-base-100 shadow-sm">
-            <div class="card-body p-5">
-                <p class="text-sm font-semibold text-base-content/60">Disponible au retrait</p>
-                <p class="text-2xl font-black text-success">{{ solde.montant_disponible|floatformat:2 }} FCFA</p>
-                <p class="text-xs text-base-content/50">Après retraits en attente, approuvés et payés</p>
+    <!-- Bento Grid des KPIs Financiers -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" aria-label="Résumé du solde">
+        
+        <!-- Solde Disponible Réel (Card Vedette) -->
+        <div class="card bg-gradient-to-br from-emerald-500/15 via-emerald-500/5 to-teal-500/10 rounded-3xl border-2 border-emerald-500/40 p-5 shadow-md relative overflow-hidden">
+            <div class="absolute -right-6 -bottom-6 w-24 h-24 bg-emerald-500/10 rounded-full blur-xl pointer-events-none"></div>
+            <div class="flex items-center justify-between relative z-10">
+                <span class="text-xs font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-300">Disponible au Retrait</span>
+                <span class="p-2.5 rounded-2xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-lg">✨</span>
             </div>
-        </article>
-        <article class="card border border-base-300 bg-base-100 shadow-sm">
-            <div class="card-body p-5">
-                <p class="text-sm font-semibold text-base-content/60">Ventes payées cumulées</p>
-                <p class="text-2xl font-black">{{ solde.montant_ventes|floatformat:2 }} FCFA</p>
-                <p class="text-xs text-base-content/50">Lignes dont le paiement est confirmé</p>
+            <div class="mt-3 relative z-10">
+                <div class="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 font-mono tracking-tight">
+                    {{ solde.montant_disponible|floatformat:0 }}
+                    <span class="text-xs font-bold font-sans">FCFA</span>
+                </div>
+                <p class="text-xs text-emerald-700/80 dark:text-emerald-300/80 font-medium mt-1">Fonds libres après déduction des retraits engagés</p>
             </div>
-        </article>
-        <article class="card border border-base-300 bg-base-100 shadow-sm">
-            <div class="card-body p-5">
-                <p class="text-sm font-semibold text-base-content/60">Ventes payées ce mois</p>
-                <p class="text-2xl font-black">{{ solde.montant_ventes_mois|floatformat:2 }} FCFA</p>
-                <p class="text-xs text-base-content/50">Calculées avec le prix figé des commandes</p>
-            </div>
-        </article>
-        <article class="card border border-base-300 bg-base-100 shadow-sm">
-            <div class="card-body p-5">
-                <p class="text-sm font-semibold text-base-content/60">Retraits réservés ou payés</p>
-                <p class="text-2xl font-black">{{ solde.montant_retraits_reserves|floatformat:2 }} FCFA</p>
-                <p class="text-xs text-base-content/50">Demandes en attente, approuvées ou payées</p>
-            </div>
-        </article>
-    </section>
+        </div>
 
-    <section class="grid gap-6 xl:grid-cols-3">
-        <article class="card border border-base-300 bg-base-100 shadow-sm xl:col-span-1">
-            <div class="card-body">
-                <h2 class="card-title">Demander un retrait</h2>
-                <p class="text-sm text-base-content/60">
-                    Le montant demandé sera réservé immédiatement. L'administration vérifiera votre demande et effectuera le paiement hors plateforme.
+        <!-- Ventes Payées Cumulées -->
+        <div class="card bg-base-100 rounded-3xl border border-base-200/80 p-5 shadow-sm hover:shadow-md transition-all">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-bold uppercase tracking-wider text-base-content/60">Ventes Cumulées</span>
+                <span class="p-2.5 rounded-2xl bg-base-200 text-base-content/70 text-lg">💰</span>
+            </div>
+            <div class="mt-3">
+                <div class="text-2xl sm:text-3xl font-black text-base-content font-mono tracking-tight">
+                    {{ solde.montant_ventes|floatformat:0 }}
+                    <span class="text-xs font-bold font-sans text-base-content/50">FCFA</span>
+                </div>
+                <p class="text-xs text-base-content/60 mt-1">Lignes de commande au paiement validé</p>
+            </div>
+        </div>
+
+        <!-- Ventes Payées du Mois -->
+        <div class="card bg-base-100 rounded-3xl border border-base-200/80 p-5 shadow-sm hover:shadow-md transition-all">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-bold uppercase tracking-wider text-primary">Ventes du Mois</span>
+                <span class="p-2.5 rounded-2xl bg-primary/10 text-primary text-lg">📅</span>
+            </div>
+            <div class="mt-3">
+                <div class="text-2xl sm:text-3xl font-black text-primary font-mono tracking-tight">
+                    {{ solde.montant_ventes_mois|floatformat:0 }}
+                    <span class="text-xs font-bold font-sans text-primary/70">FCFA</span>
+                </div>
+                <p class="text-xs text-base-content/60 mt-1">Chiffre d'affaires réalisé ce mois-ci</p>
+            </div>
+        </div>
+
+        <!-- Retraits Réservés ou Payés -->
+        <div class="card bg-base-100 rounded-3xl border border-base-200/80 p-5 shadow-sm hover:shadow-md transition-all">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-bold uppercase tracking-wider text-warning">Retraits Engagés</span>
+                <span class="p-2.5 rounded-2xl bg-warning/10 text-warning text-lg">🔒</span>
+            </div>
+            <div class="mt-3">
+                <div class="text-2xl sm:text-3xl font-black text-warning font-mono tracking-tight">
+                    {{ solde.montant_retraits_reserves|floatformat:0 }}
+                    <span class="text-xs font-bold font-sans text-warning/70">FCFA</span>
+                </div>
+                <p class="text-xs text-base-content/60 mt-1">Demandes en attente, validées ou payées</p>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Disposition 2 Colonnes : Demande de Retrait & Historique -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        <!-- Formulaire de Demande de Retrait (1 Colonne) -->
+        <div class="card bg-base-100 rounded-3xl border border-base-200 shadow-xl overflow-hidden self-start">
+            <div class="p-6 border-b border-base-200 bg-base-200/30">
+                <div class="flex items-center gap-2">
+                    <span class="p-2 rounded-xl bg-primary/10 text-primary text-base">📤</span>
+                    <h2 class="text-lg font-black text-base-content">
+                        Demander un Retrait
+                    </h2>
+                </div>
+                <p class="text-xs text-base-content/60 mt-1 pl-9">
+                    Les fonds demandés sont réservés instantanément jusqu'au traitement.
                 </p>
-                <form method="post" action="{% url 'entreprise_app:demander-retrait' %}" class="mt-2 space-y-4">
+            </div>
+
+            <div class="p-6">
+                <form method="post" action="{% url 'entreprise_app:demander-retrait' %}" class="space-y-4">
                     {% csrf_token %}
-                    <label class="form-control">
-                        <span class="label-text mb-2 font-semibold">{{ form_retrait.montant.label }}</span>
-                        {{ form_retrait.montant }}
-                    </label>
+                    
+                    <div class="form-control">
+                        <label class="label text-xs font-bold text-base-content/70">
+                            Montant à retirer (en FCFA) *
+                        </label>
+                        <div class="relative">
+                            {{ form_retrait.montant }}
+                            <span class="absolute inset-y-0 right-4 flex items-center text-xs font-bold text-base-content/50 pointer-events-none">
+                                FCFA
+                            </span>
+                        </div>
+                    </div>
+
                     {% for error in form_retrait.montant.errors %}
-                        <p class="text-sm text-error">{{ error }}</p>
+                        <p class="text-xs text-error font-medium p-2 bg-error/10 rounded-xl">{{ error }}</p>
                     {% endfor %}
-                    <p class="text-xs text-base-content/50">
-                        Disponible : {{ solde.montant_disponible|floatformat:2 }} FCFA.
-                        Le contact de l'entreprise enregistré dans son profil sera utilisé pour le traitement.
-                    </p>
+
+                    <div class="p-3.5 rounded-2xl bg-base-200/50 border border-base-300/50 text-xs space-y-1">
+                        <div class="flex justify-between text-base-content/70">
+                            <span>Solde disponible :</span>
+                            <span class="font-bold text-emerald-600 font-mono">{{ solde.montant_disponible|floatformat:0 }} FCFA</span>
+                        </div>
+                        <p class="text-[11px] text-base-content/50 pt-1 border-t border-base-300/40">
+                            Le versement s'effectue via les coordonnées de contact du profil entreprise.
+                        </p>
+                    </div>
+
                     <button
                         type="submit"
-                        class="btn btn-success w-full rounded-xl text-white"
+                        class="btn btn-primary w-full rounded-2xl text-white font-bold shadow-md hover:scale-[1.02] transition-transform"
                         {% if solde.montant_disponible <= 0 %}disabled{% endif %}
                     >
-                        Envoyer la demande de retrait
+                        <span>✓</span> Confirmer la Demande
                     </button>
                 </form>
             </div>
-        </article>
+        </div>
 
-        <article class="card border border-base-300 bg-base-100 shadow-sm xl:col-span-2">
-            <div class="card-body">
-                <h2 class="card-title">Historique des retraits</h2>
-                <div class="overflow-x-auto">
-                    <table class="table table-zebra">
-                        <thead>
+        <!-- Historique des Demandes de Retrait (2 Colonnes) -->
+        <div class="lg:col-span-2 card bg-base-100 rounded-3xl border border-base-200 shadow-xl overflow-hidden flex flex-col">
+            <div class="p-6 border-b border-base-200 bg-base-200/30 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span class="p-2 rounded-xl bg-primary/10 text-primary text-base">📜</span>
+                    <h2 class="text-lg font-black text-base-content">
+                        Historique des Retraits
+                    </h2>
+                    <span class="badge badge-sm font-bold bg-base-200">{{ solde.demandes_retrait|length }}</span>
+                </div>
+                <span class="text-xs text-base-content/50 font-medium">Statuts en temps réel</span>
+            </div>
+
+            {% if solde.demandes_retrait %}
+                <div class="overflow-x-auto flex-1">
+                    <table class="table table-zebra w-full text-sm">
+                        <thead class="bg-base-200/60 text-xs font-bold uppercase tracking-wider text-base-content/70">
                             <tr>
-                                <th>Date</th>
+                                <th class="py-3 pl-6">Date de demande</th>
                                 <th>Montant</th>
                                 <th>Statut</th>
-                                <th>Traité par</th>
+                                <th class="pr-6">Décision & Remarques</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody class="divide-y divide-base-200/70">
                             {% for retrait in solde.demandes_retrait %}
-                                <tr>
-                                    <td>{{ retrait.date_demande|date:"d/m/Y H:i" }}</td>
-                                    <td>{{ retrait.montant|floatformat:2 }} FCFA</td>
-                                    <td>{{ retrait.get_statut_display }}</td>
-                                    <td>{{ retrait.traite_par.get_full_name|default:"—" }}</td>
-                                </tr>
-                            {% empty %}
-                                <tr>
-                                    <td colspan="4" class="py-6 text-center text-base-content/60">
-                                        Aucune demande de retrait pour le moment.
+                                <tr class="hover:bg-base-200/40 transition-colors">
+                                    <td class="pl-6">
+                                        <div class="font-bold text-base-content">{{ retrait.date_demande|date:"d/m/Y" }}</div>
+                                        <div class="text-xs text-base-content/50 font-mono">{{ retrait.date_demande|date:"H:i" }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="font-black font-mono text-base text-base-content">
+                                            {{ retrait.montant|floatformat:0 }} <span class="text-xs font-sans text-base-content/60">FCFA</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        {% if retrait.statut == 'en_attente' %}
+                                            <span class="badge badge-warning badge-sm font-bold gap-1 shadow-sm">
+                                                <span class="w-1.5 h-1.5 rounded-full bg-warning-content animate-ping"></span>
+                                                En attente
+                                            </span>
+                                        {% elif retrait.statut == 'approuve' %}
+                                            <span class="badge badge-info badge-sm font-bold text-white shadow-sm">
+                                                Approuvé
+                                            </span>
+                                        {% elif retrait.statut == 'paye' %}
+                                            <span class="badge badge-success badge-sm font-bold text-white shadow-sm">
+                                                ✓ Payé
+                                            </span>
+                                        {% elif retrait.statut == 'rejete' %}
+                                            <span class="badge badge-error badge-sm font-bold text-white shadow-sm">
+                                                ✕ Rejeté
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="pr-6 text-xs max-w-[240px]">
+                                        {% if retrait.traite_par %}
+                                            <div class="text-base-content/70 font-medium">
+                                                Traité par : <strong class="text-base-content">{{ retrait.traite_par.get_full_name|default:"Superviseur" }}</strong>
+                                            </div>
+                                        {% else %}
+                                            <span class="text-warning font-semibold italic">En attente d'arbitrage</span>
+                                        {% endif %}
+
+                                        <!-- Affichage du commentaire / motif de rejet -->
+                                        {% if retrait.commentaire %}
+                                            <div class="mt-1 p-2 rounded-xl bg-base-200 border border-base-300 text-xs text-base-content/80 shadow-inner">
+                                                <span class="font-bold text-primary">💬 Remarque :</span> {{ retrait.commentaire }}
+                                            </div>
+                                        {% endif %}
                                     </td>
                                 </tr>
                             {% endfor %}
                         </tbody>
                     </table>
                 </div>
-            </div>
-        </article>
-    </section>
+            {% else %}
+                <div class="p-12 text-center text-base-content/60 flex-1 flex flex-col items-center justify-center">
+                    <span class="text-4xl">💳</span>
+                    <p class="font-bold text-sm mt-3">Aucune demande de retrait effectuée pour le moment.</p>
+                    <p class="text-xs text-base-content/50 mt-1">Vos futures demandes s'afficheront ici avec le suivi d'arbitrage.</p>
+                </div>
+            {% endif %}
+        </div>
 
-    <section class="card border border-base-300 bg-base-100 shadow-sm">
-        <div class="card-body">
-            <h2 class="card-title">Détail des ventes créditées</h2>
-            <p class="text-sm text-base-content/60">
-                Chaque ligne est créditée une seule fois à l'entreprise enregistrée sur cette ligne.
-                Seules les commandes au paiement confirmé sont incluses. Les éventuels remboursements ne sont pas encore gérés par le workflow. Les 100 dernières lignes sont affichées.
-            </p>
-            <div class="overflow-x-auto">
-                <table class="table table-zebra">
-                    <thead>
+    </div>
+
+    <!-- Section 3 : Détail des Ventes Créditées -->
+    <div class="card bg-base-100 rounded-3xl border border-base-200 shadow-xl overflow-hidden">
+        <div class="p-6 border-b border-base-200 bg-base-200/30 flex flex-wrap items-center justify-between gap-4">
+            <div>
+                <div class="flex items-center gap-2">
+                    <span class="p-2 rounded-xl bg-primary/10 text-primary text-base">📦</span>
+                    <h2 class="text-lg font-black text-base-content">
+                        Détail des Ventes Créditées
+                    </h2>
+                    <span class="badge badge-sm font-bold bg-base-200">{{ solde.ventes_payees|length }}</span>
+                </div>
+                <p class="text-xs text-base-content/60 mt-1 pl-9">
+                    Articles vendus au sein de commandes confirmées (les 100 dernières transactions).
+                </p>
+            </div>
+            <span class="text-xs text-base-content/50">Prix unitaires contractuellement figés</span>
+        </div>
+
+        {% if solde.ventes_payees %}
+            <div class="overflow-x-auto max-h-[460px]">
+                <table class="table table-zebra table-compact w-full text-xs sm:text-sm">
+                    <thead class="bg-base-200/60 sticky top-0 z-10 text-xs uppercase tracking-wider text-base-content/70 backdrop-blur-sm">
                         <tr>
-                            <th>Date de paiement</th>
-                            <th>Commande</th>
+                            <th class="py-3 pl-6">Date de paiement</th>
+                            <th>Réf. Commande</th>
                             <th>Article</th>
                             <th>Quantité</th>
-                            <th>Prix unitaire figé</th>
-                            <th>Sous-total crédité</th>
+                            <th>Prix unitaire</th>
+                            <th class="pr-6 text-right">Sous-total crédité</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody class="divide-y divide-base-200/70">
                         {% for ligne in solde.ventes_payees %}
-                            <tr>
-                                <td>{{ ligne.commande.date_paiement|date:"d/m/Y H:i"|default:"—" }}</td>
-                                <td>{{ ligne.commande.reference }}</td>
-                                <td>{{ ligne.nom_article }}</td>
-                                <td>{{ ligne.quantite }}</td>
-                                <td>{{ ligne.prix_unitaire|floatformat:2 }} FCFA</td>
-                                <td>{{ ligne.sous_total|floatformat:2 }} FCFA</td>
-                            </tr>
-                        {% empty %}
-                            <tr>
-                                <td colspan="6" class="py-6 text-center text-base-content/60">
-                                    Aucune vente payée créditée pour le moment.
+                            <tr class="hover:bg-base-200/40 transition-colors">
+                                <td class="pl-6 font-medium">
+                                    {{ ligne.commande.date_paiement|date:"d/m/Y H:i"|default:"—" }}
+                                </td>
+                                <td>
+                                    <span class="font-mono font-bold text-xs bg-base-200 px-2 py-0.5 rounded-lg border border-base-300">
+                                        {{ ligne.commande.reference|truncatechars:15 }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="font-bold text-base-content">{{ ligne.nom_article }}</div>
+                                </td>
+                                <td>
+                                    <span class="badge badge-sm badge-ghost font-bold font-mono">
+                                        × {{ ligne.quantite }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="font-mono text-base-content/80">
+                                        {{ ligne.prix_unitaire|floatformat:0 }} FCFA
+                                    </span>
+                                </td>
+                                <td class="pr-6 text-right font-black font-mono text-base-content">
+                                    {{ ligne.sous_total|floatformat:0 }} <span class="text-xs font-sans text-base-content/60">FCFA</span>
                                 </td>
                             </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
-        </div>
-    </section>
+        {% else %}
+            <div class="p-12 text-center text-base-content/60 flex flex-col items-center justify-center">
+                <span class="text-4xl">🛒</span>
+                <p class="font-bold text-sm mt-3">Aucune vente créditée pour le moment.</p>
+                <p class="text-xs text-base-content/50 mt-1">Vos ventes confirmées s'afficheront ici automatiquement dès paiement du client.</p>
+            </div>
+        {% endif %}
+    </div>
+
 </main>
 {% endblock %}

@@ -122,3 +122,69 @@ L'intervention a porté sur deux volets principaux demandés par l'utilisateur :
   2. Renommage de la colonne SQLite vers son nom d'origine : `statut_destinataire`.
   3. Nettoyage des entrées orphelines de la table `django_migrations`.
   4. Vérification d'exécution réussie de la requête : `demandes_livraison_count: 2`.
+
+---
+
+## 7. Intervention du 18 novembre 2026 à 10:40:00 UTC — Cockpit Superuser : Liste dynamique HTMX des Entreprises & Alertes Retraits
+
+**Branche Git :** `features/entreprise_list_et_details_views_par_superuser`  
+**Objectifs de la session :**
+1. Mise à niveau documentaire complète par la lecture exhaustive des 14 fichiers `.md` du projet (hors `reset_data.md`).
+2. Extension de [`bakamzone_todo_list.md`](./bakamzone_todo_list.md) avec une nouvelle section 9 dédiée au cockpit Superuser pour la gestion des entreprises, la vue détaillée et le traitement des retraits d'argent (acceptation / refus avec commentaire).
+3. Création du mixin de sécurité personnalisé [`SuperuserRequiredMixin`](./src/superuser_app/views.py).
+4. Implémentation de la CBV [`ListeEntrepriseViewBySuperUser`](./src/superuser_app/views.py) avec détection et filtrage dynamique par requêtes HTMX.
+5. Intégration frontend responsive via DaisyUI / Tailwind et partials HTMX.
+6. Branchement de la route dans [`src/superuser_app/urls.py`](./src/superuser_app/urls.py) et ajout d'un accès direct dans le cockpit central [`src/templates/superuser_template/superuser.html`](./src/templates/superuser_template/superuser.html).
+
+### Réalisations techniques détaillées :
+
+1. **Contrôle d'accès personnalisé (`SuperuserRequiredMixin`)** :
+   - Hérite de `LoginRequiredMixin` et `UserPassesTestMixin`.
+   - Contrôle combiné : `is_authenticated`, `is_active` et `is_superuser`.
+   - Gestion personnalisée de l'interdiction (`handle_no_permission`) : notification toast Django `messages.error` et redirection vers `home_app:home`.
+
+2. **CBV Liste Entreprises (`ListeEntrepriseViewBySuperUser`)** :
+   - Optimisation ORM haute performance sans produit cartésien : utilisation de `Subquery` et `Coalesce` pour agréger :
+     - `nb_articles_disponibles` : nombre d'articles actifs de l'entreprise.
+     - `nb_admins` : nombre d'administrateurs rattachés.
+     - `nb_retraits_attente` : nombre de demandes de retrait avec statut `en_attente`.
+     - `montant_retraits_attente` : montant cumulé en FCFA des retraits en attente.
+   - Filtres dynamiques : recherche plein-texte `q` (nom, RC, gérant, téléphone), palier (`standard`, `pro`, `premium`), présence de retraits en attente (`retrait=en_attente`), et statut d'abonnement.
+   - Détection HTMX dans `get_template_names()` : renvoie le fragment `partials/superuser/entreprise_list_results.html` si `HX-Request == "true"`, ou le gabarit complet `superuser_template/entreprise_list.html` sinon.
+
+3. **Composants Templates & Dynamisme HTMX** :
+   - [`src/templates/superuser_template/entreprise_list.html`](./src/templates/superuser_template/entreprise_list.html) : En-tête avec statistiques globales (total entreprises, nombre et montant total des retraits en attente), formulaire HTMX avec déclencheur réactif `hx-trigger="keyup changed delay:300ms from:#search-input, change from:select, submit"`, spinner de recherche et mise à jour ciblée `hx-target="#entreprises-table-container"`.
+   - [`src/templates/partials/superuser/entreprise_list_results.html`](./src/templates/partials/superuser/entreprise_list_results.html) : Tableau complet pour affichage desktop et cartes tactiles pour affichage mobile, badges de quotas, alerte visuelle pulsée pour les retraits en attente et pagination dynamique HTMX préservant les paramètres de filtrage.
+
+4. **Résolution du conflit de branches de migrations** :
+   - Détection de têtes de migrations concurrentes dans `demande_livraison_app` (`0003_rename...` et `0004_...`).
+   - Génération et application de la migration de fusion `src/demande_livraison_app/migrations/0005_merge_20261118_1033.py`.
+
+5. **CBV Fiche Détail Entreprise (`EntrepriseDetailViewBySuperUser`)** :
+   - Fiche complète dans [`src/superuser_app/views.py`](./src/superuser_app/views.py) et template [`src/templates/superuser_template/entreprise_detail.html`](./src/templates/superuser_template/entreprise_detail.html).
+   - Intégration du bilan comptable via `obtenir_solde_entreprise` (chiffre d'affaires total payé, ventes du mois, retraits engagés, et solde disponible déblocable).
+   - Découpage du catalogue d'articles (en bloc / hors bloc, disponibilité et prix promo) et inventaire des administrateurs rattachés.
+   - Section prioritaire des demandes de retraits de fonds (`RetraitEntreprise`) avec détection des demandes `en_attente` d'arbitrage.
+   - Branchement de la route `path('entreprises/<int:pk>/', EntrepriseDetailViewBySuperUser.as_view(), name='detail-entreprise')` dans [`src/superuser_app/urls.py`](./src/superuser_app/urls.py) et mise à jour des liens d'actions dans la liste des entreprises.
+
+6. **Actions de Décision sur les Demandes de Retrait (`TraiterDemandeRetraitView`)** :
+   - Évolution du modèle `RetraitEntreprise` avec le champ `commentaire = models.TextField(blank=True, default="")` et application de la migration `0003_retraitentreprise_commentaire`.
+   - CBV `TraiterDemandeRetraitView` dans [`src/superuser_app/views.py`](./src/superuser_app/views.py) et route `path('retraits/<int:pk>/traiter/', TraiterDemandeRetraitView.as_view(), name='traiter-retrait')`.
+   - Gestion transactionnelle sécurisée (`transaction.atomic()` et `select_for_update()`) :
+     - Action `approuver` : statut `approuve`, horodatage et note facultative.
+     - Action `payer` : statut `paye`, confirmation finale du versement effectif.
+     - Action `rejeter` : statut `rejete`, exigence stricte d'un motif / commentaire obligatoire, entraînant le déblocage immédiat des fonds dans le solde disponible de l'entreprise.
+   - Intégration de modales DaisyUI interactives dans [`src/templates/superuser_template/entreprise_detail.html`](./src/templates/superuser_template/entreprise_detail.html) pour valider ou refuser avec saisie de commentaire.
+
+7. **Validation et couverture par tests unitaires** :
+   - 16 tests unitaires validés dans [`src/superuser_app/tests.py`](./src/superuser_app/tests.py) :
+     - Sécurité : refus des utilisateurs anonymes et clients, validation des droits superuser sur liste, détail et traitement de retraits.
+     - Précision ORM : vérification des compteurs annotés d'articles et des montants de retraits en attente.
+     - Filtrage : tests de la recherche textuelle et du filtre des demandes de retrait.
+     - HTMX : validation de la bascule de template entre fragment et page complète.
+     - Fiche Détail : validation du contexte financier (`solde_data`), du découpage des articles et du suivi des retraits.
+     - Décision de Retrait : tests complets d'approbation, de mise en paiement, de refus avec motif, et de blocage si le motif de refus est omis.
+   - Exécution : `Ran 16 tests in 59.210s — OK (100% succès)`.
+
+
+

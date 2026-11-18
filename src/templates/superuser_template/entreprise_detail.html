@@ -1,0 +1,456 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}BAKAMZONE — Fiche Entreprise : {{ entreprise.nom_entreprise }}{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    
+    <!-- Fil d'Ariane & Retour -->
+    <nav class="flex items-center gap-2 text-sm text-base-content/70">
+        <a href="{% url 'superuser_app:dashboard' %}" class="hover:text-primary transition-colors">
+            Cockpit Central
+        </a>
+        <span>/</span>
+        <a href="{% url 'superuser_app:liste-entreprises' %}" class="hover:text-primary transition-colors">
+            Entreprises Partenaires
+        </a>
+        <span>/</span>
+        <span class="font-bold text-base-content truncate">{{ entreprise.nom_entreprise }}</span>
+    </nav>
+
+    <!-- En-tête Entreprise -->
+    <div class="card bg-base-100 rounded-3xl border border-base-200 shadow-xl p-6 sm:p-8">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div class="flex items-start sm:items-center gap-4 sm:gap-6">
+                {% if entreprise.logo %}
+                    <div class="avatar">
+                        <div class="mask mask-squircle w-20 h-20 sm:w-24 sm:h-24 shadow-md border border-base-200">
+                            <img src="{{ entreprise.logo.url }}" alt="{{ entreprise.nom_entreprise }}" />
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="avatar placeholder">
+                        <div class="bg-primary/10 text-primary mask mask-squircle w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center font-black text-2xl sm:text-3xl border border-primary/20">
+                            {{ entreprise.nom_entreprise|slice:":2"|upper }}
+                        </div>
+                    </div>
+                {% endif %}
+
+                <div class="space-y-1">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <h1 class="text-2xl sm:text-3xl font-black text-base-content tracking-tight">
+                            {{ entreprise.nom_entreprise }}
+                        </h1>
+                        <span class="badge font-bold
+                            {% if entreprise.palier == 'premium' %}badge-warning text-warning-content
+                            {% elif entreprise.palier == 'pro' %}badge-secondary text-white
+                            {% elif entreprise.palier == 'standard' %}badge-info text-white
+                            {% else %}badge-ghost{% endif %}">
+                            Palier {{ entreprise.get_palier_display }}
+                        </span>
+                        <span class="badge {% if entreprise.subscription_active %}badge-success text-white{% else %}badge-ghost{% endif %} font-semibold">
+                            {% if entreprise.subscription_active %}✓ Abonnement actif{% else %}Abonnement inactif{% endif %}
+                        </span>
+                    </div>
+
+                    <p class="text-xs sm:text-sm text-base-content/60 font-mono">
+                        {% if entreprise.rc_number %}Registre de Commerce : <strong>{{ entreprise.rc_number }}</strong>{% else %}RC non renseigné{% endif %}
+                        • Partenaire depuis le {{ entreprise.date_creation|date:"d F Y" }}
+                    </p>
+
+                    <p class="text-sm text-base-content/80 flex items-center gap-1.5 pt-1">
+                        <span>📍</span> {{ entreprise.address }}
+                    </p>
+                </div>
+            </div>
+
+            <!-- Coordonnées du Responsable Principal -->
+            <div class="p-4 rounded-2xl bg-base-200/60 border border-base-300/60 text-xs sm:text-sm space-y-1 min-w-[240px]">
+                <p class="text-xs font-bold uppercase tracking-wider text-primary">Gérant Principal</p>
+                <p class="font-bold text-base-content">{{ entreprise.user_principal.get_full_name|default:"Non renseigné" }}</p>
+                <p>
+                    <a href="tel:{{ entreprise.user_principal.telephone }}" class="text-primary font-bold hover:underline">
+                        📞 {{ entreprise.user_principal.telephone }}
+                    </a>
+                </p>
+                {% if entreprise.user_principal.email %}
+                    <p class="text-base-content/60 truncate">✉️ {{ entreprise.user_principal.email }}</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Synthèse Financière & Situation Comptable -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="stat bg-base-100 border border-base-200 rounded-3xl p-5 shadow-sm">
+            <div class="stat-title text-xs font-semibold uppercase tracking-wider">Chiffre d'Affaires Payé</div>
+            <div class="stat-value text-2xl font-black text-base-content mt-1">
+                {{ solde_data.montant_ventes|floatformat:0 }} <span class="text-xs font-bold text-base-content/60">FCFA</span>
+            </div>
+            <div class="stat-desc text-xs text-base-content/60 mt-1">Total des ventes de commandes payées</div>
+        </div>
+
+        <div class="stat bg-base-100 border border-base-200 rounded-3xl p-5 shadow-sm">
+            <div class="stat-title text-xs font-semibold uppercase tracking-wider">Ventes du Mois</div>
+            <div class="stat-value text-2xl font-black text-primary mt-1">
+                {{ solde_data.montant_ventes_mois|floatformat:0 }} <span class="text-xs font-bold text-primary/70">FCFA</span>
+            </div>
+            <div class="stat-desc text-xs text-base-content/60 mt-1">Commandes confirmées ce mois-ci</div>
+        </div>
+
+        <div class="stat bg-base-100 border border-base-200 rounded-3xl p-5 shadow-sm">
+            <div class="stat-title text-xs font-semibold uppercase tracking-wider">Retraits Réservés & Payés</div>
+            <div class="stat-value text-2xl font-black text-warning mt-1">
+                {{ solde_data.montant_retraits_reserves|floatformat:0 }} <span class="text-xs font-bold text-warning/70">FCFA</span>
+            </div>
+            <div class="stat-desc text-xs text-base-content/60 mt-1">En attente, approuvés ou versés</div>
+        </div>
+
+        <div class="stat bg-emerald-500/10 border border-emerald-500/30 rounded-3xl p-5 shadow-sm">
+            <div class="stat-title text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">Solde Disponible Réel</div>
+            <div class="stat-value text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
+                {{ solde_data.montant_disponible|floatformat:0 }} <span class="text-xs font-bold">FCFA</span>
+            </div>
+            <div class="stat-desc text-xs text-emerald-700/70 dark:text-emerald-300/70 mt-1">Fonds déblocables par retrait</div>
+        </div>
+    </div>
+
+    <!-- Section 1 : Demandes de Retrait d'Argent (Prioritaire) -->
+    <div class="card bg-base-100 rounded-3xl border border-base-200 shadow-xl overflow-hidden">
+        <div class="p-6 border-b border-base-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+                <h2 class="text-xl font-black flex items-center gap-2">
+                    <span>💳</span> Demandes de Retrait de Fonds ({{ retraits|length }})
+                </h2>
+                <p class="text-xs sm:text-sm text-base-content/70 mt-0.5">
+                    Historique des réclamations d'argent effectuées par le marchand.
+                </p>
+            </div>
+            
+            {% if nb_retraits_en_attente > 0 %}
+                <span class="badge badge-warning gap-1.5 p-3 font-bold animate-pulse text-xs">
+                    <span class="w-2 h-2 rounded-full bg-warning-content"></span>
+                    {{ nb_retraits_en_attente }} demande(s) en attente de décision
+                </span>
+            {% else %}
+                <span class="badge badge-ghost text-xs font-medium">Toutes les demandes sont traitées</span>
+            {% endif %}
+        </div>
+
+        {% if retraits %}
+            <div class="overflow-x-auto">
+                <table class="table table-zebra w-full text-sm">
+                    <thead class="bg-base-200/50 text-xs font-bold uppercase text-base-content/70">
+                        <tr>
+                            <th class="py-3">Date de demande</th>
+                            <th>Montant réclamé</th>
+                            <th>Statut</th>
+                            <th>Traitement & Superviseur</th>
+                            <th class="text-right">Décision Superuser</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-base-200">
+                        {% for r in retraits %}
+                            <tr class="hover:bg-base-200/30 transition-colors {% if r.statut == 'en_attente' %}bg-warning/5{% endif %}">
+                                <!-- Date demande -->
+                                <td>
+                                    <div class="font-bold text-base-content">{{ r.date_demande|date:"d/m/Y" }}</div>
+                                    <div class="text-xs text-base-content/50 font-mono">{{ r.date_demande|date:"H:i" }}</div>
+                                </td>
+
+                                <!-- Montant -->
+                                <td>
+                                    <div class="font-black text-base text-base-content">
+                                        {{ r.montant|floatformat:0 }} FCFA
+                                    </div>
+                                </td>
+
+                                <!-- Statut -->
+                                <td>
+                                    {% if r.statut == 'en_attente' %}
+                                        <span class="badge badge-warning badge-sm font-bold gap-1">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-warning-content animate-ping"></span>
+                                            En attente de validation
+                                        </span>
+                                    {% elif r.statut == 'approuve' %}
+                                        <span class="badge badge-info badge-sm font-bold text-white">
+                                            Approuvé (en attente paiement)
+                                        </span>
+                                    {% elif r.statut == 'paye' %}
+                                        <span class="badge badge-success badge-sm font-bold text-white">
+                                            ✓ Payé
+                                        </span>
+                                    {% elif r.statut == 'rejete' %}
+                                        <span class="badge badge-error badge-sm font-bold text-white">
+                                            ✕ Rejeté
+                                        </span>
+                                    {% endif %}
+                                </td>
+
+                                <!-- Traitement -->
+                                <td class="text-xs">
+                                    {% if r.date_traitement %}
+                                        <div class="font-semibold text-base-content">
+                                            Traité le {{ r.date_traitement|date:"d/m/Y H:i" }}
+                                        </div>
+                                        <div class="text-base-content/60">
+                                            Par : {{ r.traite_par.get_full_name|default:r.traite_par.telephone|default:"Administrateur" }}
+                                        </div>
+                                    {% else %}
+                                        <span class="text-warning font-semibold italic">En attente de traitement</span>
+                                    {% endif %}
+                                    {% if r.commentaire %}
+                                        <div class="mt-1.5 p-2 rounded-xl bg-base-200/80 border border-base-300 text-xs text-base-content/80">
+                                            <span class="font-bold">💬 Note :</span> {{ r.commentaire }}
+                                        </div>
+                                    {% endif %}
+                                </td>
+
+                                <!-- Action Superuser -->
+                                <td class="text-right">
+                                    {% if r.statut == 'en_attente' %}
+                                        <div class="flex items-center justify-end gap-2">
+                                            <!-- Bouton Approuver -->
+                                            <button 
+                                                type="button" 
+                                                onclick="document.getElementById('modal-approuver-{{ r.pk }}').showModal()"
+                                                class="btn btn-xs btn-success text-white rounded-lg gap-1 shadow-sm"
+                                                title="Approuver cette demande de retrait"
+                                            >
+                                                ✓ Valider
+                                            </button>
+
+                                            <!-- Bouton Refuser -->
+                                            <button 
+                                                type="button" 
+                                                onclick="document.getElementById('modal-refuser-{{ r.pk }}').showModal()"
+                                                class="btn btn-xs btn-error text-white rounded-lg gap-1 shadow-sm"
+                                                title="Refuser avec motif / commentaire"
+                                            >
+                                                ✕ Refuser
+                                            </button>
+                                        </div>
+
+                                        <!-- Modal Approuver -->
+                                        <dialog id="modal-approuver-{{ r.pk }}" class="modal text-left">
+                                            <div class="modal-box rounded-3xl p-6">
+                                                <h3 class="font-black text-lg text-success flex items-center gap-2">
+                                                    <span>✓</span> Approuver la demande de retrait
+                                                </h3>
+                                                <p class="py-2 text-sm text-base-content/70">
+                                                    Vous confirmez la mise en paiement du retrait de <strong class="text-base-content">{{ r.montant|floatformat:0 }} FCFA</strong> pour l'entreprise <strong>{{ entreprise.nom_entreprise }}</strong>.
+                                                </p>
+                                                <form method="post" action="{% url 'superuser_app:traiter-retrait' r.pk %}" class="space-y-4 mt-3">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="action" value="approuver">
+                                                    <div class="form-control">
+                                                        <label class="label text-xs font-bold text-base-content/70">Commentaire administratif (optionnel)</label>
+                                                        <textarea 
+                                                            name="commentaire" 
+                                                            rows="2" 
+                                                            class="textarea textarea-bordered rounded-2xl text-sm focus:border-success" 
+                                                            placeholder="Ajouter une référence bancaire, un numéro de transaction ou une note..."
+                                                        ></textarea>
+                                                    </div>
+                                                    <div class="modal-action">
+                                                        <button type="button" onclick="document.getElementById('modal-approuver-{{ r.pk }}').close()" class="btn btn-sm btn-ghost rounded-xl">
+                                                            Annuler
+                                                        </button>
+                                                        <button type="submit" class="btn btn-sm btn-success text-white rounded-xl shadow-md">
+                                                            Confirmer l'approbation
+                                                        </button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                            <form method="dialog" class="modal-backdrop">
+                                                <button>Fermer</button>
+                                            </form>
+                                        </dialog>
+
+                                        <!-- Modal Refuser -->
+                                        <dialog id="modal-refuser-{{ r.pk }}" class="modal text-left">
+                                            <div class="modal-box rounded-3xl p-6">
+                                                <h3 class="font-black text-lg text-error flex items-center gap-2">
+                                                    <span>✕</span> Refuser la demande de retrait
+                                                </h3>
+                                                <p class="py-2 text-sm text-base-content/70">
+                                                    Le rejet débloquera immédiatement les fonds de <strong class="text-base-content">{{ r.montant|floatformat:0 }} FCFA</strong> dans le solde disponible de l'entreprise.
+                                                </p>
+                                                <form method="post" action="{% url 'superuser_app:traiter-retrait' r.pk %}" class="space-y-4 mt-3">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="action" value="rejeter">
+                                                    <div class="form-control">
+                                                        <label class="label text-xs font-bold text-error">
+                                                            Motif du refus (Obligatoire) *
+                                                        </label>
+                                                        <textarea 
+                                                            name="commentaire" 
+                                                            required 
+                                                            rows="3" 
+                                                            class="textarea textarea-bordered textarea-error rounded-2xl text-sm focus:border-error" 
+                                                            placeholder="Expliquez clairement à l'entreprise pourquoi la demande est rejetée (ex: coordonnées Mobile Money incorrectes, contrôle de facturation...)"
+                                                        ></textarea>
+                                                    </div>
+                                                    <div class="modal-action">
+                                                        <button type="button" onclick="document.getElementById('modal-refuser-{{ r.pk }}').close()" class="btn btn-sm btn-ghost rounded-xl">
+                                                            Annuler
+                                                        </button>
+                                                        <button type="submit" class="btn btn-sm btn-error text-white rounded-xl shadow-md">
+                                                            Confirmer le rejet
+                                                        </button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                            <form method="dialog" class="modal-backdrop">
+                                                <button>Fermer</button>
+                                            </form>
+                                        </dialog>
+                                    {% elif r.statut == 'approuve' %}
+                                        <!-- Possibilité de marquer comme payé -->
+                                        <form method="post" action="{% url 'superuser_app:traiter-retrait' r.pk %}" class="inline">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="payer">
+                                            <button 
+                                                type="submit" 
+                                                class="btn btn-xs btn-outline btn-success rounded-lg gap-1"
+                                                title="Confirmer que le virement a été effectivement envoyé"
+                                            >
+                                                ✓ Marquer Payé
+                                            </button>
+                                        </form>
+                                    {% else %}
+                                        <span class="text-xs text-base-content/40 italic">Action clôturée</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="p-8 text-center text-base-content/60">
+                <span class="text-3xl">💳</span>
+                <p class="font-bold text-sm mt-2">Aucune demande de retrait effectuée par cette entreprise.</p>
+                <p class="text-xs text-base-content/50 mt-1">Les futures demandes apparaîtront ici pour arbitrage.</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Section 2 & 3 : Catalogue Produits & Équipe Administrateurs -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        <!-- Articles (2 colonnes) -->
+        <div class="lg:col-span-2 card bg-base-100 rounded-3xl border border-base-200 shadow-xl overflow-hidden">
+            <div class="p-6 border-b border-base-200 flex items-center justify-between">
+                <div>
+                    <h2 class="text-xl font-black flex items-center gap-2">
+                        <span>📦</span> Articles & Inventaire ({{ total_articles }})
+                    </h2>
+                    <p class="text-xs text-base-content/70 mt-0.5">
+                        Quota consommé : <strong class="text-base-content">{{ total_articles }}</strong> / {{ entreprise.quota_articles }} articles autorisés
+                    </p>
+                </div>
+                <div class="flex items-center gap-2 text-xs">
+                    <span class="badge badge-outline badge-sm">Bloc : {{ articles_en_bloc.count }}</span>
+                    <span class="badge badge-outline badge-sm">Hors-bloc : {{ articles_hors_bloc.count }}</span>
+                </div>
+            </div>
+
+            {% if articles %}
+                <div class="overflow-x-auto max-h-[420px]">
+                    <table class="table table-zebra table-compact w-full text-xs sm:text-sm">
+                        <thead class="bg-base-200/50 sticky top-0 z-10 text-xs uppercase text-base-content/70">
+                            <tr>
+                                <th>Article</th>
+                                <th>Prix unitaire</th>
+                                <th>Type</th>
+                                <th>Stock / Dispo</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-base-200">
+                            {% for a in articles %}
+                                <tr>
+                                    <td>
+                                        <div class="font-bold text-base-content">{{ a.nom }}</div>
+                                        {% if a.description %}
+                                            <div class="text-xs text-base-content/50 truncate max-w-[200px]">{{ a.description }}</div>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="font-semibold text-base-content">
+                                            {% if a.prix_promo %}
+                                                <span class="text-primary font-bold">{{ a.prix_promo|floatformat:0 }} FCFA</span>
+                                                <span class="line-through text-xs text-base-content/40">{{ a.prix|floatformat:0 }}</span>
+                                            {% else %}
+                                                {{ a.prix|floatformat:0 }} FCFA
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        {% if a.en_bloc %}
+                                            <span class="badge badge-sm badge-info text-white">En Bloc</span>
+                                        {% else %}
+                                            <span class="badge badge-sm badge-ghost">Hors Bloc</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if a.disponible %}
+                                            <span class="badge badge-sm badge-success text-white">Disponible</span>
+                                        {% else %}
+                                            <span class="badge badge-sm badge-error text-white">Épuisé</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="p-8 text-center text-base-content/60">
+                    <span class="text-3xl">📦</span>
+                    <p class="font-bold text-sm mt-2">Aucun article enregistré pour le moment.</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Équipe d'Administration (1 colonne) -->
+        <div class="card bg-base-100 rounded-3xl border border-base-200 shadow-xl overflow-hidden">
+            <div class="p-6 border-b border-base-200">
+                <h2 class="text-xl font-black flex items-center gap-2">
+                    <span>👥</span> Administrateurs ({{ membres_admin|length }})
+                </h2>
+                <p class="text-xs text-base-content/70 mt-0.5">
+                    Quota : <strong class="text-base-content">{{ membres_admin|length }}</strong> / {{ entreprise.quota_admins }} admins autorisés
+                </p>
+            </div>
+
+            {% if membres_admin %}
+                <div class="divide-y divide-base-200 p-4 space-y-3">
+                    {% for m in membres_admin %}
+                        <div class="p-3 bg-base-200/50 rounded-2xl space-y-1">
+                            <div class="font-bold text-sm text-base-content">
+                                {{ m.membre_admin.get_full_name }}
+                            </div>
+                            <div class="text-xs text-primary font-semibold">
+                                📞 {{ m.membre_admin.telephone }}
+                            </div>
+                            <div class="text-xs text-base-content/50">
+                                Ajouté le {{ m.date_ajout|date:"d/m/Y" }}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="p-8 text-center text-base-content/60">
+                    <span class="text-3xl">👥</span>
+                    <p class="font-bold text-sm mt-2">Seul le gérant principal est enregistré.</p>
+                    <p class="text-xs text-base-content/50 mt-1">Aucun administrateur secondaire.</p>
+                </div>
+            {% endif %}
+        </div>
+
+    </div>
+
+</div>
+{% endblock %}

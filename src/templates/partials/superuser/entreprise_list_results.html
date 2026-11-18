@@ -1,0 +1,288 @@
+<div id="entreprises-table-container" class="space-y-4">
+    <!-- Barre d'état des résultats -->
+    <div class="flex flex-wrap items-center justify-between gap-3 px-1 text-sm text-base-content/70">
+        <div>
+            {% if is_paginated %}
+                Affichage de <span class="font-bold text-base-content">{{ page_obj.start_index }}</span> à <span class="font-bold text-base-content">{{ page_obj.end_index }}</span> sur <span class="font-bold text-base-content">{{ paginator.count }}</span> entreprise(s)
+            {% else %}
+                <span class="font-bold text-base-content">{{ entreprises|length }}</span> entreprise(s) trouvée(s)
+            {% endif %}
+            {% if search_query %}
+                pour la recherche « <span class="font-semibold text-primary">{{ search_query }}</span> »
+            {% endif %}
+        </div>
+        
+        {% if search_query or selected_palier or selected_retrait or selected_abonnement %}
+            <button 
+                type="button"
+                hx-get="."
+                hx-target="#entreprises-table-container"
+                hx-swap="outerHTML"
+                hx-push-url="true"
+                hx-indicator="#search-spinner"
+                class="btn btn-ghost btn-xs text-error gap-1"
+            >
+                ✕ Réinitialiser tous les filtres
+            </button>
+        {% endif %}
+    </div>
+
+    <!-- Tableau Desktop (écrans md et +) -->
+    <div class="hidden md:block overflow-x-auto rounded-3xl border border-base-200 bg-base-100 shadow-xl">
+        <table class="table table-zebra w-full">
+            <thead class="bg-base-200/60 text-xs font-bold uppercase tracking-wider text-base-content/70">
+                <tr>
+                    <th class="py-4">Entreprise</th>
+                    <th>Responsable / Contact</th>
+                    <th>Palier & Quotas</th>
+                    <th>Abonnement</th>
+                    <th>Demandes de Retrait</th>
+                    <th class="text-right">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-base-200">
+                {% for ent in entreprises %}
+                    <tr class="hover:bg-base-200/40 transition-colors">
+                        <!-- Entreprise -->
+                        <td>
+                            <div class="flex items-center gap-3">
+                                {% if ent.logo %}
+                                    <div class="avatar">
+                                        <div class="mask mask-squircle w-12 h-12">
+                                            <img src="{{ ent.logo.url }}" alt="{{ ent.nom_entreprise }}" />
+                                        </div>
+                                    </div>
+                                {% else %}
+                                    <div class="avatar placeholder">
+                                        <div class="bg-primary/10 text-primary mask mask-squircle w-12 h-12 flex items-center justify-center font-black text-lg">
+                                            {{ ent.nom_entreprise|slice:":2"|upper }}
+                                        </div>
+                                    </div>
+                                {% endif %}
+                                <div>
+                                    <div class="font-black text-base text-base-content flex items-center gap-2">
+                                        {{ ent.nom_entreprise }}
+                                    </div>
+                                    <div class="text-xs text-base-content/60 font-mono">
+                                        {% if ent.rc_number %}RC: {{ ent.rc_number }}{% else %}RC non renseigné{% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+
+                        <!-- Responsable -->
+                        <td>
+                            <div class="text-sm font-semibold text-base-content">
+                                {{ ent.user_principal.get_full_name|default:"Nom non renseigné" }}
+                            </div>
+                            <a href="tel:{{ ent.user_principal.telephone }}" class="text-xs text-primary hover:underline flex items-center gap-1 mt-0.5">
+                                📞 {{ ent.user_principal.telephone }}
+                            </a>
+                            {% if ent.user_principal.email %}
+                                <div class="text-xs text-base-content/50 truncate max-w-[180px]">
+                                    ✉️ {{ ent.user_principal.email }}
+                                </div>
+                            {% endif %}
+                        </td>
+
+                        <!-- Palier & Quotas -->
+                        <td>
+                            <div class="flex flex-col gap-1 items-start">
+                                <span class="badge badge-sm font-semibold
+                                    {% if ent.palier == 'premium' %}badge-warning text-warning-content
+                                    {% elif ent.palier == 'pro' %}badge-secondary text-white
+                                    {% elif ent.palier == 'standard' %}badge-info text-white
+                                    {% else %}badge-ghost{% endif %}">
+                                    {{ ent.get_palier_display }}
+                                </span>
+                                <div class="text-xs text-base-content/70 mt-1 space-y-0.5">
+                                    <div>📦 Articles : <span class="font-bold text-base-content">{{ ent.nb_articles_disponibles }}</span> / {{ ent.quota_articles }}</div>
+                                    <div>👥 Admins : <span class="font-bold text-base-content">{{ ent.nb_admins }}</span> / {{ ent.quota_admins }}</div>
+                                </div>
+                            </div>
+                        </td>
+
+                        <!-- Abonnement -->
+                        <td>
+                            {% if ent.subscription_active %}
+                                <span class="badge badge-success badge-sm text-white gap-1 font-semibold">
+                                    ✓ Actif
+                                </span>
+                            {% else %}
+                                <span class="badge badge-ghost badge-sm text-base-content/60 font-medium">
+                                    Inactif
+                                </span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Retraits en attente -->
+                        <td>
+                            {% if ent.nb_retraits_attente > 0 %}
+                                <div class="p-2.5 rounded-2xl bg-warning/10 border border-warning/30 flex flex-col gap-0.5">
+                                    <div class="flex items-center gap-1.5 font-bold text-xs text-warning">
+                                        <span class="inline-block w-2 h-2 rounded-full bg-warning animate-ping"></span>
+                                        {{ ent.nb_retraits_attente }} demande(s) en attente
+                                    </div>
+                                    <div class="font-black text-sm text-base-content">
+                                        {{ ent.montant_retraits_attente|floatformat:0 }} FCFA
+                                    </div>
+                                </div>
+                            {% else %}
+                                <span class="text-xs text-base-content/40 font-medium italic">
+                                    Aucune demande
+                                </span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Actions -->
+                        <td class="text-right">
+                            <a 
+                                href="{% url 'superuser_app:detail-entreprise' ent.pk %}"
+                                class="btn btn-sm btn-outline btn-primary rounded-xl"
+                                title="Voir la fiche détaillée et gérer les retraits"
+                            >
+                                Détails & Retraits
+                            </a>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-12 text-base-content/60">
+                            <div class="flex flex-col items-center justify-center gap-3">
+                                <span class="text-4xl">🏢</span>
+                                <p class="text-base font-semibold">Aucune entreprise trouvée avec ces critères.</p>
+                                <p class="text-xs text-base-content/50">Essayez de modifier ou de réinitialiser vos filtres de recherche.</p>
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Affichage Cartes Mobile (écrans < md) -->
+    <div class="grid grid-cols-1 gap-4 md:hidden">
+        {% for ent in entreprises %}
+            <article class="card bg-base-100 rounded-3xl border border-base-200 shadow-lg p-5 space-y-4">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="flex items-center gap-3">
+                        {% if ent.logo %}
+                            <div class="avatar">
+                                <div class="mask mask-squircle w-12 h-12">
+                                    <img src="{{ ent.logo.url }}" alt="{{ ent.nom_entreprise }}" />
+                                </div>
+                            </div>
+                        {% else %}
+                            <div class="avatar placeholder">
+                                <div class="bg-primary/10 text-primary mask mask-squircle w-12 h-12 flex items-center justify-center font-black text-lg">
+                                    {{ ent.nom_entreprise|slice:":2"|upper }}
+                                </div>
+                            </div>
+                        {% endif %}
+                        <div>
+                            <h3 class="font-black text-base text-base-content">{{ ent.nom_entreprise }}</h3>
+                            <p class="text-xs text-base-content/60 font-mono">{% if ent.rc_number %}RC: {{ ent.rc_number }}{% else %}RC non renseigné{% endif %}</p>
+                        </div>
+                    </div>
+                    <span class="badge badge-sm font-semibold
+                        {% if ent.palier == 'premium' %}badge-warning text-warning-content
+                        {% elif ent.palier == 'pro' %}badge-secondary text-white
+                        {% elif ent.palier == 'standard' %}badge-info text-white
+                        {% else %}badge-ghost{% endif %}">
+                        {{ ent.get_palier_display }}
+                    </span>
+                </div>
+
+                <div class="p-3 bg-base-200/50 rounded-2xl text-xs space-y-1">
+                    <div class="text-base-content/70">
+                        Responsable : <span class="font-semibold text-base-content">{{ ent.user_principal.get_full_name }}</span>
+                    </div>
+                    <div>
+                        <a href="tel:{{ ent.user_principal.telephone }}" class="text-primary font-bold hover:underline">
+                            📞 {{ ent.user_principal.telephone }}
+                        </a>
+                    </div>
+                    <div class="flex justify-between pt-1 border-t border-base-300/50 text-base-content/70">
+                        <span>Articles : <strong>{{ ent.nb_articles_disponibles }}</strong>/{{ ent.quota_articles }}</span>
+                        <span>Abonnement : 
+                            {% if ent.subscription_active %}
+                                <strong class="text-success">Actif</strong>
+                            {% else %}
+                                <strong class="text-base-content/50">Inactif</strong>
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+
+                {% if ent.nb_retraits_attente > 0 %}
+                    <div class="p-3 rounded-2xl bg-warning/15 border border-warning/30 flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-bold text-warning flex items-center gap-1.5">
+                                <span class="inline-block w-2 h-2 rounded-full bg-warning animate-ping"></span>
+                                {{ ent.nb_retraits_attente }} demande(s) de retrait
+                            </p>
+                            <p class="text-sm font-black text-base-content">{{ ent.montant_retraits_attente|floatformat:0 }} FCFA</p>
+                        </div>
+                        <span class="badge badge-warning badge-sm font-bold">À TRAITER</span>
+                    </div>
+                {% endif %}
+
+                <a 
+                    href="{% url 'superuser_app:detail-entreprise' ent.pk %}"
+                    class="btn btn-outline btn-primary btn-sm w-full rounded-xl"
+                >
+                    Détails & Demandes de retrait
+                </a>
+            </article>
+        {% empty %}
+            <div class="p-8 text-center text-base-content/60 bg-base-100 rounded-3xl border border-dashed border-base-300">
+                <span class="text-3xl">🏢</span>
+                <p class="font-bold mt-2">Aucune entreprise trouvée</p>
+                <p class="text-xs mt-1">Modifiez vos filtres de recherche.</p>
+            </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination HTMX -->
+    {% if is_paginated %}
+        <div class="flex justify-center mt-6">
+            <div class="join shadow-sm border border-base-200">
+                {% if page_obj.has_previous %}
+                    <button
+                        type="button"
+                        hx-get="?page={{ page_obj.previous_page_number }}&q={{ search_query }}&palier={{ selected_palier }}&retrait={{ selected_retrait }}&abonnement={{ selected_abonnement }}"
+                        hx-target="#entreprises-table-container"
+                        hx-swap="outerHTML"
+                        hx-push-url="true"
+                        hx-indicator="#search-spinner"
+                        class="join-item btn btn-sm"
+                    >
+                        « Précédent
+                    </button>
+                {% else %}
+                    <button class="join-item btn btn-sm btn-disabled">« Précédent</button>
+                {% endif %}
+
+                <span class="join-item btn btn-sm btn-active pointer-events-none">
+                    Page {{ page_obj.number }} / {{ paginator.num_pages }}
+                </span>
+
+                {% if page_obj.has_next %}
+                    <button
+                        type="button"
+                        hx-get="?page={{ page_obj.next_page_number }}&q={{ search_query }}&palier={{ selected_palier }}&retrait={{ selected_retrait }}&abonnement={{ selected_abonnement }}"
+                        hx-target="#entreprises-table-container"
+                        hx-swap="outerHTML"
+                        hx-push-url="true"
+                        hx-indicator="#search-spinner"
+                        class="join-item btn btn-sm"
+                    >
+                        Suivant »
+                    </button>
+                {% else %}
+                    <button class="join-item btn btn-sm btn-disabled">Suivant »</button>
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
+</div>
