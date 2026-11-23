@@ -101,7 +101,7 @@ def initier_paiement_ligdicash(paiement: PaiementLigdiCash, otp: str='') -> dict
     
     
 @transaction.atomic
-def confirmer_paiement_ligdicah(paiement_id: int, token_callback: str = "", palyoad_cb: dict | None = None) -> PaiementLigdiCash:
+def confirmer_paiement_ligdicash(paiement_id: int, token_callback: str = "", palyoad_cb: dict | None = None) -> PaiementLigdiCash:
     """
     Vérifie le statut réel d'un paiement auprès de ligdicash via token_creation
     et met à jour le paiement + la commande de maniere idempotente 
