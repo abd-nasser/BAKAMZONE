@@ -185,3 +185,20 @@
   }
 </script>
 {% endblock %}
+
+{% block extra_scripts %}
+{{ block.super }}
+<script>
+  document.body.addEventListener("close_and_reload", function () {
+    // Ferme une modale DaisyUI ouverte si présente
+    document.querySelectorAll("dialog[open]").forEach(function (modal) {
+      modal.close();
+    });
+
+    // Redirection douce vers le suivi de la commande après un court délai pour laisser voir le toast
+    setTimeout(function () {
+      window.location.href = "{% url 'paiement_app:statut' commande.reference %}";
+    }, 1200);
+  });
+</script>
+{% endblock %}

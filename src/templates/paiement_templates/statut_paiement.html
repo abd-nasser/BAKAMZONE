@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}Statut paiement — Commande {{ commande.reference }} | BAKAMZONE{% endblock %}
+
+{% block content %}
+<div
+  class="max-w-lg mx-auto px-4 py-6 sm:py-10"
+  {% if paiement.statut == "en_attente" %}
+    hx-get="{% url 'paiement_app:statut' commande.reference %}"
+    hx-trigger="every 4s"
+    hx-select="#statut-paiement-card"
+    hx-target="#statut-paiement-card"
+    hx-swap="outerHTML"
+  {% endif %}
+>
+  <div id="statut-paiement-card" class="card bg-base-100 border border-base-300 shadow-md rounded-2xl">
+    <div class="card-body p-5 sm:p-6 space-y-5">
+
+      <!-- Badge & Titre selon l'état -->
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <span class="text-xs font-mono text-base-content/60">
+            Commande {{ commande.reference }}
+          </span>
+          <h1 class="text-xl sm:text-2xl font-black text-base-content mt-1">
+            {% if paiement.statut == "reussi" %}
+              Paiement confirmé
+            {% elif paiement.statut == "echoue" %}
+              Paiement non abouti
+            {% elif paiement.statut == "annule" %}
+              Paiement annulé
+            {% else %}
+              Validation en attente
+            {% endif %}
+          </h1>
+        </div>
+
+        {% if paiement.statut == "reussi" %}
+          <span class="badge bg-[#059669]/15 text-[#059669] dark:text-emerald-400 border-[#059669]/30 font-bold py-3 px-3 rounded-xl">
+            Réussi
+          </span>
+        {% elif paiement.statut == "echoue" or paiement.statut == "annule" %}
+          <span class="badge badge-error badge-outline font-bold py-3 px-3 rounded-xl">
+            {{ paiement.get_statut_display }}
+          </span>
+        {% else %}
+          <span class="badge bg-[#F97316]/15 text-[#F97316] border-[#F97316]/30 font-bold py-3 px-3 rounded-xl gap-1.5">
+            <span class="loading loading-spinner loading-xs"></span>
+            En cours
+          </span>
+        {% endif %}
+      </div>
+
+      <!-- Message explicatif -->
+      <div class="p-4 rounded-2xl bg-base-200/70 border border-base-300 text-xs sm:text-sm text-base-content/80 leading-relaxed">
+        {% if paiement.statut == "reussi" %}
+          Votre paiement de <strong class="text-[#059669] dark:text-emerald-400">{{ paiement.montant }} FCFA</strong> a bien été confirmé. Votre commande est en cours de préparation.
+        {% elif paiement.statut == "echoue" %}
+          {{ paiement.message_erreur|default:"La transaction n'a pas pu être validée auprès de l'opérateur." }}
+        {% elif paiement.statut == "annule" %}
+          La transaction a été annulée. Vous pouvez relancer une tentative à tout moment.
+        {% else %}
+          Confirmez la demande sur votre téléphone (<strong>{{ paiement.numero_client }}</strong>). Cette page vérifie automatiquement l'état de votre paiement.
+        {% endif %}
+      </div>
+
+      <!-- Résumé technique léger -->
+      <div class="space-y-2 text-xs border-t border-base-200 pt-4">
+        <div class="flex justify-between">
+          <span class="text-base-content/60">Montant</span>
+          <span class="font-bold text-base-content">{{ paiement.montant }} FCFA</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-base-content/60">Opérateur</span>
+          <span class="font-semibold text-base-content">{{ paiement.operateur|default:"—" }}</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-base-content/60">Référence paiement</span>
+          <span class="font-mono text-base-content/80 truncate max-w-[190px]">{{ paiement.reference }}</span>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="pt-2 flex flex-col sm:flex-row gap-2.5">
+        {% if paiement.statut == "reussi" %}
+          <a
+            href="{% url 'clients_app:tableau-de-bord' %}"
+            class="btn bg-[#059669] hover:bg-[#047857] text-white border-0 rounded-xl font-bold flex-1"
+          >
+            Voir ma commande
+          </a>
+        {% else %}
+          <a
+            href="{% url 'paiement_app:initier' commande.reference %}"
+            class="btn bg-[#059669] hover:bg-[#047857] text-white border-0 rounded-xl font-bold flex-1"
+          >
+            {% if paiement.statut == "en_attente" %}Modifier / Renvoyer{% else %}Réessayer le paiement{% endif %}
+          </a>
+        {% endif %}
+        <a
+          href="{% url 'home_app:home-page' %}"
+          class="btn btn-ghost rounded-xl font-semibold"
+        >
+          Accueil
+        </a>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

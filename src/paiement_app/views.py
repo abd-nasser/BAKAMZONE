@@ -12,7 +12,7 @@ from django.views.decorators.csrf import csrf_exempt
 
 from panier_app.models import Commande
 from .models import PaiementLigdiCash
-from .services import initier_paiement_ligdicash, confirmer_paiement_ligdicah
+from .services import initier_paiement_ligdicash, confirmer_paiement_ligdicash
 
 logger = logging.getLogger(__name__)
 
@@ -200,7 +200,7 @@ class LigdiCashCallbackView(View):
             return JsonResponse({"status": "payment_not_found"}, status=404)
         
         try:
-            paiement = confirmer_paiement_ligdicah(
+            paiement = confirmer_paiement_ligdicash(
                 paiement_id=paiement.id,
                 token_callback=token_cb,
                 palyoad_cb=payload
@@ -239,7 +239,21 @@ class StatutPaiementView(LoginRequiredMixin, View):
             client__user=request.user,
         )
         paiement = get_object_or_404(PaiementLigdiCash, commande=commande)
-        if request.headers.get("HX-Request") == "true" or request.GET.get("format") == "json":
+
+        # Vérification active si le paiement est toujours en attente et possède un token de création
+        if paiement.statut == PaiementLigdiCash.STATUT_EN_ATTENTE and paiement.token_creation:
+            try:
+                paiement = confirmer_paiement_ligdicash(paiement_id=paiement.id)
+                commande.refresh_from_db()
+            except Exception as exc:
+                logger.warning(
+                    "Vérification de statut non bloquante échouée pour paiement %s : %s",
+                    paiement.reference,
+                    exc,
+                )
+
+        # On ne renvoie du JSON que si explicitement demandé via ?format=json
+        if request.GET.get("format") == "json":
             return JsonResponse(
                 {
                     "commande_reference": str(commande.reference),
@@ -248,6 +262,7 @@ class StatutPaiementView(LoginRequiredMixin, View):
                     "statut_ligdicash": paiement.statut,
                 }
             )
+
         return render(
             request,
             self.template_name,
