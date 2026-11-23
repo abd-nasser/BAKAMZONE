@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block title %}Paiement — Commande {{ commande.reference }} | BAKAMZONE{% endblock %}
+
+{% block content %}
+<div
+  class="max-w-lg mx-auto px-4 py-6 sm:py-10"
+  x-data="paiementLigdiCashForm({
+    numeroInitial: '{{ paiement.numero_client|default:''|escapejs }}',
+    operateurInitial: '{{ paiement.operateur|default:'ORANGE'|escapejs }}',
+  })"
+>
+  <!-- En-tête BAKAMZONE -->
+  <div class="mb-6">
+    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-[#059669]/10 text-[#059669] dark:text-emerald-400 border border-[#059669]/25">
+      <span>⚡ Payin sans redirection</span>
+    </div>
+    <h1 class="text-2xl sm:text-3xl font-black tracking-tight mt-2.5 text-base-content">
+      Régler ma commande
+    </h1>
+    <p class="text-xs sm:text-sm text-base-content/70 mt-1">
+      Réf. <span class="font-mono font-semibold text-base-content">{{ commande.reference }}</span>
+    </p>
+
+    <a href="{% url 'panier_app:detail_commande' commande.reference %}" class="link link-primary text-sm font-medium">
+      ← Retour à la commande
+    </a>
+  </div>
+
+  <!-- Carte récapitulatif du montant -->
+  <div class="card bg-base-100 border border-base-300 shadow-sm rounded-2xl mb-5">
+    <div class="card-body p-4 sm:p-5 flex-row items-center justify-between gap-4">
+      <div>
+        <span class="text-[11px] uppercase tracking-wider font-bold text-base-content/60">
+          Montant total à payer
+        </span>
+        <div class="text-2xl sm:text-3xl font-black text-[#059669] dark:text-emerald-400 mt-0.5">
+          {{ commande.total_a_payer }} <span class="text-sm font-extrabold text-[#F97316]">FCFA</span>
+        </div>
+      </div>
+      <span class="badge bg-[#F97316]/15 text-[#F97316] border-[#F97316]/30 font-bold py-3 px-3 rounded-xl">
+        Mobile Money
+      </span>
+    </div>
+  </div>
+
+  <!-- Formulaire d'initiation (HTMX + Alpine.js) -->
+  <form
+    method="post"
+    action="{% url 'paiement_app:initier-paiement' commande.reference %}"
+    hx-post="{% url 'paiement_app:initier-paiement' commande.reference %}"
+    hx-target="#toast-container"
+    hx-swap="beforeend"
+    @htmx:before-request="submitting = true"
+    @htmx:after-request="submitting = false"
+    class="card bg-base-100 border border-base-300 shadow-md rounded-2xl"
+  >
+    {% csrf_token %}
+    <div class="card-body p-4 sm:p-6 space-y-5">
+
+      <!-- Opérateur -->
+      <div class="form-control">
+        <label class="label pb-1.5" for="id_operateur">
+          <span class="label-text font-bold text-sm">Opérateur</span>
+        </label>
+        <select
+          id="id_operateur"
+          name="operateur"
+          x-model="operateur"
+          @change="onOperateurChange()"
+          class="select select-bordered w-full rounded-xl bg-base-100 focus:border-[#059669] focus:outline-none"
+        >
+          <option value="ORANGE">Orange Money</option>
+          <option value="MOOV">Moov Africa Money</option>
+          <option value="CORIS">Coris Money</option>
+          <option value="LIGDICASH">Wallet LigdiCash</option>
+        </select>
+        <p class="text-xs text-base-content/65 mt-1.5" x-text="instructionValidation"></p>
+      </div>
+
+      <!-- Numéro mobile money -->
+      <div class="form-control">
+        <label class="label pb-1.5" for="id_numero_client">
+          <span class="label-text font-bold text-sm">Numéro Mobile Money</span>
+        </label>
+        <input
+          type="tel"
+          id="id_numero_client"
+          name="numero_client"
+          x-model="numeroClient"
+          @input="formaterNumero()"
+          required
+          inputmode="numeric"
+          placeholder="22670XXXXXX"
+          class="input input-bordered w-full rounded-xl bg-base-100 font-mono focus:border-[#059669] focus:outline-none"
+        />
+        <span class="label-text-alt text-base-content/60 mt-1">
+          Sans « + » ni espaces (ex. 22670123456).
+        </span>
+      </div>
+
+      <!-- Code OTP -->
+      <div class="form-control">
+        <div class="flex items-center justify-between pb-1.5">
+          <label class="label p-0" for="id_otp">
+            <span class="label-text font-bold text-sm">
+              Code OTP <span class="font-normal text-base-content/60">(optionnel selon opérateur)</span>
+            </span>
+          </label>
+          <button
+            type="button"
+            @click="afficherOtp = !afficherOtp"
+            class="text-xs font-bold text-[#F97316] hover:underline"
+          >
+            <span x-show="!afficherOtp">+ Ajouter un OTP</span>
+            <span x-show="afficherOtp" x-cloak>Masquer</span>
+          </button>
+        </div>
+
+        <div x-show="afficherOtp" x-cloak x-transition>
+          <input
+            type="text"
+            id="id_otp"
+            name="otp"
+            x-model="otp"
+            inputmode="numeric"
+            autocomplete="one-time-code"
+            placeholder="Ex : 123456"
+            class="input input-bordered w-full rounded-xl bg-base-100 font-mono tracking-widest focus:border-[#F97316] focus:outline-none"
+          />
+          <p class="text-xs text-base-content/60 mt-1">
+            Saisissez le code OTP (USSD ou SMS) si votre opérateur en demande un avant ou après envoi.
+          </p>
+        </div>
+
+        <template x-if="!afficherOtp">
+          <input type="hidden" name="otp" :value="otp" />
+        </template>
+      </div>
+
+      <!-- Bouton principal -->
+      <div class="pt-2">
+        <button
+          type="submit"
+          :disabled="submitting || numeroClient.trim().length < 8"
+          class="btn btn-lg w-full bg-[#059669] hover:bg-[#047857] text-white font-black rounded-2xl shadow-lg border-0 disabled:bg-base-300 disabled:text-base-content/40"
+        >
+          <span x-show="submitting" x-cloak class="loading loading-spinner loading-sm mr-2"></span>
+          <span x-text="submitting ? 'Traitement en cours...' : 'Payer {{ commande.total_a_payer }} FCFA'"></span>
+        </button>
+      </div>
+
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  function paiementLigdiCashForm({ numeroInitial = "", operateurInitial = "ORANGE" }) {
+    return {
+      numeroClient: numeroInitial,
+      operateur: operateurInitial || "ORANGE",
+      otp: "",
+      afficherOtp: false,
+      submitting: false,
+
+      get instructionValidation() {
+        if (this.operateur === "ORANGE") {
+          return "Selon le mode actif, vous recevrez une invite USSD / SMS ou pourrez renseigner un OTP.";
+        }
+        return "Validez la demande sur votre téléphone dès réception de l'invite de l'opérateur.";
+      },
+
+      formaterNumero() {
+        this.numeroClient = this.numeroClient.replace(/[\s\-+]/g, "");
+      },
+
+      onOperateurChange() {
+        if (this.operateur === "CORIS") {
+          this.afficherOtp = true;
+        }
+      },
+    };
+  }
+</script>
+{% endblock %}

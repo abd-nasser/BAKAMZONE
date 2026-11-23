@@ -64,6 +64,7 @@ INSTALLED_APPS = [
     'avis_app',
     'notifications_app',
     'panier_app',
+    'paiement_app',
 ]
 if DEBUG:
     # Add django_browser_reload only in DEBUG mode
@@ -247,8 +248,11 @@ VAPID_ADMIN_EMAIL = os.getenv("VAPID_ADMIN_EMAIL", "admin@bakamzone.com")
 
 
 #LIGDICASH configurations
-LIGDICASH_API_KEY = os.getenv("LIGDICASH_API_KEY")
-LIGDICASH_API_TOKEN = os.getenv("LIGDICASH_API_TOKEN")
+
+LIGDICASH_API_KEY = os.getenv("LIGDICASH_API_KEY", default="")
+LIGDICASH_AUTH_TOKEN = os.getenv("LIGDICASH_AUTH_TOKEN", default="")
+LIGDICASH_PLATFORM = os.getenv("LIGDICASH_PLATFORM", default="test")  # "test" ou "live"
+LIGDICASH_CALLBACK_URL = os.getenv("LIGDICASH_CALLBACK_URL", default="")
 
 
 # Sécurité CSRF pour HTTPS

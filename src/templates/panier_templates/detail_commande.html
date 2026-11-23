@@ -110,8 +110,9 @@
             </p>
         </div>
     </section>
-
-    <div class="alert alert-info rounded-2xl">
+    
+    {% comment %}
+        <div class="alert alert-info rounded-2xl">
         <span>
             {% if commande.statut == "en_attente_paiement" %}
                 Le paiement en ligne n'est pas encore disponible. Votre commande est en attente de paiement.
@@ -120,12 +121,15 @@
             {% endif %}
         </span>
     </div>
+    {% endcomment %}
+        
+    
 
     <div class="flex flex-wrap gap-3">
         {% if commande.statut == "en_attente_paiement" %}
-            <button type="button" class="btn btn-disabled rounded-xl" disabled>
-                Paiement bientôt disponible
-            </button>
+            <a href="{% url 'paiement_app:initier-paiement' commande.reference %}" class="btn btn-success rounded-xl" >
+                valider paiement
+            </a>
         {% endif %}
         <a href="{% url 'clients_app:tableau-de-bord' %}#articles" class="btn btn-outline rounded-xl">
             Retour au catalogue

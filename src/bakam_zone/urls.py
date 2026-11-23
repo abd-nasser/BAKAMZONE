@@ -21,6 +21,7 @@ urlpatterns = [
     path('panier/', include('panier_app.urls', namespace='panier_app')),
     path('demandes/', include('demande_livraison_app.urls', namespace='demande_livraison_app')),
     path('notifications/', include('notifications_app.urls', namespace='notifications_app')),
+    path("paiement/", include("paiement_app.urls", namespace="paiement_app")),
     path('sw.js', ServiceWorkerView.as_view(), name='service-worker'),
     # Ephemeral PWA endpoint public pour la validation de position GPS par le destinataire (WhatsApp Smart-Drop)
     path('geo/verify/<uuid:token_pwa_destinataire>/', DestinataireGeoView.as_view(), name='destinataire-geo'),
