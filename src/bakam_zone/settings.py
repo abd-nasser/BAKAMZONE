@@ -253,7 +253,7 @@ LIGDICASH_API_KEY = os.getenv("LIGDICASH_API_KEY", default="")
 LIGDICASH_AUTH_TOKEN = os.getenv("LIGDICASH_AUTH_TOKEN", default="")
 LIGDICASH_PLATFORM = os.getenv("LIGDICASH_PLATFORM", default="test")  # "test" ou "live"
 LIGDICASH_CALLBACK_URL = os.getenv("LIGDICASH_CALLBACK_URL", default="")
-
+LIGDICASH_CALLBACK_URL_LIVRAISON = os.getenv("LIGDICASH_CALLBACK_URL_LIVRAISON", default="")
 
 # Sécurité CSRF pour HTTPS
 # CSRF Settings

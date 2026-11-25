@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block title %}Payer la livraison — {{ demande.reference }} | BAKAMZONE{% endblock %}
+
+{% block content %}
+<div
+  class="max-w-lg mx-auto px-4 py-6 sm:py-10"
+  x-data="paiementLivraisonLigdiCashForm({
+    numeroInitial: '{{ paiement.numero_client|default:demande.client.user.telephone|default:''|escapejs }}',
+    operateurInitial: '{{ paiement.operateur|default:'ORANGE'|escapejs }}',
+  })"
+>
+  <div class="card bg-base-100 border border-base-300 shadow-md rounded-2xl">
+    <div class="card-body p-5 sm:p-6 space-y-5">
+
+      <div>
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-[#059669]/10 text-[#059669] dark:text-emerald-400 border border-[#059669]/25 mb-2">
+          <span>⚡ Payin sans redirection</span>
+        </div>
+        <div class="text-xs font-mono text-base-content/60">
+          Course #{{ demande.pk }} · Réf. {{ demande.reference }}
+        </div>
+        <h1 class="text-xl sm:text-2xl font-black text-base-content mt-1">
+          Régler la course
+        </h1>
+        <p class="text-xs sm:text-sm text-base-content/70 mt-1">
+          La position du destinataire est confirmée. Validez le paiement pour autoriser le départ du livreur.
+        </p>
+      </div>
+
+      <!-- Montant à régler -->
+      <div class="p-4 rounded-2xl bg-base-200/70 border border-base-300 flex items-center justify-between">
+        <div>
+          <span class="text-xs sm:text-sm font-semibold text-base-content/75 block">
+            Montant de la livraison
+          </span>
+          <span class="text-[11px] text-base-content/60">
+            {{ demande.zone_depart.nom }} → {{ demande.zone_arrivee.nom }}
+          </span>
+        </div>
+        <span class="text-lg sm:text-xl font-black text-[#059669] dark:text-emerald-400">
+          {{ montant }} <span class="text-xs font-extrabold text-[#F97316]">FCFA</span>
+        </span>
+      </div>
+
+      <!-- Formulaire HTMX sans redirection -->
+      <form
+        method="post"
+        action="{% url 'paiement_app:initier_livraison' demande.reference %}"
+        hx-post="{% url 'paiement_app:initier_livraison' demande.reference %}"
+        hx-target="#toast-container"
+        hx-swap="beforeend"
+        @htmx:before-request="submitting = true"
+        @htmx:after-request="submitting = false"
+        class="space-y-4"
+      >
+        {% csrf_token %}
+
+        <div class="form-control">
+          <label for="id_operateur" class="label pb-1">
+            <span class="label-text text-xs font-bold">Opérateur Mobile Money</span>
+          </label>
+          <select
+            id="id_operateur"
+            name="operateur"
+            x-model="operateur"
+            @change="onOperateurChange()"
+            class="select select-bordered w-full rounded-xl text-sm focus:border-[#059669] focus:outline-none"
+          >
+            <option value="ORANGE">Orange Money</option>
+            <option value="MOOV">Moov Africa Money</option>
+            <option value="CORIS">Coris Money</option>
+            <option value="LIGDICASH">Wallet LigdiCash</option>
+          </select>
+          <p class="text-xs text-base-content/65 mt-1.5" x-text="instructionValidation"></p>
+        </div>
+
+        <div class="form-control">
+          <label for="id_numero_client" class="label pb-1">
+            <span class="label-text text-xs font-bold">Numéro Mobile Money</span>
+          </label>
+          <input
+            id="id_numero_client"
+            type="tel"
+            name="numero_client"
+            x-model="numeroClient"
+            @input="formaterNumero()"
+            required
+            inputmode="numeric"
+            placeholder="22670XXXXXX"
+            class="input input-bordered w-full rounded-xl text-sm font-mono focus:border-[#059669] focus:outline-none"
+          />
+          <span class="label-text-alt text-base-content/60 mt-1">
+            Sans « + » ni espaces (ex. 22670123456).
+          </span>
+        </div>
+
+        <div class="form-control">
+          <div class="flex items-center justify-between pb-1">
+            <label for="id_otp" class="label p-0">
+              <span class="label-text text-xs font-bold">
+                Code OTP <span class="font-normal text-base-content/60">(optionnel selon opérateur)</span>
+              </span>
+            </label>
+            <button
+              type="button"
+              @click="afficherOtp = !afficherOtp"
+              class="text-xs font-bold text-[#F97316] hover:underline"
+            >
+              <span x-show="!afficherOtp">+ Ajouter un OTP</span>
+              <span x-show="afficherOtp" x-cloak>Masquer</span>
+            </button>
+          </div>
+
+          <div x-show="afficherOtp" x-cloak x-transition>
+            <input
+              id="id_otp"
+              type="text"
+              name="otp"
+              x-model="otp"
+              inputmode="numeric"
+              autocomplete="one-time-code"
+              placeholder="Ex : 123456"
+              class="input input-bordered w-full rounded-xl text-sm font-mono tracking-widest focus:border-[#F97316] focus:outline-none"
+            />
+          </div>
+
+          <template x-if="!afficherOtp">
+            <input type="hidden" name="otp" :value="otp" />
+          </template>
+        </div>
+
+        <button
+          type="submit"
+          :disabled="submitting || numeroClient.trim().length < 8"
+          class="btn bg-[#059669] hover:bg-[#047857] text-white border-0 w-full rounded-xl font-bold mt-2 disabled:bg-base-300 disabled:text-base-content/40"
+        >
+          <span x-show="submitting" x-cloak class="loading loading-spinner loading-xs mr-1"></span>
+          <span x-text="submitting ? 'Envoi en cours...' : 'Payer {{ montant }} FCFA'"></span>
+        </button>
+      </form>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+{{ block.super }}
+<script>
+  function paiementLivraisonLigdiCashForm({ numeroInitial = "", operateurInitial = "ORANGE" }) {
+    return {
+      numeroClient: (numeroInitial || "").replace(/[\s\-+]/g, ""),
+      operateur: operateurInitial || "ORANGE",
+      otp: "",
+      afficherOtp: operateurInitial === "CORIS",
+      submitting: false,
+
+      get instructionValidation() {
+        if (this.operateur === "ORANGE") {
+          return "Selon le mode actif, vous recevrez une invite USSD / SMS ou pourrez renseigner un OTP.";
+        }
+        return "Validez la demande sur votre téléphone dès réception de l'invite de l'opérateur.";
+      },
+
+      formaterNumero() {
+        this.numeroClient = this.numeroClient.replace(/[\s\-+]/g, "");
+      },
+
+      onOperateurChange() {
+        if (this.operateur === "CORIS") {
+          this.afficherOtp = true;
+        }
+      },
+    };
+  }
+
+  document.body.addEventListener("close_and_reload", function () {
+    document.querySelectorAll("dialog[open]").forEach(function (modal) {
+      modal.close();
+    });
+    setTimeout(function () {
+      window.location.href = "{% url 'paiement_app:statut_livraison' demande.reference %}";
+    }, 1200);
+  });
+</script>
+{% endblock %}

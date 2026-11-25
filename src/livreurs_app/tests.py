@@ -479,3 +479,83 @@ class PurgerHistoriquePositionsTaskTests(TestCase):
         )
         self.assertEqual(schedule["schedule"].hour, {2})
         self.assertEqual(schedule["schedule"].minute, {0})
+
+
+class LivreurTakeoffPaymentGuardTests(TestCase):
+    def setUp(self):
+        self.bloc = Blocs.objects.create(nom="Bloc Garde Paiement")
+        self.zone = Zone.objects.create(nom="Zone Garde", code="ZG-1", bloc=self.bloc)
+        self.client_user = User.objects.create_user(
+            telephone="70000201",
+            password="test-password",
+            first_name="Client",
+            last_name="Garde",
+            role="client",
+        )
+        self.client_profile = Client.objects.create(user=self.client_user)
+        self.livreur_user = User.objects.create_user(
+            telephone="70000202",
+            password="test-password",
+            first_name="Livreur",
+            last_name="Garde",
+            role="livreur",
+        )
+        self.livreur = Livreur.objects.create(
+            user=self.livreur_user,
+            type_vehicule="moto",
+            blocs=self.bloc,
+            zone_actuelle=self.zone,
+            actif=True,
+        )
+        self.client.force_login(self.livreur_user)
+        self.demande = DemandeLivraison.objects.create(
+            client=self.client_profile,
+            livreur=self.livreur,
+            zone_depart=self.zone,
+            zone_arrivee=self.zone,
+            latitude_depart=Decimal("12.345678"),
+            longitude_depart=Decimal("-1.234567"),
+            prix=Decimal("1000"),
+            whatsapp_destinataire="+22670000203",
+            statut="acceptee",
+            position_destinataire_validee=True,
+            latitude_destinataire_reelle=Decimal("12.350000"),
+            longitude_destinataire_reelle=Decimal("-1.240000"),
+            statut_position_destinataire="position_recue",
+        )
+        self.url = reverse("livreurs_app:changer-statut-demande", args=[self.demande.pk])
+
+    def test_unpaid_delivery_cannot_transition_to_en_cours_or_livree(self):
+        response = self.client.post(self.url, {"statut": "en_cours"}, follow=True)
+        self.assertRedirects(response, reverse("livreurs_app:tableau-de-bord"))
+        self.assertContains(response, "Décollage bloqué")
+        self.demande.refresh_from_db()
+        self.assertEqual(self.demande.statut, "acceptee")
+
+        # Tentative de contournement direct vers 'livree'
+        response_bypass = self.client.post(self.url, {"statut": "livree"}, follow=True)
+        self.assertRedirects(response_bypass, reverse("livreurs_app:tableau-de-bord"))
+        self.demande.refresh_from_db()
+        self.assertEqual(self.demande.statut, "acceptee")
+
+    def test_dashboard_displays_payment_lock_when_unpaid(self):
+        response = self.client.get(reverse("livreurs_app:tableau-de-bord"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Paiement client en attente")
+
+    def test_paid_delivery_can_progress_to_en_cours_and_livree(self):
+        self.demande.statut_paiement = DemandeLivraison.PAIEMENT_REUSSI
+        self.demande.save(update_fields=["statut_paiement"])
+
+        resp_start = self.client.post(self.url, {"statut": "en_cours"})
+        self.assertRedirects(resp_start, reverse("livreurs_app:tableau-de-bord"))
+        self.demande.refresh_from_db()
+        self.assertEqual(self.demande.statut, "en_cours")
+
+        resp_end = self.client.post(self.url, {"statut": "livree"})
+        self.assertRedirects(resp_end, reverse("livreurs_app:tableau-de-bord"))
+        self.demande.refresh_from_db()
+        self.assertEqual(self.demande.statut, "livree")
+        self.assertIsNotNone(self.demande.date_livraison)
+        self.livreur.refresh_from_db()
+        self.assertEqual(self.livreur.nb_livraisons, 1)

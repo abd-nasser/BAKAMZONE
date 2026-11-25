@@ -1,4 +1,5 @@
 import uuid
+from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
 from django.db.models import Q
 from django.utils import timezone
@@ -7,6 +8,20 @@ from zones_app.models import Zone
 from clients_app.models import Client # Adapte selon le nom de ton app client
 
 class DemandeLivraison(models.Model):
+    
+    PAIEMENT_NON_INITIE = "non_initie"
+    PAIEMENT_EN_ATTENTE = "en_attente"
+    PAIEMENT_REUSSI = "reussi"
+    PAIEMENT_ECHOUE = "echoue"
+
+    STATUT_PAIEMENT_CHOICES = [
+        (PAIEMENT_NON_INITIE, "Non initié"),
+        (PAIEMENT_EN_ATTENTE, "En attente"),
+        (PAIEMENT_REUSSI, "Réussi"),
+        (PAIEMENT_ECHOUE, "Échoué"),
+    ]
+    
+    
     STATUT_CHOICES = [
         ('en_attente', 'En attente de livreur'),
         ('acceptee', 'Acceptée par le livreur'),
@@ -23,6 +38,12 @@ class DemandeLivraison(models.Model):
     ]
 
     # --- Relations principales ---
+    reference = models.UUIDField(
+        default=uuid.uuid4,
+        unique=True,
+        editable=False,
+        verbose_name="Référence de la demande",
+    )
     client = models.ForeignKey(
         Client,
         on_delete=models.PROTECT,
@@ -93,6 +114,14 @@ class DemandeLivraison(models.Model):
     date_acceptation = models.DateTimeField(null=True, blank=True)
     date_livraison = models.DateTimeField(null=True, blank=True)
 
+    
+    statut_paiement = models.CharField(
+    max_length=20,
+    choices=STATUT_PAIEMENT_CHOICES,
+    default=PAIEMENT_NON_INITIE,
+    verbose_name="Statut du paiement",
+    )
+    date_paiement = models.DateTimeField(blank=True, null=True)
     class Meta:
         ordering = ['-date_creation']
         indexes = [
@@ -109,6 +138,26 @@ class DemandeLivraison(models.Model):
                 name="unique_course_active_par_ligne_commande",
             ),
         ]
+
+    @property
+    def est_payee(self) -> bool:
+        """Retourne True si le paiement dédié de la course est confirmé."""
+        if self.statut_paiement == self.PAIEMENT_REUSSI:
+            return True
+        try:
+            paiement = self.paiement_livraison_ligdicash
+        except ObjectDoesNotExist:
+            return False
+        return paiement.statut == "reussi"
+
+    @property
+    def paiement_requis(self) -> bool:
+        """Indique si la course requiert un paiement LigdiCash dédié avant décollage."""
+        if self.ligne_commande_id is not None:
+            return False
+        if self.pk and self.lignes_commande.exists():
+            return False
+        return True
 
     def __str__(self):
         return f"Livraison #{self.pk} — {self.client} → Destinataire ({self.whatsapp_destinataire})"

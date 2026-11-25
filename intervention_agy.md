@@ -186,5 +186,44 @@ L'intervention a porté sur deux volets principaux demandés par l'utilisateur :
      - Décision de Retrait : tests complets d'approbation, de mise en paiement, de refus avec motif, et de blocage si le motif de refus est omis.
    - Exécution : `Ran 16 tests in 59.210s — OK (100% succès)`.
 
+---
+
+## 8. Intervention du 25 novembre 2026 à 11:29:14 UTC — Relais `feature/PaiementLivraisonLigdiCash` : Stabilisation Paiement Livraison, Smart-Drop & Garde-fou Livreur
+
+**Branche Git :** `feature/PaiementLivraisonLigdiCash`  
+**Objectifs de la session :**
+1. Lecture complète de l'ensemble des 20 fichiers `.md` du projet (hors `reset_data.md` et licences des environnements virtuels) afin de reprendre le travail initié par Gemini sur `paiement_app` (paiement des commandes et paiement des livraisons sans redirection).
+2. Ajout du champ `reference` (`UUIDField`) sur `DemandeLivraison` avec migration sécurisée en 3 étapes.
+3. Audit et correction des anomalies bloquantes dans la brique paiement livraison (`services_livraison.py`, `views_paiement_livraison.py`, `urls.py` et templates).
+4. Branchement du lien de paiement dans la notification Web Push post-`Smart-Drop` et verrouillage du décollage côté livreur tant que le paiement requis n'est pas confirmé.
+5. Couverture et validation par tests unitaires et d'intégration.
+
+### Réalisations techniques détaillées :
+
+1. **Modèle `DemandeLivraison` & Migration ([`src/demande_livraison_app/models.py`](./src/demande_livraison_app/models.py))** :
+   - Ajout du champ `reference = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)` et des propriétés `est_payee` et `paiement_requis` (distinguant les courses soumises au paiement dédié des courses créées par les entreprises sur commande déjà payée).
+   - Création et application de [`0007_demandelivraison_reference.py`](./src/demande_livraison_app/migrations/0007_demandelivraison_reference.py) (ajout nullable, peuplement d'UUID uniques via `RunPython`, puis contrainte `unique=True` non nulle).
+
+2. **Stabilisation Services & SDK LigdiCash ([`src/paiement_app/services_livraison.py`](./src/paiement_app/services_livraison.py))** :
+   - Alignement de `initier_paiement_ligdicash_livraison()` sur la signature réelle du SDK `ligdicash.Invoice` : ajout de ligne via `invoice.add_item(...)`, `invoice.external_id = ""`, appel `invoice.pay_without_redirection(otp=otp, customer=paiement.numero_client, ...)`.
+   - Correction des retours d'erreur (`code != "00"` retournait `None` auparavant) et synchronisation de `DemandeLivraison.statut_paiement` (`PAIEMENT_EN_ATTENTE`, `PAIEMENT_ECHOUE`, `PAIEMENT_REUSSI`, `PAIEMENT_NON_INITIE`).
+   - Correction dans `confirmer_paiement_ligdicash_livraison()` : valeur par défaut `token_callback=""`, sortie anticipée si `token_creation` vide ou paiement déjà confirmé, et réindentation du bloc `completed`/`failed`/`cancelled` pour empêcher de marquer une demande payée hors confirmation.
+
+3. **Vues, Routage & Templates ([`src/paiement_app/views_paiement_livraison.py`](./src/paiement_app/views_paiement_livraison.py), [`src/paiement_app/urls.py`](./src/paiement_app/urls.py))** :
+   - Renommage `InitierPaiementLIvraisonView` $\rightarrow$ `InitierPaiementLivraisonView`.
+   - Ajout de `@transaction.atomic` sur `post()`, vérification stricte de `position_destinataire_validee`, blocage sur course annulée ou montant invalide, normalisation du numéro client.
+   - Correction de `clien__user` $\rightarrow$ `client__user` dans `StatutPaiementLivraisonView.get()` et `status=20` $\rightarrow$ `status=200` (et `404` si introuvable) dans `LigdiCashLivraisonCallbackView.post()`.
+   - Mise à jour de [`initier_paiement_livraison.html`](./src/templates/paiement_templates/initier_paiement_livraison.html) (opérateurs `ORANGE`, `MOOV`, `CORIS`, `LIGDICASH`, formatage numéro et OTP Alpine.js) et [`status_paiement_livraison.html`](./src/templates/paiement_templates/status_paiement_livraison.html) (lien `clients_app:suivi-livraison`).
+
+4. **Branchement Smart-Drop & Garde-fou Livreur** :
+   - [`src/notifications_app/services.py`](./src/notifications_app/services.py) : `programmer_notification_position_destinataire()` envoie la Web Push avec l'URL `paiement_app:initier_livraison` lorsque `demande.paiement_requis and not demande.est_payee`.
+   - [`src/templates/clients_templates/client_dashboard.html`](./src/templates/clients_templates/client_dashboard.html) : ajout du bouton d'accès au paiement sur les livraisons actives en attente de règlement.
+   - [`src/livreurs_app/views.py`](./src/livreurs_app/views.py) & [`src/templates/livreurs_templates/livreur_dashboard.html`](./src/templates/livreurs_templates/livreur_dashboard.html) : `ChangerStatutCourseView` bloque le passage à `en_cours` (et le contournement direct vers `livree`) tant que `demande.paiement_requis and not demande.est_payee`, avec indication visuelle et bouton désactivé côté dashboard livreur.
+
+5. **Validation & Tests Automatisés** :
+   - Ajout des tests dans [`src/paiement_app/tests.py`](./src/paiement_app/tests.py) (10 tests), [`src/livreurs_app/tests.py`](./src/livreurs_app/tests.py) (`LivreurTakeoffPaymentGuardTests`, 3 tests) et mise à jour de [`src/demande_livraison_app/tests.py`](./src/demande_livraison_app/tests.py) (`DestinataireGeoViewTestCase`).
+   - Exécution ciblée (`paiement_app.tests`, `DestinataireGeoViewTestCase`, `LivreurTakeoffPaymentGuardTests`, `notifications_app.tests`, `AssistantOperationnelDashboardTests`, avec SDK `ligdicash` et dispatch Celery mockés) : **44 tests réussis — OK (100 %)**.
+   - Contrôles Django : `manage.py check` (0 erreur) et `manage.py makemigrations --check --dry-run --noinput` (`No changes detected`).
+
 
 

@@ -49,9 +49,16 @@
                         Statut : <span class="font-semibold">{{ demande.get_statut_display }}</span>
                         {% if demande.livreur %} · Livreur : {{ demande.livreur.user.get_full_name }}{% endif %}
                     </p>
-                    <a href="{% url 'clients_app:suivi-livraison' demande.pk %}" class="btn btn-success mt-2 self-start rounded-xl">
-                        Voir le suivi
-                    </a>
+                    <div class="mt-2 flex flex-wrap gap-2">
+                        <a href="{% url 'clients_app:suivi-livraison' demande.pk %}" class="btn btn-success rounded-xl">
+                            Voir le suivi
+                        </a>
+                        {% if demande.position_destinataire_validee and demande.paiement_requis and not demande.est_payee %}
+                            <a href="{% url 'paiement_app:initier_livraison' demande.reference %}" class="btn bg-[#F97316] hover:bg-[#EA580C] text-white border-0 rounded-xl">
+                                💳 Payer la livraison ({{ demande.prix }} FCFA)
+                            </a>
+                        {% endif %}
+                    </div>
                 </div>
             </article>
             {% endfor %}

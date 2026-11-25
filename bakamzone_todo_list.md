@@ -51,7 +51,7 @@
 
 ## 8. Panier client & achats des produits des entreprises
 - [ ] **Cadrage du panier et du workflow d'achat**: en cours dans [`panier_client.md`](./panier_client.md). Les règles confirmées couvrent le panier multi-entreprises, la commande unique, la position GPS au checkout avec confirmation de la zone proposée, le paiement en ligne de `total_panier()` via LigdiCash, le solde entreprise crédité après confirmation du paiement et récupérable à la demande ou en fin de mois, le choix du bloc couvrant le plus de lignes (puis le plus proche), et les demandes de livraison des entreprises vers le client pour les lignes absentes du bloc. Valider les frais, le stock entreprise, les statuts et l'accès entreprise au workflow classique avant l'implémentation.
-- [ ] **Implémentation et validation du parcours d'achat**: en cours — panier HTMX/Alpine et première étape checkout implémentés : zone/GPS (repli sur les coordonnées de zone), création d'une commande en attente avec lignes/prix figés, contrôle de disponibilité/stock, détail de commande protégé. Restent à faire : réservation durable et affectation du stock/bloc, frais de livraison, paiement LigdiCash, livraisons entreprise et soldes.
+- [ ] **Implémentation et validation du parcours d'achat**: en cours — panier HTMX/Alpine, première étape checkout (zone/GPS, commande et lignes figées) et module de paiement commandes `PaiementLigdiCash` dans `paiement_app` (initiation payin sans redirection, callback serveur, polling HTMX et décrémentation atomique des articles hors bloc) en place. Restent à faire : réservation durable et affectation du stock/bloc, frais de livraison, branchement complet panier $\rightarrow$ `paiement_app:initier-paiement`, tests unitaires `PaiementLigdiCash` et livraisons en bloc.
 
 ## 9. Gestion des entreprises et validation des retraits par le Superuser (`superuser_app`)
 - [x] **Permissions d'accès & Mixin personnalisé Superuser (`SuperuserRequiredMixin`)**:
@@ -73,6 +73,20 @@
   - Vues et modales DaisyUI de traitement avec confirmation dans la vue détail marchand.
 - [x] **Tests Automatisés du Cockpit Superuser (16 tests unitaires validés — 100% OK)**:
   - 16 tests unitaires couvrant le mixin de permission, la liste dynamique des entreprises, les filtres HTMX, la vue détail entreprise et l'ensemble des actions de retraits (approbation, paiement, rejet avec et sans motif).
+
+## 10. Paiement des Livraisons LigdiCash (`feature/PaiementLivraisonLigdiCash`)
+- [x] **Modèles & Migrations (`DemandeLivraison` & `PaiementLivraisonLigdiCash`)**:
+  - Ajout de `reference` (`UUIDField` unique), `statut_paiement`, `date_paiement`, `est_payee` et `paiement_requis` sur `DemandeLivraison` (migrations `0006` et `0007` appliquées).
+  - Création de `PaiementLivraisonLigdiCash` dans `paiement_app` avec séparation `token_creation` / `token_callback` et audit `reponse_API` (`0001_initial`, `0002_rename_demande...`).
+- [x] **Services, Vues HTMX & Callback Dédié (`paiement_app`)**:
+  - `initier_paiement_ligdicash_livraison` et `confirmer_paiement_ligdicash_livraison` alignés sur le SDK `ligdicash.Invoice` (`add_item`, `external_id=""`, vérification serveur-à-serveur `get_transaction`, atomicité + idempotence).
+  - `InitierPaiementLivraisonView`, `StatutPaiementLivraisonView` (polling HTMX 4 s + JSON) et webhook isolé `LigdiCashLivraisonCallbackView` (`/paiement/callback/livraison/`).
+- [x] **Branchement Smart-Drop & Garde-fou Livreur**:
+  - `programmer_notification_position_destinataire` envoie la Web Push avec lien direct vers `paiement_app:initier_livraison` dès validation de la position GPS ; bouton de règlement disponible sur `client_dashboard.html`.
+  - `ChangerStatutCourseView` et `livreur_dashboard.html` bloquent le passage à `en_cours` (et le saut vers `livree`) tant que le paiement requis n'est pas validé (`reussi`).
+- [x] **Validation Locale (44 tests ciblés OK)** & [ ] **Validation Sandbox/Production**:
+  - 44 tests ciblés (`paiement_app`, `DestinataireGeoViewTestCase`, `LivreurTakeoffPaymentGuardTests`, `notifications_app`, `AssistantOperationnelDashboardTests`) avec SDK/Celery mockés, `manage.py check` et `makemigrations --check --dry-run` validés.
+  - Reste à valider en conditions réelles avec clés sandbox/live LigdiCash, Redis/Celery actif et URL callback HTTPS publique.
 
 
 

@@ -634,6 +634,33 @@ class DestinataireGeoViewTestCase(TestCase):
         self.assertEqual(self.demande.statut_position_destinataire, "position_recue")
         send_push_notification.assert_called_once_with(
             user_id=self.demande.client.user_id,
+            title="Position reçue — Réglez votre livraison",
+            body=(
+                f"Le destinataire de votre course #{self.demande.pk} a partagé "
+                "sa position. Validez le paiement pour autoriser le décollage du livreur."
+            ),
+            target_url=reverse(
+                "paiement_app:initier_livraison",
+                kwargs={"reference": self.demande.reference},
+            ),
+        )
+
+    @patch("notifications_app.tasks.envoyer_notification_webpush_task.delay")
+    def test_recipient_submit_for_paid_delivery_redirects_push_to_dashboard(
+        self,
+        send_push_notification,
+    ):
+        self.demande.statut_paiement = DemandeLivraison.PAIEMENT_REUSSI
+        self.demande.save(update_fields=["statut_paiement"])
+
+        response = self.client.post(
+            self.url,
+            {"latitude": "12.345678", "longitude": "-1.234567"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        send_push_notification.assert_called_once_with(
+            user_id=self.demande.client.user_id,
             title="Position du destinataire disponible",
             body=(
                 f"Le destinataire de votre course #{self.demande.pk} a partagé "

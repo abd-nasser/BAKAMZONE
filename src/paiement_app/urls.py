@@ -3,6 +3,13 @@ from .views import (
     InitierPaiementView,
     LigdiCashCallbackView,
     StatutPaiementView,
+    
+)
+
+from .views_paiement_livraison import (
+    InitierPaiementLivraisonView,
+    StatutPaiementLivraisonView,
+    LigdiCashLivraisonCallbackView,
 )
 
 app_name = "paiement_app"
@@ -26,4 +33,23 @@ urlpatterns = [
         LigdiCashCallbackView.as_view(),
         name="callback_ligdicash",
     ),
+    
+    # Flux Livraison (DemandeLivraison)
+    path(
+        "livraison/<uuid:reference>/initier/",
+        InitierPaiementLivraisonView.as_view(),
+        name="initier_livraison",
+    ),
+    path(
+        "livraison/<uuid:reference>/statut/",
+        StatutPaiementLivraisonView.as_view(),
+        name="statut_livraison",
+    ),
+    path(
+        "callback/livraison/",
+        LigdiCashLivraisonCallbackView.as_view(),
+        name="callback_livraison",
+    ),
+    
+    
 ]

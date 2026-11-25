@@ -431,5 +431,23 @@ La roadmap de la section 4 correspond à l'état antérieur à l'historique ci-d
 - Résolution du conflit de branches de migrations dans `demande_livraison_app` via la migration de merge `src/demande_livraison_app/migrations/0005_merge_20261118_1033.py`.
 - Validation par tests automatisés : 16 tests unitaires validés dans `src/superuser_app/tests.py` couvrant la sécurité d'accès, l'exactitude des calculs de sous-requêtes, les filtres dynamiques, la bascule de gabarit HTMX, la fiche détaillée et toutes les actions de retraits (16/16 tests réussis).
 
+## 30. Module de paiement LigdiCash pour les commandes (Gemini) — 23 novembre 2026
+
+- Conception et implémentation du module `paiement_app` pour l'encaissement Mobile Money **LigdiCash (Payin sans redirection)** des commandes issues du panier (`mise_jour_pour_parcours_par_gemini1.md`, `r_capitulatif_technique_et_mind_map_ligdicash.md`).
+- Modèle `PaiementLigdiCash` (`src/paiement_app/models.py`) relié en `OneToOneField` (`PROTECT`) à `panier_app.Commande`, avec séparation de `token_creation` (utilisé pour la confirmation serveur via `get_transaction`) et `token_callback`, champ d'audit `reponse_API` (`JSONField`) et index SQL sur `token_creation` et `statut`.
+- Services métier (`src/paiement_app/services.py`) : `initier_paiement_ligdicash()` (avec `external_id=""` et `custom_data`) et `confirmer_paiement_ligdicash()` sous `@transaction.atomic` + `select_for_update()` avec décrémentation atomique (`Greatest(F("quantite_disponible") - ligne.quantite, 0)`) pour les articles hors bloc et idempotence stricte au passage à `PAIEMENT_REUSSI`.
+- Vues, routes et templates HTMX/Alpine.js : `InitierPaiementView`, `LigdiCashCallbackView` (`@csrf_exempt`), `StatutPaiementView` (polling toutes les 4 s et `?format=json`), `initier_paiement.html`, `statut_paiement.html` et toast `_paiement_result.html`.
+
+## 31. Paiement des livraisons LigdiCash, relais Smart-Drop & garde-fou livreur — 25 novembre 2026
+
+- **Conception initiale (Gemini)** : ajout de `statut_paiement` et `date_paiement` sur `DemandeLivraison` (`demande_livraison_app.0006`), création du modèle `PaiementLivraisonLigdiCash` (`paiement_app.0001_initial` et `.0002`), configuration de `LIGDICASH_CALLBACK_URL_LIVRAISON`, rédaction de l'architecture et de la mind map (`mind_map_architecture_paiement_livraison_ligdicash.md`, `workflow_complet_paiement_livraison_ligdicash (1).md`) et premiers jets des services, vues et templates livraison.
+- **Reprise et stabilisation (Agy — 25 novembre 2026 à 11:29 UTC)** :
+  - Ajout de `DemandeLivraison.reference` (`UUIDField(unique=True, editable=False)`), des propriétés `est_payee` / `paiement_requis`, et de la migration sécurisée en 3 étapes `demande_livraison_app.0007_demandelivraison_reference`.
+  - Correction de `src/paiement_app/services_livraison.py` : alignement sur le SDK `ligdicash.Invoice` (`add_item`, `external_id=""`, `customer` dans `pay_without_redirection`), gestion complète des refus `code != "00"`, synchronisation de `DemandeLivraison.statut_paiement`, correction d'indentation dans `confirmer_paiement_ligdicash_livraison` et sortie anticipée si `token_creation` manquant ou déjà confirmé.
+  - Correction de `src/paiement_app/views_paiement_livraison.py`, `urls.py` et des templates (`initier_paiement_livraison.html`, `status_paiement_livraison.html`) : `@transaction.atomic` sur `POST`, vérification de `position_destinataire_validee`, normalisation du numéro Mobile Money, correction `client__user` et code HTTP `200`/`404` sur le callback, alignement des opérateurs (`ORANGE`, `MOOV`, `CORIS`, `LIGDICASH`).
+  - **Branchement Smart-Drop & Tableau client** : `programmer_notification_position_destinataire` (`src/notifications_app/services.py`) envoie la Web Push avec l'URL directe `paiement_app:initier_livraison` lorsque la course requiert un paiement, et `client_dashboard.html` expose un bouton de règlement sur les livraisons actives en attente de paiement.
+  - **Garde-fou décollage livreur** : `ChangerStatutCourseView` (`src/livreurs_app/views.py`) et `livreur_dashboard.html` bloquent le passage à `en_cours` (et le saut vers `livree`) tant que `demande.paiement_requis and not demande.est_payee`.
+  - **Validation locale** : 44 tests ciblés (`paiement_app.tests`, `DestinataireGeoViewTestCase`, `LivreurTakeoffPaymentGuardTests`, `notifications_app.tests`, `AssistantOperationnelDashboardTests`, avec SDK `ligdicash` et Celery mockés) réussis, `manage.py check` et `makemigrations --check --dry-run --noinput` sans erreur. Les essais réels en sandbox LigdiCash avec Redis/Celery et URL publique HTTPS restent à effectuer.
+
 
 

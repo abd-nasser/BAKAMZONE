@@ -145,7 +145,7 @@ def confirmer_paiement_ligdicash(paiement_id: int, token_callback: str = "", pal
         paiement.statut = PaiementLigdiCash.STATUT_REUSSI
         paiement.message_erreur = None
         paiement.save(update_fields=[
-            "token_callbak",
+            "token_callback",
             "statut",
             "reponse_API",
             "message_erreur",

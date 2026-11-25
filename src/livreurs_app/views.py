@@ -256,7 +256,7 @@ class RefuserDemandeLivraisonView(LivreurRequiredMixin, View):
 class ChangerStatutCourseView(LivreurRequiredMixin, View):
     """
     Permet au livreur de faire avancer une course active :
-    - 'en_cours' (colis récupéré)
+    - 'en_cours' (colis récupéré, uniquement après règlement confirmé si requis)
     - 'livree' (colis remis au destinataire)
     """
     def post(self, request, pk, *args, **kwargs):
@@ -264,12 +264,46 @@ class ChangerStatutCourseView(LivreurRequiredMixin, View):
         demande = get_object_or_404(DemandeLivraison, pk=pk, livreur=livreur)
         nouveau_statut = request.POST.get('statut')
 
-        if nouveau_statut in ['en_cours', 'livree']:
-            demande.statut = nouveau_statut
-            if nouveau_statut == 'livree':
-                demande.date_livraison = timezone.now()
-                Livreur.objects.filter(pk=livreur.pk).update(nb_livraisons=F('nb_livraisons') + 1)
-            demande.save()
+        if nouveau_statut == 'en_cours':
+            if demande.statut != 'acceptee':
+                messages.error(
+                    request,
+                    f"La course #{demande.pk} ne peut pas passer en cours depuis l'état « {demande.get_statut_display()} ».",
+                )
+                return redirect('livreurs_app:tableau-de-bord')
+
+            if demande.paiement_requis and not demande.est_payee:
+                messages.error(
+                    request,
+                    f"Décollage bloqué pour la course #{demande.pk} : le paiement du client n'est pas encore confirmé.",
+                )
+                return redirect('livreurs_app:tableau-de-bord')
+
+            demande.statut = 'en_cours'
+            demande.save(update_fields=['statut'])
+            messages.success(
+                request,
+                f"Course #{demande.pk} mise à jour : {demande.get_statut_display()}.",
+            )
+        elif nouveau_statut == 'livree':
+            if demande.statut != 'en_cours':
+                messages.error(
+                    request,
+                    f"La course #{demande.pk} doit d'abord être démarrée avant d'être marquée livrée.",
+                )
+                return redirect('livreurs_app:tableau-de-bord')
+
+            if demande.paiement_requis and not demande.est_payee:
+                messages.error(
+                    request,
+                    f"Impossible de clôturer la course #{demande.pk} sans paiement confirmé.",
+                )
+                return redirect('livreurs_app:tableau-de-bord')
+
+            demande.statut = 'livree'
+            demande.date_livraison = timezone.now()
+            demande.save(update_fields=['statut', 'date_livraison'])
+            Livreur.objects.filter(pk=livreur.pk).update(nb_livraisons=F('nb_livraisons') + 1)
             messages.success(
                 request,
                 f"Course #{demande.pk} mise à jour : {demande.get_statut_display()}.",
