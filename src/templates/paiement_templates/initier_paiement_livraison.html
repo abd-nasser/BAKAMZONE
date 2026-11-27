@@ -17,6 +17,9 @@
         <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-[#059669]/10 text-[#059669] dark:text-emerald-400 border border-[#059669]/25 mb-2">
           <span>⚡ Payin sans redirection</span>
         </div>
+        <a href="{% url 'clients_app:suivi-livraison' demande.pk %}" class="text-sm font-medium text-[#059669] hover:text-[#059669]/80 dark:text-emerald-400 dark:hover:text-emerald-400/80">
+          ← Retour au suivi 
+        </a>
         <div class="text-xs font-mono text-base-content/60">
           Course #{{ demande.pk }} · Réf. {{ demande.reference }}
         </div>

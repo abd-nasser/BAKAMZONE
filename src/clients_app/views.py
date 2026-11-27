@@ -232,9 +232,23 @@ class ClientDeliveryTrackingView(
             and demande.latitude_destinataire_reelle is not None
             and demande.longitude_destinataire_reelle is not None
         )
+        
+        position_validee = bool(
+            getattr(demande, "position_destinataire_validee", False)
+            or getattr(demande, "statut_position_destinataire", "") == "position_recue"
+        )
+        
+        paiement_livraison_requis = bool(
+            position_validee
+            and demande.paiement_requis
+            and not demande.est_payee
+            
+        )
+        
         context.update({
             "suivi_actif": suivi_actif,
             "suivi_disponible": suivi_disponible,
+            "paiement_livraison_requis": paiement_livraison_requis,
             "tracking_config": {
                 "tile_url": settings.OPENSTREETMAP_TILE_URL,
                 "deliveries": [{
@@ -244,6 +258,10 @@ class ClientDeliveryTrackingView(
                 }] if suivi_disponible else [],
             },
         })
+        
+        print("paiement_livraison_requis:", paiement_livraison_requis)
+        print("position_validee:", position_validee)
+        print("suivi_disponible:", suivi_disponible)
         return context
 
 

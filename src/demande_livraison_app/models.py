@@ -152,11 +152,7 @@ class DemandeLivraison(models.Model):
 
     @property
     def paiement_requis(self) -> bool:
-        """Indique si la course requiert un paiement LigdiCash dédié avant décollage."""
-        if self.ligne_commande_id is not None:
-            return False
-        if self.pk and self.lignes_commande.exists():
-            return False
+        """Indique si la course requiert un paiement LigdiCash dédié avant décollage."""  # Paiement requis si plusieurs lignes de commande
         return True
 
     def __str__(self):
