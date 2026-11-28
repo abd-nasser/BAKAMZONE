@@ -2,6 +2,7 @@
 import uuid
 from decimal import Decimal
 from django.db import models
+from django.utils import timezone
 
 
 class PaiementLigdiCash(models.Model):
@@ -61,8 +62,6 @@ class PaiementLigdiCash(models.Model):
     def __str__(self):
         return f"Paiement {self.reference} — Commande {self.commande.reference} ({self.get_statut_display()})"
     
-
-
 
 class PaiementLivraisonLigdiCash(models.Model):
     STATUT_EN_ATTENTE = "en_attente"
@@ -153,3 +152,95 @@ class PaiementLivraisonLigdiCash(models.Model):
         
     def __str__(self):
         return f"Paiement livraison {self.reference} — Demande {self.demande_livraison.reference} ({self.get_statut_display()})"
+    
+
+class PaiementAbonnementLigdiCash(models.Model):
+    STATUT_EN_ATTENTE = "en_attente"
+    STATUT_REUSSI = "reussi"
+    STATUT_ECHOUE = "echoue"
+    STATUT_ANNULE = "annule"
+
+    STATUT_CHOICES = [
+        (STATUT_EN_ATTENTE, "En attente"),
+        (STATUT_REUSSI, "Réussi"),
+        (STATUT_ECHOUE, "Échoué"),
+        (STATUT_ANNULE, "Annulé"),
+    ]
+
+    PALIER_STANDARD = "standard"
+    PALIER_PRO = "pro"
+    PALIER_PREMIUM = "premium"
+
+    PALIER_CHOICES = [
+        (PALIER_STANDARD, "Standard"),
+        (PALIER_PRO, "Pro"),
+        (PALIER_PREMIUM, "Premium"),
+    ]
+
+    # Tarifs provisoires en FCFA (à ajuster après validation finale)
+    TARIFS_STANDARD = {
+        PALIER_STANDARD: Decimal("10000.00"),
+        PALIER_PRO: Decimal("25000.00"),
+        PALIER_PREMIUM: Decimal("35000.00"),
+    }
+    TARIFS_PROMO = {
+        PALIER_STANDARD: Decimal("7750.00"),
+        PALIER_PRO: Decimal("17750.00"),
+        PALIER_PREMIUM: Decimal("27750.00"),
+    }
+
+    reference = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+
+    entreprise = models.ForeignKey(
+        "entreprise_app.Entreprise",
+        on_delete=models.PROTECT,
+        related_name="paiements_abonnement_ligdicash",
+    )
+
+    palier = models.CharField(max_length=20, choices=PALIER_CHOICES)
+    est_promotionnel = models.BooleanField(default=True)
+    duree_jours = models.PositiveIntegerField(default=30)
+
+    montant = models.DecimalField(max_digits=12, decimal_places=2)
+    numero_client = models.CharField(max_length=20)
+    operateur = models.CharField(max_length=50)
+
+    token_creation = models.CharField(max_length=255, unique=True, blank=True, null=True)
+    token_callback = models.CharField(max_length=255, blank=True, null=True)
+
+    statut = models.CharField(
+        max_length=20,
+        choices=STATUT_CHOICES,
+        default=STATUT_EN_ATTENTE,
+    )
+
+    reponse_API = models.JSONField(default=dict, blank=True)
+    message_erreur = models.TextField(blank=True, null=True)
+
+    date_creation = models.DateTimeField(auto_now_add=True)
+    date_mise_a_jour = models.DateTimeField(auto_now=True)
+    date_paiement = models.DateTimeField(blank=True, null=True)
+    abonnement_active = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["-date_creation"]
+        verbose_name = "Paiement abonnement LigdiCash"
+        verbose_name_plural = "Paiements abonnement LigdiCash"
+        indexes = [
+            models.Index(fields=["token_creation"]),
+            models.Index(fields=["statut"]),
+            models.Index(fields=["entreprise", "statut"]),
+        ]
+
+    @classmethod
+    def obtenir_tarif(cls, palier, promo=True):
+        grille = cls.TARIFS_PROMO if promo else cls.TARIFS_STANDARD
+        if palier not in grille:
+            raise ValueError(f"Palier invalide : {palier}")
+        return grille[palier]
+
+    def __str__(self):
+        return (
+            f"PaiementAbonnement {self.reference} — {self.entreprise.nom_entreprise} "
+            f"[{self.palier}] ({self.get_statut_display()})"
+        )

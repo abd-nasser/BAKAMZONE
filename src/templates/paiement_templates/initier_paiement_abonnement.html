@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 py-10">
+  <div class="mb-6">
+    <a href="{% url 'entreprise_app:choix-palier' %}" class="text-sm opacity-70 hover:opacity-100">
+      ← Changer de palier
+    </a>
+    <h1 class="text-2xl font-bold mt-2">Finaliser l'abonnement · {{ entreprise.nom_entreprise }}</h1>
+    <p class="text-sm opacity-75">
+      Confirmez votre paiement mobile money via LigdiCash pour activer immédiatement votre palier.
+    </p>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+    <div class="md:col-span-5 rounded-2xl border border-base-300 bg-base-100 p-6 h-fit">
+      <div class="flex items-center justify-between mb-4">
+        <span class="text-xs uppercase tracking-wider opacity-60 font-semibold">Récapitulatif</span>
+        <span class="badge badge-primary">{{ palier_label }}</span>
+      </div>
+
+      <div class="space-y-3 text-sm border-b border-base-200 pb-4 mb-4">
+        <div class="flex justify-between">
+          <span class="opacity-70">Entreprise</span>
+          <span class="font-medium">{{ entreprise.nom_entreprise }}</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="opacity-70">Palier choisi</span>
+          <span class="font-semibold">{{ palier_label }}</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="opacity-70">Durée</span>
+          <span class="font-medium">{{ duree_jours|default:30 }} jours</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="opacity-70">Articles max</span>
+          <span class="font-medium">{{ quota_articles }}</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="opacity-70">Admins max</span>
+          <span class="font-medium">{{ quota_admins }}</span>
+        </div>
+      </div>
+
+      <div class="flex items-baseline justify-between">
+        <span class="text-sm font-medium opacity-80">Total à payer</span>
+        <span class="text-2xl font-extrabold text-primary">{{ montant|floatformat:0 }} FCFA</span>
+      </div>
+    </div>
+
+    <div class="md:col-span-7 rounded-2xl border border-base-300 bg-base-100 p-6">
+      <div id="resultat-paiement-abonnement" class="mb-4"></div>
+
+      <form
+        method="post"
+        action="{% url 'paiement_app:initier-abonnement' %}"
+        hx-post="{% url 'paiement_app:initier-abonnement' %}"
+        hx-target="#resultat-paiement-abonnement"
+        hx-swap="innerHTML"
+        class="space-y-4"
+      >
+        {% csrf_token %}
+        <input type="hidden" name="palier" value="{{ palier_code }}">
+        <input type="hidden" name="promo" value="{{ est_promo|yesno:'true,false' }}">
+
+        <div>
+          <label class="label">
+            <span class="label-text font-medium">Opérateur mobile money</span>
+          </label>
+          <select name="operateur" required class="select select-bordered w-full rounded-xl">
+            <option value="" disabled selected>Choisir un opérateur</option>
+            <option value="ORANGE">Orange Money</option>
+            <option value="MOOV">Moov Africa</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="label">
+            <span class="label-text font-medium">Numéro de téléphone de paiement</span>
+          </label>
+          <input
+            type="tel"
+            name="numero_client"
+            required
+            placeholder="Ex. : 70000000"
+            class="input input-bordered w-full rounded-xl"
+          >
+        </div>
+
+        <div>
+          <label class="label">
+            <span class="label-text font-medium">Code OTP (si requis par votre opérateur)</span>
+          </label>
+          <input
+            type="text"
+            name="otp"
+            placeholder="Optionnel"
+            class="input input-bordered w-full rounded-xl"
+          >
+        </div>
+
+        <button type="submit" class="btn btn-primary w-full rounded-xl mt-2">
+          Payer {{ montant|floatformat:0 }} FCFA avec LigdiCash
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

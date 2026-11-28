@@ -554,7 +554,7 @@ class InscriptionEntrepriseAdminView(
             self.get_dashboard_context(self.get_entreprise(), {"form": form}),
         )
 
-class ChoixPalierEntrepriseView(UpdateView):
+class ChoixPalierEntrepriseView(UpdateView): 
     model = Entreprise
     form_class = ChoixPalierEntrepriseForm
     template_name = "entreprise_templates/choix_palier.html"

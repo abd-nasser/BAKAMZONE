@@ -4748,6 +4748,9 @@
   .h-80 {
     height: calc(var(--spacing) * 80);
   }
+  .h-fit {
+    height: fit-content;
+  }
   .h-full {
     height: 100%;
   }
@@ -4768,9 +4771,6 @@
   }
   .min-h-5 {
     min-height: calc(var(--spacing) * 5);
-  }
-  .min-h-12 {
-    min-height: calc(var(--spacing) * 12);
   }
   .min-h-48 {
     min-height: calc(var(--spacing) * 48);
@@ -5012,6 +5012,9 @@
   }
   .flex-wrap {
     flex-wrap: wrap;
+  }
+  .items-baseline {
+    align-items: baseline;
   }
   .items-center {
     align-items: center;
@@ -5346,6 +5349,9 @@
       border-color: color-mix(in oklab, var(--color-emerald-700) 50%, transparent);
     }
   }
+  .border-primary {
+    border-color: var(--color-primary);
+  }
   .border-primary\/20 {
     border-color: var(--color-primary);
   }
@@ -5383,14 +5389,6 @@
   @supports (color: color-mix(in lab, red, red)) {
     .border-warning\/30 {
       border-color: color-mix(in oklab, var(--color-warning) 30%, transparent);
-    }
-  }
-  .border-warning\/40 {
-    border-color: var(--color-warning);
-  }
-  @supports (color: color-mix(in lab, red, red)) {
-    .border-warning\/40 {
-      border-color: color-mix(in oklab, var(--color-warning) 40%, transparent);
     }
   }
   .border-warning\/50 {
@@ -6251,6 +6249,9 @@
   .pb-4 {
     padding-bottom: calc(var(--spacing) * 4);
   }
+  .pb-6 {
+    padding-bottom: calc(var(--spacing) * 6);
+  }
   .pb-7 {
     padding-bottom: calc(var(--spacing) * 7);
   }
@@ -6815,6 +6816,12 @@
   .opacity-50 {
     opacity: 50%;
   }
+  .opacity-60 {
+    opacity: 60%;
+  }
+  .opacity-70 {
+    opacity: 70%;
+  }
   .opacity-75 {
     opacity: 75%;
   }
@@ -6878,8 +6885,13 @@
       --tw-shadow-color: color-mix(in oklab, color-mix(in oklab, var(--color-base-200) 50%, transparent) var(--tw-shadow-alpha), transparent);
     }
   }
-  .ring-\[\#059669\]\/30 {
-    --tw-ring-color: color-mix(in oklab, #059669 30%, transparent);
+  .ring-primary\/20 {
+    --tw-ring-color: var(--color-primary);
+  }
+  @supports (color: color-mix(in lab, red, red)) {
+    .ring-primary\/20 {
+      --tw-ring-color: color-mix(in oklab, var(--color-primary) 20%, transparent);
+    }
   }
   .blur-2xl {
     --tw-blur: blur(var(--blur-2xl));
@@ -6974,6 +6986,12 @@
     .floating-label:has(.select-sm) {
       --top-mul: 4;
       --font-size: 0.75rem;
+    }
+    .btn-neutral {
+      --btn-color: var(--color-neutral);
+      --btn-fg: var(--color-neutral-content);
+      --btn-soft-bg: var(--color-neutral-content) 80%;
+      --btn-rest-fg: initial;
     }
     :is(.select-error) {
       --input-color: var(--color-error);
@@ -7094,16 +7112,6 @@
     .aura:has( > .btn,  > .input,  > .select) {
       --aura-radius: var(--radius-field);
     }
-  }
-  @layer daisyui.l1.l2 {
-    .radio-success {
-      --input-color: var(--color-success);
-    }
-  }
-  @layer daisyui.l1.l2.l3 {
-    .aura:has( > .btn,  > .input,  > .select) {
-      --aura-radius: var(--radius-field);
-    }
     .aura:has( > .checkbox,  > .toggle,  > .badge) {
       --aura-radius: var(--radius-selector);
     }
@@ -7138,10 +7146,6 @@
   @media (hover: hover) {
     .hover\:-translate-y-0\.5:hover {
       --tw-translate-y: calc(var(--spacing) * -0.5);
-      translate: var(--tw-translate-x) var(--tw-translate-y);
-    }
-    .hover\:-translate-y-1:hover {
-      --tw-translate-y: calc(var(--spacing) * -1);
       translate: var(--tw-translate-x) var(--tw-translate-y);
     }
     .hover\:scale-105:hover {
@@ -7280,6 +7284,9 @@
     }
     .hover\:underline:hover {
       text-decoration-line: underline;
+    }
+    .hover\:opacity-100:hover {
+      opacity: 100%;
     }
     .hover\:shadow-2xl:hover {
       --tw-shadow: 0 25px 50px -12px var(--tw-shadow-color, rgb(0 0 0 / 0.25));
@@ -7602,6 +7609,12 @@
     }
   }
   @media (width >= 48rem) {
+    .md\:col-span-5 {
+      grid-column: span 5 / span 5;
+    }
+    .md\:col-span-7 {
+      grid-column: span 7 / span 7;
+    }
     .md\:block {
       display: block;
     }
@@ -7619,6 +7632,9 @@
     }
     .md\:grid-cols-4 {
       grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+    .md\:grid-cols-12 {
+      grid-template-columns: repeat(12, minmax(0, 1fr));
     }
     .md\:flex-row {
       flex-direction: row;

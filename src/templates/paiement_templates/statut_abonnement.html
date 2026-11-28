@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto px-4 py-10">
+  <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <a href="{% url 'entreprise_app:choix-palier' %}" class="text-sm opacity-70 hover:opacity-100">
+        ← Retour aux paliers d'abonnement
+      </a>
+      <h1 class="text-2xl font-bold mt-2">Statut du paiement d'abonnement</h1>
+      <p class="text-xs opacity-60 mt-1">
+        Référence : <span class="font-mono">{{ paiement.reference }}</span>
+      </p>
+    </div>
+
+    {% if paiement.statut == "reussi" %}
+      <span class="badge badge-success badge-lg font-semibold">Paiement réussi</span>
+    {% elif paiement.statut == "en_attente" %}
+      <span class="badge badge-warning badge-lg font-semibold">En attente de confirmation</span>
+    {% elif paiement.statut == "annule" %}
+      <span class="badge badge-ghost badge-lg font-semibold">Annulé</span>
+    {% else %}
+      <span class="badge badge-error badge-lg font-semibold">Échoué</span>
+    {% endif %}
+  </div>
+
+  <!-- Message d'état principal -->
+  {% if paiement.statut == "reussi" and paiement.entreprise.abonnement_est_valide %}
+    <div class="alert alert-success rounded-2xl mb-6 shadow-sm">
+      <div>
+        <h2 class="font-bold">Abonnement {{ paiement.get_palier_display }} actif</h2>
+        <p class="text-sm">
+          Votre paiement a été confirmé. Le palier <strong>{{ paiement.entreprise.get_palier_display }}</strong>
+          est actif pour <strong>{{ paiement.entreprise.nom_entreprise }}</strong>.
+        </p>
+      </div>
+    </div>
+  {% elif paiement.statut == "en_attente" %}
+    <div class="alert alert-warning rounded-2xl mb-6 shadow-sm">
+      <div>
+        <h2 class="font-bold">Confirmation en cours</h2>
+        <p class="text-sm">
+          Validez l'invite mobile money sur votre téléphone si ce n'est pas encore fait, puis actualisez
+          cette page pour vérifier la confirmation LigdiCash.
+        </p>
+      </div>
+    </div>
+  {% else %}
+    <div class="alert alert-error rounded-2xl mb-6 shadow-sm">
+      <div>
+        <h2 class="font-bold">Paiement non validé</h2>
+        <p class="text-sm">
+          {{ paiement.message_erreur|default:"La transaction n'a pas abouti. Votre palier actif n'a pas été modifié." }}
+        </p>
+      </div>
+    </div>
+  {% endif %}
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <!-- Détails de la transaction -->
+    <div class="rounded-2xl border border-base-300 bg-base-100 p-6">
+      <h2 class="text-sm uppercase tracking-wider font-semibold opacity-60 mb-4">
+        Détails de la transaction
+      </h2>
+      <dl class="space-y-3 text-sm">
+        <div class="flex justify-between gap-4">
+          <dt class="opacity-70">Palier demandé</dt>
+          <dd class="font-semibold">{{ paiement.get_palier_display }}</dd>
+        </div>
+        <div class="flex justify-between gap-4">
+          <dt class="opacity-70">Montant</dt>
+          <dd class="font-bold text-primary">{{ paiement.montant|floatformat:0 }} FCFA</dd>
+        </div>
+        <div class="flex justify-between gap-4">
+          <dt class="opacity-70">Durée prévue</dt>
+          <dd class="font-medium">{{ paiement.duree_jours }} jours</dd>
+        </div>
+        <div class="flex justify-between gap-4">
+          <dt class="opacity-70">Opérateur / Numéro</dt>
+          <dd class="font-medium">{{ paiement.operateur }} · {{ paiement.numero_client }}</dd>
+        </div>
+        <div class="flex justify-between gap-4">
+          <dt class="opacity-70">Initié le</dt>
+          <dd class="font-medium">{{ paiement.date_creation|date:"d/m/Y à H:i" }}</dd>
+        </div>
+        {% if paiement.date_paiement %}
+          <div class="flex justify-between gap-4">
+            <dt class="opacity-70">Confirmé le</dt>
+            <dd class="font-medium">{{ paiement.date_paiement|date:"d/m/Y à H:i" }}</dd>
+          </div>
+        {% endif %}
+      </dl>
+    </div>
+
+    <!-- État actuel de l'entreprise -->
+    <div class="rounded-2xl border border-base-300 bg-base-100 p-6">
+      <h2 class="text-sm uppercase tracking-wider font-semibold opacity-60 mb-4">
+        État de l'abonnement entreprise
+      </h2>
+      <dl class="space-y-3 text-sm">
+        <div class="flex justify-between gap-4">
+          <dt class="opacity-70">Entreprise</dt>
+          <dd class="font-semibold">{{ paiement.entreprise.nom_entreprise }}</dd>
+        </div>
+        <div class="flex justify-between gap-4">
+          <dt class="opacity-70">Palier actuel</dt>
+          <dd class="font-semibold">{{ paiement.entreprise.get_palier_display }}</dd>
+        </div>
+        <div class="flex justify-between gap-4">
+          <dt class="opacity-70">Statut de validité</dt>
+          <dd>
+            {% if paiement.entreprise.abonnement_est_valide %}
+              <span class="badge badge-success badge-sm">Actif</span>
+            {% else %}
+              <span class="badge badge-outline badge-sm">Inactif</span>
+            {% endif %}
+          </dd>
+        </div>
+        {% if paiement.entreprise.date_fin_abonnement %}
+          <div class="flex justify-between gap-4">
+            <dt class="opacity-70">Valide jusqu'au</dt>
+            <dd class="font-medium">{{ paiement.entreprise.date_fin_abonnement|date:"d/m/Y à H:i" }}</dd>
+          </div>
+        {% endif %}
+        <div class="flex justify-between gap-4">
+          <dt class="opacity-70">Quota articles actifs</dt>
+          <dd class="font-semibold">
+            {{ paiement.entreprise.nb_articles_actuels }} / {{ paiement.entreprise.quota_articles }}
+          </dd>
+        </div>
+        <div class="flex justify-between gap-4">
+          <dt class="opacity-70">Quota administrateurs</dt>
+          <dd class="font-semibold">
+            {{ paiement.entreprise.nb_admins_actuels }} / {{ paiement.entreprise.quota_admins }}
+          </dd>
+        </div>
+      </dl>
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div class="mt-8 flex flex-wrap items-center justify-end gap-3">
+    {% if paiement.statut == "en_attente" %}
+      <a
+        href="{% url 'paiement_app:statut-abonnement' reference=paiement.reference %}"
+        class="btn btn-outline rounded-xl"
+      >
+        Actualiser le statut
+      </a>
+    {% elif paiement.statut != "reussi" %}
+      <a
+        href="{% url 'paiement_app:initier-abonnement' %}?palier={{ paiement.palier }}"
+        class="btn btn-primary rounded-xl"
+      >
+        Réessayer le paiement ({{ paiement.get_palier_display }})
+      </a>
+    {% endif %}
+
+    <a href="{% url 'entreprise_app:entreprise-detail' %}" class="btn btn-neutral rounded-xl">
+      Accéder au tableau de bord entreprise
+    </a>
+  </div>
+</div>
+{% endblock %}

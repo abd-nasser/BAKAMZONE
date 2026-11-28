@@ -12,6 +12,12 @@ from .views_paiement_livraison import (
     LigdiCashLivraisonCallbackView,
 )
 
+from .views_abonnement import (
+    InitierPaiementAbonnementView,
+    LigdiCashAbonnementCallbackView,
+    StatutPaiementAbonnementView,
+)
+
 app_name = "paiement_app"
 
 urlpatterns = [
@@ -52,4 +58,20 @@ urlpatterns = [
     ),
     
     
+    # Flux Abonnement de palier pour entreprise
+    path(
+        "abonnement/initier/",
+        InitierPaiementAbonnementView.as_view(),
+        name="initier-abonnement",
+    ),
+    path(
+        "abonnement/callback/ligdicash/",
+        LigdiCashAbonnementCallbackView.as_view(),
+        name="callback-abonnement-ligdicash",
+    ),
+    path(
+        "abonnement/statut/<uuid:reference>/",
+        StatutPaiementAbonnementView.as_view(),
+        name="statut-abonnement",
+    ),
 ]

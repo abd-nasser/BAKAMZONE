@@ -1,5 +1,6 @@
 from django.db import models
 from django.db.models import Q
+from django.utils import timezone
 
 from auth_app.models import User
 
@@ -22,6 +23,7 @@ class Entreprise(models.Model):
     palier = models.CharField(max_length=20, choices=PALIER_CHOICES, default='pas_defini')
     # Gestion des abonnements mentionnée dans le cahier des charges
     subscription_active = models.BooleanField(default=False)
+    date_fin_abonnement = models.DateTimeField(null=True, blank=True)
     date_creation = models.DateTimeField(auto_now_add=True)
     
     QUOTAS_ARTICLES = {
@@ -38,11 +40,25 @@ class Entreprise(models.Model):
     }
     
     @property
+    def abonnemement_est_valide(self):
+        if not self.subscription_active:
+            return False
+        if self.date_fin_abonnement and self.date_fin_abonnement <= timezone.now():
+            return False
+        return True
+    
+    
+    
+    @property
     def quota_articles(self):
+        if not self.abonnemement_est_valide:
+            return 0
         return self.QUOTAS_ARTICLES.get(self.palier, 0)
     
     @property
     def quota_admins(self):
+        if not self.abonnemement_est_valide:
+            return 0
         return self.QUOTAS_ADMINS.get(self.palier, 0)
     
     @property
